@@ -664,12 +664,12 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     Text(
-                      "Total Chèques: ${formatPrice(totalCheques)}",
+                      "Total pointé Chèques: ${formatPrice(totalPointeCheques)}",
                       style: const TextStyle(
                           fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      "Total Espèces: ${formatPrice(totalEspeces)}",
+                      "Total pointé Espèces: ${formatPrice(totalPointeEspeces)}",
                       style: const TextStyle(
                           fontSize: 16, fontWeight: FontWeight.bold),
                     ),
@@ -679,12 +679,12 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       Text(
-                        "Total pointé Chèques: ${formatPrice(totalPointeCheques)}",
+                        "Total Chèques: ${formatPrice(totalCheques)}",
                         style: const TextStyle(
                             fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                       Text(
-                        "Total pointé Espèces: ${formatPrice(totalPointeEspeces)}",
+                        "Total Espèces: ${formatPrice(totalEspeces)}",
                         style: const TextStyle(
                             fontSize: 16, fontWeight: FontWeight.bold),
                       ),
