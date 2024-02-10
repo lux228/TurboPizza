@@ -563,9 +563,11 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
 
   double totalCheques = 0.0;
   double totalEspeces = 0.0;
+  double totalGroupe = 0.0;
 
   double totalPointeCheques = 0.0;
   double totalPointeEspeces = 0.0;
+  double totalPointeGroupe = 0.0;
 
   @override
   void initState() {
@@ -609,6 +611,7 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
         totalEspeces += encaissement.montant;
       }
     }
+    totalGroupe = totalEspeces + totalCheques;
   }
 
   void _saveEncaissements(List<Encaissement> encaissements) async {
@@ -635,6 +638,7 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
   void calculatePointedTotals() {
     totalPointeCheques = 0.0;
     totalPointeEspeces = 0.0;
+    totalPointeGroupe = 0.0;
 
     for (var encaissement in filteredEncaissements) {
       if (encaissement.isSelected) {
@@ -645,6 +649,7 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
         }
       }
     }
+    totalPointeGroupe = totalPointeEspeces + totalPointeCheques;
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -757,6 +762,11 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
                       style: const TextStyle(
                           fontSize: 16, fontWeight: FontWeight.bold),
                     ),
+                    Text(
+                      "Total pointé: ${formatPrice(totalPointeGroupe)}",
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
                   ],
                 ),
                 Row(
@@ -769,6 +779,11 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
                       ),
                       Text(
                         "Total Espèces: ${formatPrice(totalEspeces)}",
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        "Total: ${formatPrice(totalGroupe)}",
                         style: const TextStyle(
                             fontSize: 16, fontWeight: FontWeight.bold),
                       ),
