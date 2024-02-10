@@ -28,8 +28,13 @@ class Pizza {
   String name;
   double price;
   int quantity;
+  String type; // Nouvel attribut pour le type de pizza
 
-  Pizza({required this.name, required this.price, this.quantity = 0});
+  Pizza(
+      {required this.name,
+      required this.price,
+      this.quantity = 0,
+      required this.type});
 
   double get totalPrice => quantity * price;
 
@@ -37,12 +42,15 @@ class Pizza {
         'name': name,
         'price': price,
         'quantity': quantity,
+        'type': type, // Inclure le type dans la sérialisation
       };
 
   static Pizza fromJson(Map<String, dynamic> json) => Pizza(
         name: json['name'],
         price: json['price'],
-        quantity: json['quantity'],
+        quantity: json['quantity'] ?? 0,
+        type:
+            json['type'] ?? 'tomate', // Attribuer "tomate" si "type" est absent
       );
 }
 
@@ -72,8 +80,11 @@ class _PizzaHomePageState extends State<PizzaHomePage> {
       if (cart.containsKey(pizza.name)) {
         cart[pizza.name]!.quantity++;
       } else {
-        cart[pizza.name] =
-            Pizza(name: pizza.name, price: pizza.price, quantity: 1);
+        cart[pizza.name] = Pizza(
+            name: pizza.name,
+            price: pizza.price,
+            quantity: 1,
+            type: pizza.type);
       }
     });
   }
@@ -179,6 +190,75 @@ class _PizzaHomePageState extends State<PizzaHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Regrouper et trier les pizzas par type
+    Map<String, List<Pizza>> groupedPizzas = {};
+    for (var pizza in availablePizzas) {
+      groupedPizzas.putIfAbsent(pizza.type, () => []).add(pizza);
+    }
+    for (var group in groupedPizzas.values) {
+      group.sort((a, b) => a.name.compareTo(b.name));
+    }
+
+    List<Widget> categoryWidgets = [];
+    groupedPizzas.forEach((type, pizzas) {
+      categoryWidgets.add(
+        Container(
+          padding: const EdgeInsets.all(8.0),
+          child: Text(
+            type.toUpperCase(),
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+        ),
+      );
+
+      categoryWidgets.add(
+        GridView.builder(
+          shrinkWrap: true,
+          physics:
+              const NeverScrollableScrollPhysics(), // Pour éviter le défilement imbriqué
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount:
+                6, // Modifiez cette ligne pour afficher x éléments par ligne
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+          ),
+          itemCount: pizzas.length,
+          itemBuilder: (context, index) {
+            Pizza pizza = pizzas[index];
+            Color? color;
+            switch (pizza.type) {
+              case 'tomate':
+                color = Colors.red[100];
+                break;
+              case 'crème':
+                color = Colors.blue[100];
+                break;
+              case 'mois':
+                color = Colors.green[100];
+                break;
+            }
+
+            return GestureDetector(
+              onTap: () => addToCart(pizza),
+              child: Card(
+                color: color,
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Text(pizza.name, style: const TextStyle(fontSize: 18)),
+                      Text(formatPrice(pizza.price),
+                          style: const TextStyle(fontSize: 16)),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    });
+
     return Scaffold(
       appBar: AppBar(title: const Text('TurboPizza')),
       drawer: Drawer(
@@ -215,36 +295,15 @@ class _PizzaHomePageState extends State<PizzaHomePage> {
       body: Row(
         children: [
           Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.all(10),
-              itemCount: availablePizzas.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: 1,
-              ),
-              itemBuilder: (context, index) {
-                var pizza = availablePizzas[index];
-                return GestureDetector(
-                  onTap: () => addToCart(pizza),
-                  child: Card(
-                    color: Colors.lightBlue[100],
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          Text(pizza.name,
-                              style: const TextStyle(fontSize: 18)),
-                          Text(formatPrice(pizza.price),
-                              style: const TextStyle(fontSize: 16)),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
+            flex: 2, // Ajuster la flexibilité selon la préférence d'affichage
+            child: SingleChildScrollView(
+              child: Column(children: categoryWidgets),
             ),
+          ),
+          const VerticalDivider(
+            width: 1,
+            thickness: 1,
+            color: Colors.grey,
           ),
           Expanded(
             child: Container(
@@ -278,19 +337,19 @@ class _PizzaHomePageState extends State<PizzaHomePage> {
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text("Total: ${formatPrice(totalCartPrice)}",
-                            style: const TextStyle(
-                                fontSize: 20, fontWeight: FontWeight.bold)),
+                        Text(
+                          "Total: ${formatPrice(totalCartPrice)}",
+                          style: const TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.bold),
+                        ),
+                        const Spacer(), // Ajoute un espace flexible qui pousse les widgets suivants vers la droite
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             foregroundColor: Colors.black,
                             backgroundColor: Colors.lightBlue[100],
                             minimumSize: const Size(225, 75),
-                            textStyle: const TextStyle(
-                                fontSize:
-                                    20), // Définit la couleur du texte sur le bouton pour assurer un bon contraste
+                            textStyle: const TextStyle(fontSize: 20),
                           ),
                           onPressed: checkout,
                           child: const Text("Encaisser"),
@@ -351,11 +410,19 @@ class PizzaManagementPage extends StatefulWidget {
 class _PizzaManagementPageState extends State<PizzaManagementPage> {
   final _nameController = TextEditingController();
   final _priceController = TextEditingController();
+  List<String> pizzaTypes = ['tomate', 'crème', 'mois'];
+  String selectedType = 'tomate'; // La valeur par défaut
 
   void _addOrUpdatePizza({String? originalName}) {
     final newOrUpdatedPizza = Pizza(
       name: _nameController.text,
       price: double.parse(_priceController.text),
+      type: selectedType, // Utiliser le type sélectionné
+      quantity: originalName == null
+          ? 0
+          : widget.availablePizzas
+              .firstWhere((p) => p.name == originalName)
+              .quantity,
     );
 
     setState(() {
@@ -378,9 +445,11 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
     if (pizza != null) {
       _nameController.text = pizza.name;
       _priceController.text = pizza.price.toString();
+      selectedType = pizza.type; // Définir le type actuel
     } else {
       _nameController.clear();
       _priceController.clear();
+      selectedType = 'tomate'; // Réinitialiser à la valeur par défaut
     }
 
     showDialog(
@@ -400,6 +469,21 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
                 decoration: const InputDecoration(labelText: 'Prix'),
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
+              ),
+              DropdownButtonFormField<String>(
+                value: selectedType, // Initialiser avec le type actuel
+                decoration: const InputDecoration(labelText: 'Type'),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    selectedType = newValue!;
+                  });
+                },
+                items: pizzaTypes.map<DropdownMenuItem<String>>((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
               ),
             ],
           ),
