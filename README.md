@@ -1,3 +1,8 @@
+# Warning
+
+This thing is terrible. I am NO programmer whatsoever and I had to code this software in a couple days without prior knowledge of Flutter.
+Please don't blame me for the whole code being in a single file :(
+
 # TurboPizza
 
 A new Flutter project.
