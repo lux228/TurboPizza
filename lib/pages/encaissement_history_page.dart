@@ -246,11 +246,25 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
                             _toggleEncaissementSelection(encaissement);
                           },
                         ),
-                        title: Text(
-                          "Montant: ${formatPrice(encaissement.montant)}",
-                          style: TextStyle(
-                            color: encaissement.isSelected ? Colors.grey : null,
-                          ),
+                        title: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                "Montant: ${formatPrice(encaissement.montant)}",
+                                style: TextStyle(
+                                  color: encaissement.isSelected ? Colors.grey : null,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              DateFormat('HH:mm').format(encaissement.date),
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: encaissement.isSelected ? Colors.grey : Colors.blue[700],
+                              ),
+                            ),
+                          ],
                         ),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
