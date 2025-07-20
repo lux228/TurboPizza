@@ -121,7 +121,28 @@ class _PizzaHomePageState extends State<PizzaHomePage> {
 
       // Affichage d'un message de confirmation
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Encaissement réalisé avec succès')),
+        SnackBar(
+          content: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Icon(Icons.check_circle, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text('Encaissement réalisé avec succès'),
+            ],
+          ),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.only(
+            bottom: 30,
+            left: MediaQuery.of(context).size.width * 0.25,
+            right: MediaQuery.of(context).size.width * 0.25,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: Colors.green[600],
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        ),
       );
     }
   }
