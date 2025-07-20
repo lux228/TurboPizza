@@ -17,7 +17,7 @@ class PizzaManagementPage extends StatefulWidget {
 class _PizzaManagementPageState extends State<PizzaManagementPage> {
   final _nameController = TextEditingController();
   final _priceController = TextEditingController();
-  List<String> pizzaTypes = ['Tomate', 'Crème', 'Mois', 'Softs', 'Vins', 'Spécialités', 'Glaces', 'Desserts'];
+  List<String> pizzaTypes = ['Tomate', 'Crème', 'Softs', 'Vins', 'Spécialités', 'Glaces', 'Desserts'];
   String selectedType = 'Tomate'; // La valeur par défaut
 
   void _addOrUpdatePizza({String? originalName}) {
@@ -115,16 +115,14 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
         return Colors.red[100]!;
       case 'Crème':
         return Colors.blue[100]!;
-      case 'Mois':
-        return Colors.green[100]!;
       case 'Softs':
-        return Colors.orange[100]!;
-      case 'Vins':
-        return Colors.purple[100]!;
-      case 'Spécialités':
         return Colors.amber[100]!;
+      case 'Vins':
+        return Colors.orange[100]!;
+      case 'Spécialités':
+        return Colors.green[100]!;
       case 'Glaces':
-        return Colors.cyan[100]!;
+        return Colors.purple[100]!;
       case 'Desserts':
         return Colors.pink[100]!;
       default:
