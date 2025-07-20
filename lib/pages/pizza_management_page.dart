@@ -109,44 +109,173 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
     );
   }
 
+  Color _getCategoryColor(String type) {
+    switch (type) {
+      case 'Tomate':
+        return Colors.red[100]!;
+      case 'Crème':
+        return Colors.blue[100]!;
+      case 'Mois':
+        return Colors.green[100]!;
+      case 'Softs':
+        return Colors.orange[100]!;
+      case 'Vins':
+        return Colors.purple[100]!;
+      case 'Spécialités':
+        return Colors.amber[100]!;
+      case 'Glaces':
+        return Colors.cyan[100]!;
+      case 'Desserts':
+        return Colors.pink[100]!;
+      default:
+        return Colors.grey[100]!;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Regrouper et trier les pizzas par type
+    Map<String, List<Pizza>> groupedPizzas = {};
+    for (var pizza in widget.availablePizzas) {
+      groupedPizzas.putIfAbsent(pizza.type, () => []).add(pizza);
+    }
+    for (var group in groupedPizzas.values) {
+      group.sort((a, b) => a.name.compareTo(b.name));
+    }
+
+    List<Widget> categoryWidgets = [];
+    groupedPizzas.forEach((type, pizzas) {
+      // En-tête de catégorie
+      categoryWidgets.add(
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12.0),
+          margin: const EdgeInsets.only(top: 8.0),
+          color: _getCategoryColor(type),
+          child: Text(
+            type.toUpperCase(),
+            style: const TextStyle(
+              fontSize: 18, 
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+      );
+
+      // Items de la catégorie en grille 2 colonnes
+      categoryWidgets.add(
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 8.0,
+            mainAxisSpacing: 8.0,
+            childAspectRatio: 7.0, // Ratio beaucoup plus élevé pour des cartes très fines
+          ),
+          itemCount: pizzas.length,
+          itemBuilder: (context, index) {
+            final pizza = pizzas[index];
+            
+            return Card(
+              elevation: 2,
+              color: Colors.white,
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4.0),
+                  border: Border(
+                    left: BorderSide(
+                      color: _getCategoryColor(type).withOpacity(0.8),
+                      width: 4.0,
+                    ),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              pizza.name,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              formatPrice(pizza.price),
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.green,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            iconSize: 22,
+                            padding: const EdgeInsets.all(4),
+                            constraints: const BoxConstraints(
+                              minWidth: 36,
+                              minHeight: 36,
+                            ),
+                            icon: const Icon(Icons.edit, color: Colors.blue),
+                            onPressed: () => _showAddEditPizzaDialog(pizza: pizza),
+                          ),
+                          IconButton(
+                            iconSize: 22,
+                            padding: const EdgeInsets.all(4),
+                            constraints: const BoxConstraints(
+                              minWidth: 36,
+                              minHeight: 36,
+                            ),
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () {
+                              setState(() {
+                                widget.availablePizzas.removeAt(
+                                  widget.availablePizzas.indexWhere((p) => p.name == pizza.name)
+                                );
+                              });
+                              widget.onUpdate();
+                              StorageService.savePizzaList(widget.availablePizzas);
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    });
+
     return Scaffold(
       appBar: AppBar(title: const Text('Gérer Pizzas')),
-      body: ListView.builder(
-        itemCount: widget.availablePizzas.length,
-        itemBuilder: (context, index) {
-          final pizza = widget.availablePizzas[index];
-          Color bgColor = index % 2 == 0
-              ? Colors.grey[200]!
-              : Colors.white; // Couleurs alternées
-
-          return ListTile(
-            tileColor: bgColor, // Applique la couleur alternée
-            title: Text(pizza.name),
-            subtitle: Text(formatPrice(pizza.price)),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                IconButton(
-                  icon: const Icon(Icons.edit),
-                  onPressed: () => _showAddEditPizzaDialog(pizza: pizza),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete),
-                  onPressed: () {
-                    setState(() {
-                      widget.availablePizzas.removeAt(index);
-                    });
-                    widget.onUpdate();
-                    StorageService.savePizzaList(widget.availablePizzas);
-                  },
-                ),
-              ],
-            ),
-          );
-        },
-      ),
+      body: widget.availablePizzas.isEmpty
+          ? const Center(
+              child: Text(
+                'Aucune pizza disponible.\nUtilisez le bouton + pour en ajouter.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+            )
+          : ListView(children: categoryWidgets),
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
         onPressed: () => _showAddEditPizzaDialog(),
