@@ -112,6 +112,38 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
     });
   }
 
+  Widget _buildDateShortcut(String label, DateTime date) {
+    bool isSelected = selectedDate.year == date.year && 
+                     selectedDate.month == date.month && 
+                     selectedDate.day == date.day;
+    
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: isSelected ? Colors.blue : Colors.white,
+        foregroundColor: isSelected ? Colors.white : Colors.black,
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        minimumSize: Size(80, 32),
+      ),
+      onPressed: () {
+        setState(() {
+          selectedDate = date;
+          filterEncaissements();
+        });
+      },
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 12),
+      ),
+    );
+  }
+
+  String _getDayName(DateTime date) {
+    const List<String> dayNames = [
+      '', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'
+    ];
+    return dayNames[date.weekday];
+  }
+
   void _showCommandeDetails(Encaissement encaissement) {
     String formattedDate = DateFormat('dd/MM/yyyy à HH:mm').format(encaissement.date);
     
@@ -121,8 +153,8 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
         return AlertDialog(
           title: Text('Détail de la commande', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           content: SizedBox(
-            width: double.maxFinite,
-            height: MediaQuery.of(context).size.height * 0.7, // 70% de la hauteur de l'écran
+            width: 500, // Largeur fixe plus petite
+            height: MediaQuery.of(context).size.height * 0.7,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -159,28 +191,86 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
                       itemCount: encaissement.articles.length,
                       itemBuilder: (context, index) {
                         var article = encaissement.articles[index];
-                        return Card(
+                        
+                        // Déterminer la couleur selon le type
+                        Color borderColor;
+                        switch (article.type) {
+                          case 'Tomate':
+                            borderColor = Colors.red;
+                            break;
+                          case 'Crème':
+                            borderColor = Colors.blue;
+                            break;
+                          case 'Softs':
+                            borderColor = Colors.amber;
+                            break;
+                          case 'Vins':
+                            borderColor = Colors.orange;
+                            break;
+                          case 'Spécialités':
+                            borderColor = Colors.green;
+                            break;
+                          case 'Glaces':
+                            borderColor = Colors.purple;
+                            break;
+                          case 'Desserts':
+                            borderColor = Colors.pink;
+                            break;
+                          default:
+                            borderColor = Colors.grey;
+                        }
+                        
+                        return Container(
                           margin: EdgeInsets.symmetric(vertical: 2),
-                          child: Padding(
-                            padding: EdgeInsets.all(12),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(article.name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-                                      Text(article.type, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
-                                    ],
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border(
+                              left: BorderSide(
+                                color: borderColor,
+                                width: 4,
+                              ),
+                            ),
+                          ),
+                          child: Card(
+                            margin: EdgeInsets.zero,
+                            child: Padding(
+                              padding: EdgeInsets.all(12),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    flex: 3,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(article.name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                                        Text(article.type, style: TextStyle(fontSize: 14, color: borderColor.withOpacity(0.8))),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                Text('x${article.quantity}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                                SizedBox(width: 12),
-                                Text('${formatPrice(article.price)}', style: TextStyle(fontSize: 16)),
-                                SizedBox(width: 12),
-                                Text('= ${formatPrice(article.totalPrice)}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green[700])),
-                              ],
+                                  SizedBox(
+                                    width: 40,
+                                    child: Text('x${article.quantity}', 
+                                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: 60,
+                                    child: Text('${formatPrice(article.price)}', 
+                                      style: TextStyle(fontSize: 16),
+                                      textAlign: TextAlign.right,
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  SizedBox(
+                                    width: 70,
+                                    child: Text('${formatPrice(article.totalPrice)}', 
+                                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green[700]),
+                                      textAlign: TextAlign.right,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         );
@@ -208,18 +298,78 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
           title: const Text("Historique des Encaissements"),
         ),
         body: Column(children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Container(
+            color: Colors.blue[50],
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
               children: [
-                const Text(
-                  "Sélectionner la date:",
-                  style: TextStyle(fontSize: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "Sélectionner la date:",
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Bouton date précédente
+                        IconButton(
+                          onPressed: () {
+                            setState(() {
+                              selectedDate = selectedDate.subtract(Duration(days: 1));
+                              filterEncaissements();
+                            });
+                          },
+                          icon: Icon(Icons.chevron_left),
+                          tooltip: 'Jour précédent',
+                        ),
+                        // Affichage de la date actuelle avec jour de la semaine
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black,
+                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          ),
+                          onPressed: () => _selectDate(context),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _getDayName(selectedDate),
+                                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                              ),
+                              Text(
+                                DateFormat('dd/MM/yyyy').format(selectedDate),
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Bouton date suivante
+                        IconButton(
+                          onPressed: () {
+                            setState(() {
+                              selectedDate = selectedDate.add(Duration(days: 1));
+                              filterEncaissements();
+                            });
+                          },
+                          icon: Icon(Icons.chevron_right),
+                          tooltip: 'Jour suivant',
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                ElevatedButton(
-                  onPressed: () => _selectDate(context),
-                  child: Text("${selectedDate.toLocal()}".split(' ')[0]),
+                SizedBox(height: 8),
+                // Boutons de raccourcis
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildDateShortcut('Aujourd\'hui', DateTime.now()),
+                    _buildDateShortcut('Hier', DateTime.now().subtract(Duration(days: 1))),
+                    _buildDateShortcut('Avant-hier', DateTime.now().subtract(Duration(days: 2))),
+                  ],
                 ),
               ],
             ),
