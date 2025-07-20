@@ -324,12 +324,12 @@ class _PizzaHomePageState extends State<PizzaHomePage> {
                           height: 60,
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              foregroundColor: Colors.black,
-                              backgroundColor: Colors.lightBlue[100],
+                              foregroundColor: cart.isEmpty ? Colors.grey : Colors.black,
+                              backgroundColor: cart.isEmpty ? Colors.grey[300] : Colors.lightBlue[100],
                               textStyle: const TextStyle(fontSize: 20),
                             ),
-                            onPressed: checkout,
-                            child: const Text("Encaisser"),
+                            onPressed: cart.isEmpty ? null : checkout,
+                            child: Text(cart.isEmpty ? "Panier vide" : "Encaisser"),
                           ),
                         ),
                       ],
