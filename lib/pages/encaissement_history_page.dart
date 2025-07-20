@@ -186,11 +186,42 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
                   )
                 else
                   Expanded(
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: encaissement.articles.length,
-                      itemBuilder: (context, index) {
-                        var article = encaissement.articles[index];
+                    child: Builder(
+                      builder: (context) {
+                        // Trier les articles par catégorie
+                        var sortedArticles = List.from(encaissement.articles);
+                        sortedArticles.sort((a, b) {
+                          // Ordre de priorité des catégories
+                          const categoryOrder = [
+                            'Tomate',
+                            'Crème', 
+                            'Spécialités',
+                            'Softs',
+                            'Vins',
+                            'Desserts',
+                            'Glaces'
+                          ];
+                          
+                          int aIndex = categoryOrder.indexOf(a.type);
+                          int bIndex = categoryOrder.indexOf(b.type);
+                          
+                          // Si une catégorie n'est pas trouvée, la mettre à la fin
+                          if (aIndex == -1) aIndex = categoryOrder.length;
+                          if (bIndex == -1) bIndex = categoryOrder.length;
+                          
+                          // Si même catégorie, trier par nom
+                          if (aIndex == bIndex) {
+                            return a.name.compareTo(b.name);
+                          }
+                          
+                          return aIndex.compareTo(bIndex);
+                        });
+                        
+                        return ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: sortedArticles.length,
+                          itemBuilder: (context, index) {
+                            var article = sortedArticles[index];
                         
                         // Déterminer la couleur selon le type
                         Color borderColor;
@@ -274,6 +305,8 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
                             ),
                           ),
                         );
+                      },
+                    );
                       },
                     ),
                   ),
