@@ -221,7 +221,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> {
             ),
             ListTile(
               leading: const Icon(Icons.manage_accounts),
-              title: const Text('Gestion des Pizzas'),
+              title: const Text('Gestion des produits'),
               onTap: () {
                 Navigator.pop(context);
                 openPizzaManagementPage();

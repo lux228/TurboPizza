@@ -63,7 +63,7 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text(pizza != null ? 'Modifier Pizza' : 'Ajouter Pizza'),
+          title: Text(pizza != null ? 'Modifier produit' : 'Ajouter produit'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -301,11 +301,11 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
     });
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Gérer Pizzas')),
+      appBar: AppBar(title: const Text('Gestion des produits')),
       body: widget.availablePizzas.isEmpty
           ? const Center(
               child: Text(
-                'Aucune pizza disponible.\nUtilisez le bouton + pour en ajouter.',
+                'Aucun produit disponible.\nUtilisez le bouton + pour en ajouter.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16, color: Colors.grey),
               ),
