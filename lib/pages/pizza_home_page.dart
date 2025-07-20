@@ -245,7 +245,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> {
       body: Row(
         children: [
           Expanded(
-            flex: 2, // Ajuster la flexibilité selon la préférence d'affichage
+            flex: 3, // Augmenté de 2 à 3 pour donner plus d'espace à la liste des pizzas
             child: SingleChildScrollView(
               child: Column(children: categoryWidgets),
             ),
@@ -256,6 +256,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> {
             color: Colors.grey,
           ),
           Expanded(
+            flex: 1, // Reste à 1 pour que le panier prenne moins de place
             child: Container(
               color: Colors.grey[200],
               child: Column(
@@ -286,39 +287,50 @@ class _PizzaHomePageState extends State<PizzaHomePage> {
                   ),
                   Padding(
                     padding: const EdgeInsets.all(8.0),
-                    child: Row(
+                    child: Column(
                       children: [
-                        Text(
-                          "Total: ${formatPrice(totalCartPrice)}",
-                          style: const TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.bold),
+                        // Ligne avec le total et la calculatrice
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                "Total: ${formatPrice(totalCartPrice)}",
+                                style: const TextStyle(
+                                    fontSize: 20, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                foregroundColor: Colors.black,
+                                backgroundColor: Colors.white,
+                                elevation: 3,
+                                minimumSize: const Size(100, 60),
+                                textStyle: const TextStyle(fontSize: 16),
+                              ),
+                              onPressed: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (BuildContext context) => const CalculatorDialog(),
+                                );
+                              },
+                              child: const Icon(Icons.calculate, size: 28),
+                            ),
+                          ],
                         ),
-                        const Spacer(), // Ajoute un espace flexible qui pousse les widgets suivants vers la droite
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            foregroundColor: Colors.black,
-                            backgroundColor: Colors.grey[300],
-                            minimumSize: const Size(120, 75),
-                            textStyle: const TextStyle(fontSize: 16),
+                        const SizedBox(height: 8),
+                        // Bouton encaisser en pleine largeur
+                        SizedBox(
+                          width: double.infinity,
+                          height: 60,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              foregroundColor: Colors.black,
+                              backgroundColor: Colors.lightBlue[100],
+                              textStyle: const TextStyle(fontSize: 20),
+                            ),
+                            onPressed: checkout,
+                            child: const Text("Encaisser"),
                           ),
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (BuildContext context) => const CalculatorDialog(),
-                            );
-                          },
-                          child: const Icon(Icons.calculate, size: 30),
-                        ),
-                        const SizedBox(width: 10),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            foregroundColor: Colors.black,
-                            backgroundColor: Colors.lightBlue[100],
-                            minimumSize: const Size(225, 75),
-                            textStyle: const TextStyle(fontSize: 20),
-                          ),
-                          onPressed: checkout,
-                          child: const Text("Encaisser"),
                         ),
                       ],
                     ),
