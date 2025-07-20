@@ -109,6 +109,51 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
     );
   }
 
+  void _showDeleteConfirmationDialog(Pizza pizza) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirmer la suppression'),
+          content: Text(
+            'Êtes-vous sûr de vouloir supprimer "${pizza.name}" ?\n\nCette action est irréversible.',
+            style: const TextStyle(fontSize: 16),
+          ),
+          actions: [
+            TextButton(
+              child: const Text('Annuler'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
+              child: const Text('Supprimer'),
+              onPressed: () {
+                Navigator.of(context).pop(); // Fermer la boîte de dialogue
+                setState(() {
+                  widget.availablePizzas.removeAt(
+                    widget.availablePizzas.indexWhere((p) => p.name == pizza.name)
+                  );
+                });
+                widget.onUpdate();
+                StorageService.savePizzaList(widget.availablePizzas);
+                
+                // Afficher un message de confirmation
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('${pizza.name} supprimé avec succès'),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Color _getCategoryColor(String type) {
     switch (type) {
       case 'Tomate':
@@ -241,15 +286,7 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
                               minHeight: 36,
                             ),
                             icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () {
-                              setState(() {
-                                widget.availablePizzas.removeAt(
-                                  widget.availablePizzas.indexWhere((p) => p.name == pizza.name)
-                                );
-                              });
-                              widget.onUpdate();
-                              StorageService.savePizzaList(widget.availablePizzas);
-                            },
+                            onPressed: () => _showDeleteConfirmationDialog(pizza),
                           ),
                         ],
                       ),
