@@ -4,30 +4,30 @@ Un petit projet Flutter pour gérer les commandes et encaissements d'une pizzeri
 
 ## Description
 
-TurboPizza est une simple application de caisse développée pour faciliter la gestion quotidienne d'une pizzeria. Elle permet de :
+TurboPizza est une application de caisse pour pizzeria développée en Flutter. Elle permet de :
 
-- Gérer le catalogue de pizzas avec leurs prix
-- Prendre des commandes avec un panier simple
-- Enregistrer les encaissements selon le mode de paiement
-- Consulter l'historique des ventes par date
-- Calculer le rendu de monnaie automatiquement
+- Gérer un catalogue de produits par catégories
+- Prendre des commandes
+- Enregistrer les encaissements avec détail des articles
+- Consulter l'historique des ventes
+- Calculer le rendu de monnaie
 
 ## Fonctionnalités principales
 
 **Écran de caisse**
-- Liste des pizzas par type (tomate, crème, mois)
-- Panier avec ajout/suppression d'articles
-- Choix du mode de paiement
-- Calcul du total et du rendu de monnaie
+- Catalogue par catégories avec codes couleur
+- Panier avec gestion des quantités
+- Modes de paiement : Espèces, Chèques, Groupe
+- Calculatrice intégrée
 
-**Gestion des pizzas**
-- Ajouter/modifier/supprimer des pizzas
-- Définir les prix
+**Gestion des produits**
+- Ajouter/modifier/supprimer des produits
+- Définir prix et catégories
 
 **Historique**
-- Voir les ventes par jour
-- Totaux par mode de paiement
-- Supprimer des encaissements
+- Ventes par date
+- Détail des commandes passées
+- Suppression avec confirmation
 
 ## Tech
 
@@ -66,22 +66,24 @@ lib/
 │   ├── format_utils.dart              # Formatage des prix
 │   └── storage_service.dart           # Service de stockage local
 └── widgets/                           # Composants réutilisables
-    └── payment_method_dialog.dart     # Dialog de sélection du paiement
+    ├── payment_method_dialog.dart     # Dialog de sélection du paiement
+    └── calculator_dialog.dart         # Calculatrice intégrée
 ```
 
 ## Comment ça marche
 
-1. Sélectionnez les pizzas sur l'écran principal
-2. Choisissez le mode de paiement
-3. Validez → l'encaissement est enregistré
-4. Gérez le catalogue via "Gérer les pizzas"
-5. Consultez l'historique via "Historique"
+1. Sélectionnez les produits sur l'écran principal
+2. Ajustez les quantités dans le panier
+3. Choisissez le mode de paiement et validez
+4. Gérez le catalogue via "Gestion des produits"
+5. Consultez l'historique via "Historique des Encaissements"
 
 ## Notes techniques
 
-- Données stockées en local (SharedPreferences)
+- Stockage local (SharedPreferences)
 - Modes de paiement : Espèces, Chèques, Groupe
-- Calcul automatique du rendu de monnaie pour les espèces
+- Calcul automatique du rendu de monnaie
+- Sauvegarde des commandes avec détail des articles
 
 ---
 
