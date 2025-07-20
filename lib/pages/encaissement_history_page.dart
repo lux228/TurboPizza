@@ -112,6 +112,95 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
     });
   }
 
+  void _showCommandeDetails(Encaissement encaissement) {
+    String formattedDate = DateFormat('dd/MM/yyyy à HH:mm').format(encaissement.date);
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Détail de la commande', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: MediaQuery.of(context).size.height * 0.7, // 70% de la hauteur de l'écran
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Date : $formattedDate', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                SizedBox(height: 8),
+                Text('Montant total : ${formatPrice(encaissement.montant)}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                SizedBox(height: 8),
+                Text('Mode de règlement : ${encaissement.modeReglement}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                SizedBox(height: 16),
+                Text('Articles commandés :', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                SizedBox(height: 8),
+                if (encaissement.articles.isEmpty)
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline, color: Colors.grey[600], size: 20),
+                        SizedBox(width: 8),
+                        Text('Aucun article enregistré pour cette commande', 
+                          style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: Colors.grey[600])),
+                      ],
+                    ),
+                  )
+                else
+                  Expanded(
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: encaissement.articles.length,
+                      itemBuilder: (context, index) {
+                        var article = encaissement.articles[index];
+                        return Card(
+                          margin: EdgeInsets.symmetric(vertical: 2),
+                          child: Padding(
+                            padding: EdgeInsets.all(12),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(article.name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                                      Text(article.type, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+                                    ],
+                                  ),
+                                ),
+                                Text('x${article.quantity}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                SizedBox(width: 12),
+                                Text('${formatPrice(article.price)}', style: TextStyle(fontSize: 16)),
+                                SizedBox(width: 12),
+                                Text('= ${formatPrice(article.totalPrice)}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green[700])),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Fermer', style: TextStyle(fontSize: 16)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -163,25 +252,44 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
                             color: encaissement.isSelected ? Colors.grey : null,
                           ),
                         ),
-                        subtitle: Text(
-                          "Mode: ${encaissement.modeReglement}",
-                          style: TextStyle(
-                            color: encaissement.isSelected ? Colors.grey : null,
-                          ),
-                        ),
-                        trailing:
-                            PopupMenuButton<String>(itemBuilder: (context) {
-                          return <PopupMenuEntry<String>>[
-                            const PopupMenuItem<String>(
-                              value: 'delete',
-                              child: Text('Supprimer'),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Mode: ${encaissement.modeReglement}",
+                              style: TextStyle(
+                                color: encaissement.isSelected ? Colors.grey : null,
+                              ),
                             ),
-                          ];
-                        }, onSelected: (String value) {
-                          if (value == 'delete') {
-                            _deleteEncaissement(encaissement);
-                          }
-                        }));
+                            if (encaissement.articles.isNotEmpty)
+                              Text(
+                                "Articles: ${encaissement.articles.map((pizza) => '${pizza.name} x${pizza.quantity}').join(', ')}",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: encaissement.isSelected ? Colors.grey : Colors.grey[600],
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                          ],
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Icône pour voir le détail de la commande
+                            IconButton(
+                              icon: Icon(Icons.visibility, color: Colors.blue),
+                              onPressed: () => _showCommandeDetails(encaissement),
+                              tooltip: 'Voir le détail de la commande',
+                            ),
+                            // Icône pour supprimer l'encaissement
+                            IconButton(
+                              icon: Icon(Icons.delete, color: Colors.red),
+                              onPressed: () => _deleteEncaissement(encaissement),
+                              tooltip: 'Supprimer cet encaissement',
+                            ),
+                          ],
+                        ));
                   })),
           Container(
               color: Colors

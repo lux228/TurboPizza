@@ -104,14 +104,12 @@ class _PizzaHomePageState extends State<PizzaHomePage> {
         }
       }
 
-      // Enregistrement de l'encaissement avec le montant total et le mode de règlement
+      // Enregistrement de l'encaissement avec le montant total, le mode de règlement et les articles
       StorageService.saveEncaissement(Encaissement(
         date: DateTime.now(),
         montant: totalCartPrice,
         modeReglement: modeReglement,
-        commentaire: selectedMethod == 'Espèces' && amountGiven != null
-            ? 'Montant donné: ${formatPrice(amountGiven)}, Montant à rendre: ${formatPrice(amountToReturn)}'
-            : '',
+        articles: cart.values.toList(),
       ));
 
       // Nettoyage du panier
