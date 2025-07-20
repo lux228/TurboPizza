@@ -165,14 +165,29 @@ class _PizzaHomePageState extends State<PizzaHomePage> {
             Pizza pizza = pizzas[index];
             Color? color;
             switch (pizza.type) {
-              case 'tomate':
+              case 'Tomate':
                 color = Colors.red[100];
                 break;
-              case 'crème':
+              case 'Crème':
                 color = Colors.blue[100];
                 break;
-              case 'mois':
+              case 'Mois':
                 color = Colors.green[100];
+                break;
+              case 'Softs':
+                color = Colors.orange[100];
+                break;
+              case 'Vins':
+                color = Colors.purple[100];
+                break;
+              case 'Spécialités':
+                color = Colors.amber[100];
+                break;
+              case 'Glaces':
+                color = Colors.cyan[100];
+                break;
+              case 'Desserts':
+                color = Colors.pink[100];
                 break;
             }
 

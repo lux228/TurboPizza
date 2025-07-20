@@ -17,8 +17,8 @@ class PizzaManagementPage extends StatefulWidget {
 class _PizzaManagementPageState extends State<PizzaManagementPage> {
   final _nameController = TextEditingController();
   final _priceController = TextEditingController();
-  List<String> pizzaTypes = ['tomate', 'crème', 'mois'];
-  String selectedType = 'tomate'; // La valeur par défaut
+  List<String> pizzaTypes = ['Tomate', 'Crème', 'Mois', 'Softs', 'Vins', 'Spécialités', 'Glaces', 'Desserts'];
+  String selectedType = 'Tomate'; // La valeur par défaut
 
   void _addOrUpdatePizza({String? originalName}) {
     final newOrUpdatedPizza = Pizza(
@@ -56,7 +56,7 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
     } else {
       _nameController.clear();
       _priceController.clear();
-      selectedType = 'tomate'; // Réinitialiser à la valeur par défaut
+      selectedType = 'Tomate'; // Réinitialiser à la valeur par défaut
     }
 
     showDialog(
