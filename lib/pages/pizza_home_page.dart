@@ -4,6 +4,7 @@ import '../models/encaissement.dart';
 import '../utils/format_utils.dart';
 import '../utils/storage_service.dart';
 import '../widgets/payment_method_dialog.dart';
+import '../widgets/calculator_dialog.dart';
 import 'pizza_management_page.dart';
 import 'encaissement_history_page.dart';
 
@@ -281,6 +282,22 @@ class _PizzaHomePageState extends State<PizzaHomePage> {
                               fontSize: 20, fontWeight: FontWeight.bold),
                         ),
                         const Spacer(), // Ajoute un espace flexible qui pousse les widgets suivants vers la droite
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            foregroundColor: Colors.black,
+                            backgroundColor: Colors.grey[300],
+                            minimumSize: const Size(120, 75),
+                            textStyle: const TextStyle(fontSize: 16),
+                          ),
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (BuildContext context) => const CalculatorDialog(),
+                            );
+                          },
+                          child: const Icon(Icons.calculate, size: 30),
+                        ),
+                        const SizedBox(width: 10),
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             foregroundColor: Colors.black,
