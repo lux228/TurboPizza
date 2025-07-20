@@ -61,17 +61,93 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
     totalGroupe = totalEspeces + totalCheques;
   }
 
-  void _deleteEncaissement(Encaissement encaissement) {
-    // Supprimer l'encaissement de la liste
-    setState(() {
-      encaissements.remove(encaissement);
-    });
+  void _deleteEncaissement(Encaissement encaissement) async {
+    // Afficher une boîte de dialogue de confirmation
+    bool? confirmDelete = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Confirmer la suppression', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Êtes-vous sûr de vouloir supprimer cette commande ?', style: TextStyle(fontSize: 16)),
+              SizedBox(height: 12),
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Date : ${DateFormat('dd/MM/yyyy à HH:mm').format(encaissement.date)}', 
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                    SizedBox(height: 4),
+                    Text('Montant : ${formatPrice(encaissement.montant)}', 
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                    SizedBox(height: 4),
+                    Text('Mode : ${encaissement.modeReglement}', 
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                  ],
+                ),
+              ),
+              SizedBox(height: 12),
+              Text('Cette action est irréversible.', 
+                style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: Colors.red[600])),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text('Annuler', style: TextStyle(fontSize: 16)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text('Supprimer', style: TextStyle(fontSize: 16)),
+            ),
+          ],
+        );
+      },
+    );
 
-    // Enregistrer les modifications dans SharedPreferences
-    StorageService.saveEncaissements(encaissements);
+    // Si l'utilisateur a confirmé la suppression
+    if (confirmDelete == true) {
+      // Supprimer l'encaissement de la liste
+      setState(() {
+        encaissements.remove(encaissement);
+      });
 
-    // Mettre à jour la liste filtrée après la suppression
-    filterEncaissements();
+      // Enregistrer les modifications dans SharedPreferences
+      StorageService.saveEncaissements(encaissements);
+
+      // Mettre à jour la liste filtrée après la suppression
+      filterEncaissements();
+
+      // Afficher un message de confirmation
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.check_circle, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text('Commande supprimée avec succès'),
+            ],
+          ),
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.green[600],
+        ),
+      );
+    }
   }
 
   void calculatePointedTotals() {
