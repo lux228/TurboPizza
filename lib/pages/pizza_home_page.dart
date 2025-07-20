@@ -147,7 +147,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // Regrouper et trier les pizzas par type
+    // Regrouper les pizzas par type
     Map<String, List<Pizza>> groupedPizzas = {};
     for (var pizza in availablePizzas) {
       groupedPizzas.putIfAbsent(pizza.type, () => []).add(pizza);
@@ -156,77 +156,94 @@ class _PizzaHomePageState extends State<PizzaHomePage> {
       group.sort((a, b) => a.name.compareTo(b.name));
     }
 
+    // Ordre spécifique des catégories
+    const categoryOrder = [
+      'Tomate',
+      'Crème', 
+      'Spécialités',
+      'Softs',
+      'Vins',
+      'Desserts',
+      'Glaces'
+    ];
+
     List<Widget> categoryWidgets = [];
-    groupedPizzas.forEach((type, pizzas) {
-      categoryWidgets.add(
-        Container(
-          padding: const EdgeInsets.all(8.0),
-          child: Text(
-            type.toUpperCase(),
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+    
+    // Afficher les catégories dans l'ordre spécifié
+    for (String categoryType in categoryOrder) {
+      if (groupedPizzas.containsKey(categoryType)) {
+        List<Pizza> pizzas = groupedPizzas[categoryType]!;
+        
+        categoryWidgets.add(
+          Container(
+            padding: const EdgeInsets.all(8.0),
+            child: Text(
+              categoryType.toUpperCase(),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
           ),
-        ),
-      );
+        );
 
-      categoryWidgets.add(
-        GridView.builder(
-          shrinkWrap: true,
-          physics:
-              const NeverScrollableScrollPhysics(), // Pour éviter le défilement imbriqué
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount:
-                6, // Modifiez cette ligne pour afficher x éléments par ligne
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-          ),
-          itemCount: pizzas.length,
-          itemBuilder: (context, index) {
-            Pizza pizza = pizzas[index];
-            Color? color;
-            switch (pizza.type) {
-              case 'Tomate':
-                color = Colors.red[100];
-                break;
-              case 'Crème':
-                color = Colors.blue[100];
-                break;
-              case 'Softs':
-                color = Colors.amber[100];
-                break;
-              case 'Vins':
-                color = Colors.orange[100];
-                break;
-              case 'Spécialités':
-                color = Colors.green[100];
-                break;
-              case 'Glaces':
-                color = Colors.purple[100];
-                break;
-              case 'Desserts':
-                color = Colors.pink[100];
-                break;
-            }
+        categoryWidgets.add(
+          GridView.builder(
+            shrinkWrap: true,
+            physics:
+                const NeverScrollableScrollPhysics(), // Pour éviter le défilement imbriqué
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount:
+                  6, // Modifiez cette ligne pour afficher x éléments par ligne
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+            ),
+            itemCount: pizzas.length,
+            itemBuilder: (context, index) {
+              Pizza pizza = pizzas[index];
+              Color? color;
+              switch (pizza.type) {
+                case 'Tomate':
+                  color = Colors.red[100];
+                  break;
+                case 'Crème':
+                  color = Colors.blue[100];
+                  break;
+                case 'Softs':
+                  color = Colors.amber[100];
+                  break;
+                case 'Vins':
+                  color = Colors.orange[100];
+                  break;
+                case 'Spécialités':
+                  color = Colors.green[100];
+                  break;
+                case 'Glaces':
+                  color = Colors.purple[100];
+                  break;
+                case 'Desserts':
+                  color = Colors.pink[100];
+                  break;
+              }
 
-            return GestureDetector(
-              onTap: () => addToCart(pizza),
-              child: Card(
-                color: color,
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      Text(pizza.name, style: const TextStyle(fontSize: 18)),
-                      Text(formatPrice(pizza.price),
-                          style: const TextStyle(fontSize: 16)),
-                    ],
+              return GestureDetector(
+                onTap: () => addToCart(pizza),
+                child: Card(
+                  color: color,
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Text(pizza.name, style: const TextStyle(fontSize: 18)),
+                        Text(formatPrice(pizza.price),
+                            style: const TextStyle(fontSize: 16)),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            );
-          },
-        ),
-      );
-    });
+              );
+            },
+          ),
+        );
+      }
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('TurboPizza')),

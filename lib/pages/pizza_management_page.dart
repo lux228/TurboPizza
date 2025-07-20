@@ -177,7 +177,7 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Regrouper et trier les pizzas par type
+    // Regrouper les pizzas par type
     Map<String, List<Pizza>> groupedPizzas = {};
     for (var pizza in widget.availablePizzas) {
       groupedPizzas.putIfAbsent(pizza.type, () => []).add(pizza);
@@ -186,55 +186,71 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
       group.sort((a, b) => a.name.compareTo(b.name));
     }
 
+    // Ordre spécifique des catégories
+    const categoryOrder = [
+      'Tomate',
+      'Crème', 
+      'Spécialités',
+      'Softs',
+      'Vins',
+      'Desserts',
+      'Glaces'
+    ];
+
     List<Widget> categoryWidgets = [];
-    groupedPizzas.forEach((type, pizzas) {
-      // En-tête de catégorie
-      categoryWidgets.add(
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(12.0),
-          margin: const EdgeInsets.only(top: 8.0),
-          color: _getCategoryColor(type),
-          child: Text(
-            type.toUpperCase(),
-            style: const TextStyle(
-              fontSize: 18, 
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+    
+    // Afficher les catégories dans l'ordre spécifié
+    for (String categoryType in categoryOrder) {
+      if (groupedPizzas.containsKey(categoryType)) {
+        List<Pizza> pizzas = groupedPizzas[categoryType]!;
+        
+        // En-tête de catégorie
+        categoryWidgets.add(
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12.0),
+            margin: const EdgeInsets.only(top: 8.0),
+            color: _getCategoryColor(categoryType),
+            child: Text(
+              categoryType.toUpperCase(),
+              style: const TextStyle(
+                fontSize: 18, 
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      // Items de la catégorie en grille 2 colonnes
-      categoryWidgets.add(
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 8.0,
-            mainAxisSpacing: 8.0,
-            childAspectRatio: 7.0, // Ratio beaucoup plus élevé pour des cartes très fines
-          ),
-          itemCount: pizzas.length,
-          itemBuilder: (context, index) {
-            final pizza = pizzas[index];
-            
-            return Card(
-              elevation: 2,
-              color: Colors.white,
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(4.0),
-                  border: Border(
-                    left: BorderSide(
-                      color: _getCategoryColor(type).withOpacity(0.8),
-                      width: 4.0,
+        // Items de la catégorie en grille 2 colonnes
+        categoryWidgets.add(
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 8.0,
+              mainAxisSpacing: 8.0,
+              childAspectRatio: 7.0, // Ratio beaucoup plus élevé pour des cartes très fines
+            ),
+            itemCount: pizzas.length,
+            itemBuilder: (context, index) {
+              final pizza = pizzas[index];
+              
+              return Card(
+                elevation: 2,
+                color: Colors.white,
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(4.0),
+                    border: Border(
+                      left: BorderSide(
+                        color: _getCategoryColor(categoryType).withOpacity(0.8),
+                        width: 4.0,
+                      ),
                     ),
                   ),
-                ),
                 child: Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: Row(
@@ -298,7 +314,8 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
           },
         ),
       );
-    });
+      }
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('Gestion des produits')),
