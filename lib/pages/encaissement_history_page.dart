@@ -25,6 +25,8 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
   double totalPointeEspeces = 0.0;
   double totalPointeGroupe = 0.0;
 
+  double totalAnneePrecedente = 0.0;
+
   @override
   void initState() {
     super.initState();
@@ -59,6 +61,22 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
       }
     }
     totalGroupe = totalEspeces + totalCheques;
+
+    // Calculer le total de l'année précédente pour le même jour
+    calculateTotalAnneePrecedente();
+  }
+
+  void calculateTotalAnneePrecedente() {
+    DateTime anneePrecedente = DateTime(selectedDate.year - 1, selectedDate.month, selectedDate.day);
+    totalAnneePrecedente = 0.0;
+
+    for (var encaissement in encaissements) {
+      if (encaissement.date.year == anneePrecedente.year &&
+          encaissement.date.month == anneePrecedente.month &&
+          encaissement.date.day == anneePrecedente.day) {
+        totalAnneePrecedente += encaissement.montant;
+      }
+    }
   }
 
   void _deleteEncaissement(Encaissement encaissement) async {
@@ -197,8 +215,8 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
       style: ElevatedButton.styleFrom(
         backgroundColor: isSelected ? Colors.blue : Colors.white,
         foregroundColor: isSelected ? Colors.white : Colors.black,
-        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        minimumSize: Size(80, 32),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        minimumSize: Size(104, 42),
       ),
       onPressed: () {
         setState(() {
@@ -208,7 +226,7 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
       },
       child: Text(
         label,
-        style: TextStyle(fontSize: 12),
+        style: TextStyle(fontSize: 16),
       ),
     );
   }
@@ -410,74 +428,72 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
           Container(
             color: Colors.blue[50],
             padding: const EdgeInsets.all(12.0),
-            child: Column(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      "Sélectionner la date:",
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                    ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Bouton date précédente
-                        IconButton(
-                          onPressed: () {
-                            setState(() {
-                              selectedDate = selectedDate.subtract(Duration(days: 1));
-                              filterEncaissements();
-                            });
-                          },
-                          icon: Icon(Icons.chevron_left),
-                          tooltip: 'Jour précédent',
-                        ),
-                        // Affichage de la date actuelle avec jour de la semaine
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black,
-                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          ),
-                          onPressed: () => _selectDate(context),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                _getDayName(selectedDate),
-                                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                              ),
-                              Text(
-                                DateFormat('dd/MM/yyyy').format(selectedDate),
-                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Bouton date suivante
-                        IconButton(
-                          onPressed: () {
-                            setState(() {
-                              selectedDate = selectedDate.add(Duration(days: 1));
-                              filterEncaissements();
-                            });
-                          },
-                          icon: Icon(Icons.chevron_right),
-                          tooltip: 'Jour suivant',
-                        ),
-                      ],
-                    ),
-                  ],
+                const Text(
+                  "Sélectionner la date:",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
-                SizedBox(height: 8),
-                // Boutons de raccourcis
+                // Boutons de raccourcis centrés
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     _buildDateShortcut('Aujourd\'hui', DateTime.now()),
+                    SizedBox(width: 72),
                     _buildDateShortcut('Hier', DateTime.now().subtract(Duration(days: 1))),
+                    SizedBox(width: 72),
                     _buildDateShortcut('Avant-hier', DateTime.now().subtract(Duration(days: 2))),
+                  ],
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Bouton date précédente
+                    IconButton(
+                      onPressed: () {
+                        setState(() {
+                          selectedDate = selectedDate.subtract(Duration(days: 1));
+                          filterEncaissements();
+                        });
+                      },
+                      icon: Icon(Icons.chevron_left),
+                      tooltip: 'Jour précédent',
+                    ),
+                    // Affichage de la date actuelle avec jour de la semaine
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black,
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        minimumSize: Size(104, 42),
+                      ),
+                      onPressed: () => _selectDate(context),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _getDayName(selectedDate),
+                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          ),
+                          Text(
+                            DateFormat('dd/MM/yyyy').format(selectedDate),
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Bouton date suivante
+                    IconButton(
+                      onPressed: () {
+                        setState(() {
+                          selectedDate = selectedDate.add(Duration(days: 1));
+                          filterEncaissements();
+                        });
+                      },
+                      icon: Icon(Icons.chevron_right),
+                      tooltip: 'Jour suivant',
+                    ),
                   ],
                 ),
               ],
@@ -607,7 +623,45 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
                         style: const TextStyle(
                             fontSize: 16, fontWeight: FontWeight.bold),
                       ),
-                    ])
+                    ]),
+                SizedBox(height: 8),
+                Container(
+                  padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange[100],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange[300]!),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.history, color: Colors.orange[700], size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        "CA N-1 (${selectedDate.year - 1}): ${formatPrice(totalAnneePrecedente)}",
+                        style: TextStyle(
+                          fontSize: 16, 
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange[700],
+                        ),
+                      ),
+                      if (totalGroupe > 0 && totalAnneePrecedente > 0)
+                        Row(
+                          children: [
+                            SizedBox(width: 16),
+                            Text(
+                              "(${totalGroupe > totalAnneePrecedente ? '+' : ''}${((totalGroupe - totalAnneePrecedente) / totalAnneePrecedente * 100).toStringAsFixed(1)}%)",
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: totalGroupe >= totalAnneePrecedente ? Colors.green[700] : Colors.red[700],
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
               ]))
         ]));
   }
