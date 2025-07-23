@@ -69,40 +69,10 @@ class _PizzaHomePageState extends State<PizzaHomePage> {
 
     if (result != null) {
       final String selectedMethod = result['method'];
-      final double? amountGiven = result['amountGiven'];
 
       setState(() {
         modeReglement = selectedMethod;
       });
-
-      double amountToReturn =
-          0.0; // Définissez amountToReturn ici pour qu'elle soit accessible dans toute la méthode
-
-      if (selectedMethod == 'Espèces' && amountGiven != null) {
-        amountToReturn = amountGiven - totalCartPrice;
-        // Affichage du montant à rendre si nécessaire
-        if (amountToReturn > 0) {
-          // Assurez-vous que amountToReturn est positif avant d'afficher le dialogue
-          showDialog<void>(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                title: const Text('Rendu de monnaie',
-                    style: TextStyle(fontSize: 20)),
-                content: Text(
-                    'Montant à rendre : ${formatPrice(amountToReturn)}',
-                    style: const TextStyle(fontSize: 18)),
-                actions: <Widget>[
-                  TextButton(
-                    child: const Text('OK', style: TextStyle(fontSize: 18)),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              );
-            },
-          );
-        }
-      }
 
       // Enregistrement de l'encaissement avec le montant total, le mode de règlement et les articles
       StorageService.saveEncaissement(Encaissement(
