@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import '../utils/format_utils.dart';
 
 class CalculatorDialog extends StatefulWidget {
-  const CalculatorDialog({super.key});
+  final double currentOrderTotal;
+  
+  const CalculatorDialog({super.key, required this.currentOrderTotal});
 
   @override
   _CalculatorDialogState createState() => _CalculatorDialogState();
@@ -124,7 +127,7 @@ class _CalculatorDialogState extends State<CalculatorDialog> {
               width: double.infinity,
               height: 80,
               padding: const EdgeInsets.all(20),
-              margin: const EdgeInsets.only(bottom: 15),
+              margin: const EdgeInsets.only(bottom: 10),
               decoration: BoxDecoration(
                 color: Colors.black,
                 borderRadius: BorderRadius.circular(8),
@@ -139,6 +142,38 @@ class _CalculatorDialogState extends State<CalculatorDialog> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+              ),
+            ),
+            // Affichage du montant de la commande en cours
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+              margin: const EdgeInsets.only(bottom: 15),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.blue[200]!, width: 1),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Commande en cours :',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.blue,
+                    ),
+                  ),
+                  Text(
+                    formatPrice(widget.currentOrderTotal),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
+                  ),
+                ],
               ),
             ),
             // Grille de boutons

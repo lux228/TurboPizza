@@ -316,7 +316,9 @@ class _PizzaHomePageState extends State<PizzaHomePage> {
                               onPressed: () {
                                 showDialog(
                                   context: context,
-                                  builder: (BuildContext context) => const CalculatorDialog(),
+                                  builder: (BuildContext context) => CalculatorDialog(
+                                    currentOrderTotal: totalCartPrice,
+                                  ),
                                 );
                               },
                               child: const Icon(Icons.calculate, size: 28),
