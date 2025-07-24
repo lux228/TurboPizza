@@ -25,6 +25,9 @@ jobs:
         with:
           flutter-version: '3.32.7'
           
+      - name: Disable Flutter analytics
+        run: flutter config --no-analytics
+          
       - name: Install dependencies
         run: flutter pub get
         
@@ -46,6 +49,9 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.32.7'
+          
+      - name: Disable Flutter analytics
+        run: flutter config --no-analytics
           
       - name: Install dependencies
         run: flutter pub get
@@ -83,6 +89,9 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.32.7'
+          
+      - name: Disable Flutter analytics
+        run: flutter config --no-analytics
           
       - name: Install dependencies
         run: flutter pub get
