@@ -246,7 +246,7 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
                     borderRadius: BorderRadius.circular(4.0),
                     border: Border(
                       left: BorderSide(
-                        color: _getCategoryColor(categoryType).withOpacity(0.8),
+                        color: _getCategoryColor(categoryType).withValues(alpha: 0.8),
                         width: 4.0,
                       ),
                     ),

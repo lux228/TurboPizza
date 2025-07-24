@@ -364,7 +364,7 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(article.name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-                                        Text(article.type, style: TextStyle(fontSize: 14, color: borderColor.withOpacity(0.8))),
+                                        Text(article.type, style: TextStyle(fontSize: 14, color: borderColor.withValues(alpha: 0.8))),
                                       ],
                                     ),
                                   ),
