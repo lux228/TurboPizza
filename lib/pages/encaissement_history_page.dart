@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import '../models/encaissement.dart';
 import '../utils/format_utils.dart';
 import '../utils/storage_service.dart';
+
+enum ViewMode { daily, weekly, monthly }
 
 class EncaissementHistoryPage extends StatefulWidget {
   const EncaissementHistoryPage({super.key});
@@ -14,6 +17,7 @@ class EncaissementHistoryPage extends StatefulWidget {
 
 class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
   DateTime selectedDate = DateTime.now();
+  ViewMode currentViewMode = ViewMode.daily;
   List<Encaissement> encaissements = [];
   List<Encaissement> filteredEncaissements = [];
 
@@ -30,22 +34,45 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
   @override
   void initState() {
     super.initState();
-    StorageService.loadEncaissements().then((loadedEncaissements) {
-      setState(() {
-        encaissements = loadedEncaissements;
-        filterEncaissements();
+    // Initialiser les données de localisation pour le français
+    initializeDateFormatting('fr_FR', null).then((_) {
+      StorageService.loadEncaissements().then((loadedEncaissements) {
+        setState(() {
+          encaissements = loadedEncaissements;
+          filterEncaissements();
+        });
       });
     });
   }
 
   void filterEncaissements() {
     setState(() {
-      filteredEncaissements = encaissements
-          .where((encaissement) =>
-              encaissement.date.year == selectedDate.year &&
-              encaissement.date.month == selectedDate.month &&
-              encaissement.date.day == selectedDate.day)
-          .toList();
+      switch (currentViewMode) {
+        case ViewMode.daily:
+          filteredEncaissements = encaissements
+              .where((encaissement) =>
+                  encaissement.date.year == selectedDate.year &&
+                  encaissement.date.month == selectedDate.month &&
+                  encaissement.date.day == selectedDate.day)
+              .toList();
+          break;
+        case ViewMode.weekly:
+          final weekStart = _getWeekStart(selectedDate);
+          final weekEnd = weekStart.add(const Duration(days: 7));
+          filteredEncaissements = encaissements
+              .where((encaissement) =>
+                  encaissement.date.isAfter(weekStart.subtract(const Duration(days: 1))) &&
+                  encaissement.date.isBefore(weekEnd))
+              .toList();
+          break;
+        case ViewMode.monthly:
+          filteredEncaissements = encaissements
+              .where((encaissement) =>
+                  encaissement.date.year == selectedDate.year &&
+                  encaissement.date.month == selectedDate.month)
+              .toList();
+          break;
+      }
     });
 
     // Réinitialiser les totaux
@@ -62,20 +89,57 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
     }
     totalGroupe = totalEspeces + totalCheques;
 
-    // Calculer le total de l'année précédente pour le même jour
+    // Calculer le total de l'année précédente pour la même période
     calculateTotalAnneePrecedente();
   }
 
+  // Obtenir le début de la semaine (dimanche soir 20h)
+  DateTime _getWeekStart(DateTime date) {
+    // Trouver le dimanche précédent à 20h
+    int daysToSunday = (date.weekday == 7) ? 0 : date.weekday;
+    DateTime sundayStart = DateTime(date.year, date.month, date.day, 20, 0, 0)
+        .subtract(Duration(days: daysToSunday));
+    
+    // Si on est dimanche mais avant 20h, prendre le dimanche précédent
+    if (date.weekday == 7 && date.hour < 20) {
+      sundayStart = sundayStart.subtract(const Duration(days: 7));
+    }
+    
+    return sundayStart;
+  }
+
   void calculateTotalAnneePrecedente() {
-    DateTime anneePrecedente = DateTime(selectedDate.year - 1, selectedDate.month, selectedDate.day);
     totalAnneePrecedente = 0.0;
 
-    for (var encaissement in encaissements) {
-      if (encaissement.date.year == anneePrecedente.year &&
-          encaissement.date.month == anneePrecedente.month &&
-          encaissement.date.day == anneePrecedente.day) {
-        totalAnneePrecedente += encaissement.montant;
-      }
+    switch (currentViewMode) {
+      case ViewMode.daily:
+        DateTime anneePrecedente = DateTime(selectedDate.year - 1, selectedDate.month, selectedDate.day);
+        for (var encaissement in encaissements) {
+          if (encaissement.date.year == anneePrecedente.year &&
+              encaissement.date.month == anneePrecedente.month &&
+              encaissement.date.day == anneePrecedente.day) {
+            totalAnneePrecedente += encaissement.montant;
+          }
+        }
+        break;
+      case ViewMode.weekly:
+        final weekStartPreviousYear = _getWeekStart(DateTime(selectedDate.year - 1, selectedDate.month, selectedDate.day));
+        final weekEndPreviousYear = weekStartPreviousYear.add(const Duration(days: 7));
+        for (var encaissement in encaissements) {
+          if (encaissement.date.isAfter(weekStartPreviousYear.subtract(const Duration(days: 1))) &&
+              encaissement.date.isBefore(weekEndPreviousYear)) {
+            totalAnneePrecedente += encaissement.montant;
+          }
+        }
+        break;
+      case ViewMode.monthly:
+        for (var encaissement in encaissements) {
+          if (encaissement.date.year == selectedDate.year - 1 &&
+              encaissement.date.month == selectedDate.month) {
+            totalAnneePrecedente += encaissement.montant;
+          }
+        }
+        break;
     }
   }
 
@@ -231,11 +295,62 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
     );
   }
 
-  String _getDayName(DateTime date) {
-    const List<String> dayNames = [
-      '', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'
-    ];
-    return dayNames[date.weekday];
+  void _goToPreviousPeriod() {
+    setState(() {
+      switch (currentViewMode) {
+        case ViewMode.daily:
+          selectedDate = selectedDate.subtract(const Duration(days: 1));
+          break;
+        case ViewMode.weekly:
+          selectedDate = selectedDate.subtract(const Duration(days: 7));
+          break;
+        case ViewMode.monthly:
+          selectedDate = DateTime(selectedDate.year, selectedDate.month - 1, 1);
+          break;
+      }
+      filterEncaissements();
+    });
+  }
+
+  void _goToNextPeriod() {
+    setState(() {
+      switch (currentViewMode) {
+        case ViewMode.daily:
+          selectedDate = selectedDate.add(const Duration(days: 1));
+          break;
+        case ViewMode.weekly:
+          selectedDate = selectedDate.add(const Duration(days: 7));
+          break;
+        case ViewMode.monthly:
+          selectedDate = DateTime(selectedDate.year, selectedDate.month + 1, 1);
+          break;
+      }
+      filterEncaissements();
+    });
+  }
+
+  String _getPeriodTitle() {
+    switch (currentViewMode) {
+      case ViewMode.daily:
+        return DateFormat('EEEE dd MMMM yyyy', 'fr_FR').format(selectedDate);
+      case ViewMode.weekly:
+        final weekStart = _getWeekStart(selectedDate);
+        final weekEnd = weekStart.add(const Duration(days: 6, hours: 23, minutes: 59));
+        return 'Semaine du ${DateFormat('dd/MM', 'fr_FR').format(weekStart)} au ${DateFormat('dd/MM/yyyy', 'fr_FR').format(weekEnd)}';
+      case ViewMode.monthly:
+        return DateFormat('MMMM yyyy', 'fr_FR').format(selectedDate);
+    }
+  }
+
+  String _getComparisonText() {
+    switch (currentViewMode) {
+      case ViewMode.daily:
+        return "CA N-1 (${selectedDate.year - 1}): ${formatPrice(totalAnneePrecedente)}";
+      case ViewMode.weekly:
+        return "CA semaine N-1 (${selectedDate.year - 1}): ${formatPrice(totalAnneePrecedente)}";
+      case ViewMode.monthly:
+        return "CA ${DateFormat('MMMM', 'fr_FR').format(DateTime(selectedDate.year - 1, selectedDate.month))}: ${formatPrice(totalAnneePrecedente)}";
+    }
   }
 
   void _showCommandeDetails(Encaissement encaissement) {
@@ -428,71 +543,100 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
           Container(
             color: Colors.blue[50],
             padding: const EdgeInsets.all(12.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
               children: [
-                const Text(
-                  "Sélectionner la date:",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-                // Boutons de raccourcis centrés
+                // Première ligne : Sélecteur de mode d'affichage
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _buildDateShortcut('Aujourd\'hui', DateTime.now()),
-                    SizedBox(width: 72),
-                    _buildDateShortcut('Hier', DateTime.now().subtract(Duration(days: 1))),
-                    SizedBox(width: 72),
-                    _buildDateShortcut('Avant-hier', DateTime.now().subtract(Duration(days: 2))),
+                    SegmentedButton<ViewMode>(
+                      segments: const [
+                        ButtonSegment<ViewMode>(
+                          value: ViewMode.daily,
+                          label: Text('Journalier'),
+                          icon: Icon(Icons.today),
+                        ),
+                        ButtonSegment<ViewMode>(
+                          value: ViewMode.weekly,
+                          label: Text('Hebdomadaire'),
+                          icon: Icon(Icons.view_week),
+                        ),
+                        ButtonSegment<ViewMode>(
+                          value: ViewMode.monthly,
+                          label: Text('Mensuel'),
+                          icon: Icon(Icons.calendar_month),
+                        ),
+                      ],
+                      selected: {currentViewMode},
+                      onSelectionChanged: (Set<ViewMode> newSelection) {
+                        setState(() {
+                          currentViewMode = newSelection.first;
+                          filterEncaissements();
+                        });
+                      },
+                    ),
                   ],
                 ),
+                const SizedBox(height: 16),
+                // Deuxième ligne : Navigation et sélection de date
                 Row(
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Bouton date précédente
-                    IconButton(
-                      onPressed: () {
-                        setState(() {
-                          selectedDate = selectedDate.subtract(Duration(days: 1));
-                          filterEncaissements();
-                        });
-                      },
-                      icon: Icon(Icons.chevron_left),
-                      tooltip: 'Jour précédent',
+                    Text(
+                      currentViewMode == ViewMode.daily ? "Sélectionner la date:" :
+                      currentViewMode == ViewMode.weekly ? "Sélectionner la semaine:" :
+                      "Sélectionner le mois:",
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                     ),
-                    // Affichage de la date actuelle avec jour de la semaine
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black,
-                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        minimumSize: Size(104, 42),
-                      ),
-                      onPressed: () => _selectDate(context),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
+                    // Boutons de raccourcis centrés (seulement pour le mode journalier)
+                    if (currentViewMode == ViewMode.daily)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          Text(
-                            _getDayName(selectedDate),
-                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                          ),
-                          Text(
-                            DateFormat('dd/MM/yyyy').format(selectedDate),
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                          ),
+                          _buildDateShortcut('Aujourd\'hui', DateTime.now()),
+                          const SizedBox(width: 72),
+                          _buildDateShortcut('Hier', DateTime.now().subtract(const Duration(days: 1))),
+                          const SizedBox(width: 72),
+                          _buildDateShortcut('Avant-hier', DateTime.now().subtract(const Duration(days: 2))),
                         ],
-                      ),
-                    ),
-                    // Bouton date suivante
-                    IconButton(
-                      onPressed: () {
-                        setState(() {
-                          selectedDate = selectedDate.add(Duration(days: 1));
-                          filterEncaissements();
-                        });
-                      },
-                      icon: Icon(Icons.chevron_right),
-                      tooltip: 'Jour suivant',
+                      )
+                    else
+                      const Spacer(),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Bouton période précédente
+                        IconButton(
+                          onPressed: _goToPreviousPeriod,
+                          icon: const Icon(Icons.chevron_left),
+                          tooltip: currentViewMode == ViewMode.daily ? 'Jour précédent' :
+                                  currentViewMode == ViewMode.weekly ? 'Semaine précédente' :
+                                  'Mois précédent',
+                        ),
+                        // Affichage de la période actuelle
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            minimumSize: const Size(200, 42),
+                          ),
+                          onPressed: currentViewMode == ViewMode.daily ? () => _selectDate(context) : null,
+                          child: Text(
+                            _getPeriodTitle(),
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        // Bouton période suivante
+                        IconButton(
+                          onPressed: _goToNextPeriod,
+                          icon: const Icon(Icons.chevron_right),
+                          tooltip: currentViewMode == ViewMode.daily ? 'Jour suivant' :
+                                  currentViewMode == ViewMode.weekly ? 'Semaine suivante' :
+                                  'Mois suivant',
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -626,7 +770,7 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
                     ]),
                 SizedBox(height: 8),
                 Container(
-                  padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                   decoration: BoxDecoration(
                     color: Colors.orange[100],
                     borderRadius: BorderRadius.circular(8),
@@ -636,9 +780,9 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.history, color: Colors.orange[700], size: 20),
-                      SizedBox(width: 8),
+                      const SizedBox(width: 8),
                       Text(
-                        "CA N-1 (${selectedDate.year - 1}): ${formatPrice(totalAnneePrecedente)}",
+                        _getComparisonText(),
                         style: TextStyle(
                           fontSize: 16, 
                           fontWeight: FontWeight.bold,
@@ -648,7 +792,7 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
                       if (totalGroupe > 0 && totalAnneePrecedente > 0)
                         Row(
                           children: [
-                            SizedBox(width: 16),
+                            const SizedBox(width: 16),
                             Text(
                               "(${totalGroupe > totalAnneePrecedente ? '+' : ''}${((totalGroupe - totalAnneePrecedente) / totalAnneePrecedente * 100).toStringAsFixed(1)}%)",
                               style: TextStyle(
