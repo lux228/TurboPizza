@@ -8,9 +8,9 @@ on:
   release:
     types: [ published ]
 
-# Permissions nécessaires pour GitHub Pages
+# Permissions nécessaires pour GitHub Pages et Releases
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -68,14 +68,9 @@ jobs:
           7z a -tzip ../../../../../TurboPizza-Windows-${{ github.event.release.tag_name }}.zip *
         
       - name: Upload Windows ZIP to Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: TurboPizza-Windows-${{ github.event.release.tag_name }}.zip
-          asset_name: TurboPizza-Windows-${{ github.event.release.tag_name }}.zip
-          asset_content_type: application/zip
+          files: TurboPizza-Windows-${{ github.event.release.tag_name }}.zip
 
   build-web:
     needs: test
