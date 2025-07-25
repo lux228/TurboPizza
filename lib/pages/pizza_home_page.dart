@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'dart:async';
 import '../models/pizza.dart';
 import '../models/encaissement.dart';
@@ -8,6 +9,12 @@ import '../utils/storage_service.dart';
 import '../widgets/payment_method_dialog.dart';
 import '../widgets/calculator_dialog.dart';
 import '../widgets/pickup_time_dialog.dart';
+import '../widgets/product_grid.dart';
+import '../widgets/current_order_widget.dart';
+import '../widgets/order_status_card.dart';
+import '../services/cart_service.dart';
+import '../services/order_service.dart';
+import '../constants/app_constants.dart';
 import 'pizza_management_page.dart';
 import 'encaissement_history_page.dart';
 
@@ -20,9 +27,7 @@ class PizzaHomePage extends StatefulWidget {
 
 class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateMixin {
   List<Pizza> availablePizzas = [];
-  Map<String, Pizza> cart = {};
-  List<CommandeAttente> commandesAttente = [];
-  bool showCurrentOrder = false; // Pour contrôler l'affichage de la commande en cours
+  bool showCurrentOrder = false;
   late AnimationController _animationController;
   late Animation<double> _slideAnimation;
   Timer? _statusUpdateTimer;
@@ -30,8 +35,14 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
   @override
   void initState() {
     super.initState();
+    _initializeAnimation();
+    _loadData();
+    _startStatusUpdateTimer();
+  }
+
+  void _initializeAnimation() {
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
+      duration: AppConstants.animationDuration,
       vsync: this,
     );
     _slideAnimation = Tween<double>(
@@ -41,11 +52,11 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
       parent: _animationController,
       curve: Curves.easeInOut,
     ));
-    _loadData();
-    
-    // Timer pour mettre à jour les statuts toutes les minutes
-    _statusUpdateTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
-      if (mounted && commandesAttente.isNotEmpty) {
+  }
+
+  void _startStatusUpdateTimer() {
+    _statusUpdateTimer = Timer.periodic(AppConstants.statusUpdateInterval, (timer) {
+      if (mounted && context.read<OrderService>().hasOrders) {
         setState(() {
           // Force la reconstruction pour mettre à jour les couleurs des statuts
         });
@@ -62,153 +73,84 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
 
   void _loadData() async {
     final loadedPizzas = await StorageService.loadPizzaList();
-    final loadedCommandes = await StorageService.loadCommandesAttente();
+    await context.read<OrderService>().loadOrders();
     setState(() {
       availablePizzas = loadedPizzas;
-      commandesAttente = loadedCommandes;
-      // Trier les commandes par heure de récupération
-      commandesAttente.sort((a, b) => a.heureRecuperationDateTime.compareTo(b.heureRecuperationDateTime));
     });
   }
 
   void addToCart(Pizza pizza) {
-    setState(() {
-      if (cart.containsKey(pizza.name)) {
-        cart[pizza.name]!.quantity++;
-      } else {
-        cart[pizza.name] = Pizza(
-            name: pizza.name,
-            price: pizza.price,
-            quantity: 1,
-            type: pizza.type);
-      }
-      
-      // Afficher la commande en cours avec animation quand on ajoute un produit
-      if (!showCurrentOrder) {
+    final cartService = context.read<CartService>();
+    cartService.addToCart(pizza);
+    
+    // Afficher la commande en cours avec animation quand on ajoute un produit
+    if (!showCurrentOrder) {
+      setState(() {
         showCurrentOrder = true;
-        _animationController.forward();
-      }
-    });
-  }
-
-  void adjustQuantity(String name, int change) {
-    setState(() {
-      if (cart.containsKey(name)) {
-        cart[name]!.quantity += change;
-        if (cart[name]!.quantity <= 0) {
-          cart.remove(name);
-        }
-      }
-      // Masquer la commande en cours avec animation si le panier est vide
-      if (cart.isEmpty && showCurrentOrder) {
-        _animationController.reverse().then((_) {
-          setState(() {
-            showCurrentOrder = false;
-          });
-        });
-      }
-    });
-  }
-
-  double get totalCartPrice =>
-      cart.values.fold(0, (total, current) => total + current.totalPrice);
-
-  // Méthode pour déterminer le statut d'une commande selon l'heure
-  Map<String, dynamic> getOrderStatus(CommandeAttente commande) {
-    final now = DateTime.now();
-    final pickupTime = commande.heureRecuperationDateTime;
-    final difference = pickupTime.difference(now).inMinutes;
-
-    if (difference < -10) {
-      // Plus de 10 minutes de retard
-      return {
-        'status': 'En retard',
-        'color': Colors.red[600]!,
-        'backgroundColor': Colors.red[50]!,
-        'icon': Icons.warning,
-      };
-    } else if (difference < 0) {
-      // Légèrement en retard (moins de 10 minutes)
-      return {
-        'status': 'Légèrement en retard',
-        'color': Colors.orange[700]!,
-        'backgroundColor': Colors.orange[50]!,
-        'icon': Icons.access_time,
-      };
-    } else if (difference <= 15) {
-      // Bientôt là (dans les 15 prochaines minutes)
-      return {
-        'status': 'Bientôt là',
-        'color': Colors.orange[600]!,
-        'backgroundColor': Colors.orange[50]!,
-        'icon': Icons.schedule,
-      };
-    } else {
-      // À l'heure (plus de 15 minutes d'avance)
-      return {
-        'status': 'À l\'heure',
-        'color': Colors.green[600]!,
-        'backgroundColor': Colors.green[50]!,
-        'icon': Icons.check_circle,
-      };
+      });
+      _animationController.forward();
     }
   }
 
   // Méthode pour encaisser directement une commande
   void checkoutDirect() async {
-    if (cart.isEmpty) return;
+    final cartService = context.read<CartService>();
+    if (cartService.isEmpty) return;
 
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (BuildContext context) =>
-          PaymentMethodDialog(currentSelection: "Espèces"),
+          PaymentMethodDialog(currentSelection: AppConstants.defaultPaymentMethod),
     );
 
     if (result != null) {
       final String selectedMethod = result['method'];
 
-      // Enregistrement de l'encaissement avec le montant total, le mode de règlement et les articles
+      // Enregistrement de l'encaissement
       await StorageService.saveEncaissement(Encaissement(
         date: DateTime.now(),
-        montant: totalCartPrice,
+        montant: cartService.totalPrice,
         modeReglement: selectedMethod,
-        articles: cart.values.toList(),
+        articles: cartService.items,
       ));
 
       // Nettoyage du panier
-      setState(() {
-        cart.clear();
-        if (showCurrentOrder) {
-          _animationController.reverse().then((_) {
+      cartService.clear();
+      if (showCurrentOrder) {
+        _animationController.reverse().then((_) {
+          if (mounted) {
             setState(() {
               showCurrentOrder = false;
             });
-          });
-        }
-      });
+          }
+        });
+      }
 
       // Affichage d'un message de confirmation
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.check_circle, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Text('Encaissement réalisé avec succès'),
-            ],
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.check_circle, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text(AppConstants.paymentSuccessMessage),
+              ],
+            ),
+            duration: AppConstants.snackBarDuration,
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.green[600],
           ),
-          duration: const Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.green[600],
-        ),
-      );
+        );
+      }
     }
   }
 
   // Nouvelle méthode pour mettre une commande en attente
   void putOrderOnHold() async {
-    if (cart.isEmpty) return;
+    final cartService = context.read<CartService>();
+    if (cartService.isEmpty) return;
 
     final selectedTime = await showDialog<String>(
       context: context,
@@ -216,45 +158,41 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
     );
 
     if (selectedTime != null) {
-      final commande = CommandeAttente(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        heureComposition: DateTime.now(),
-        heureRecuperationPrevue: selectedTime,
-        articles: cart.values.toList(),
-        montant: totalCartPrice,
+      final orderService = context.read<OrderService>();
+      await orderService.createOrder(
+        articles: cartService.items,
+        amount: cartService.totalPrice,
+        pickupTime: selectedTime,
       );
 
-      await StorageService.saveCommandeAttente(commande);
-      
-      setState(() {
-        commandesAttente.add(commande);
-        // Trier les commandes par heure de récupération
-        commandesAttente.sort((a, b) => a.heureRecuperationDateTime.compareTo(b.heureRecuperationDateTime));
-        cart.clear();
-        if (showCurrentOrder) {
-          _animationController.reverse().then((_) {
+      cartService.clear();
+      if (showCurrentOrder) {
+        _animationController.reverse().then((_) {
+          if (mounted) {
             setState(() {
               showCurrentOrder = false;
             });
-          });
-        }
-      });
+          }
+        });
+      }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.access_time, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Text('Commande mise en attente'),
-            ],
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.access_time, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text(AppConstants.orderOnHoldMessage),
+              ],
+            ),
+            duration: AppConstants.snackBarDuration,
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.orange[600],
           ),
-          duration: const Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.orange[600],
-        ),
-      );
+        );
+      }
     }
   }
 
@@ -263,7 +201,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (BuildContext context) =>
-          PaymentMethodDialog(currentSelection: "Espèces"),
+          PaymentMethodDialog(currentSelection: AppConstants.defaultPaymentMethod),
     );
 
     if (result != null) {
@@ -278,596 +216,53 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
       );
 
       await StorageService.saveEncaissement(encaissement);
-      await StorageService.removeCommandeAttente(commande.id);
+      await context.read<OrderService>().removeOrder(commande.id);
 
-      setState(() {
-        commandesAttente.removeWhere((c) => c.id == commande.id);
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.check_circle, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Text('Commande validée et encaissée'),
-            ],
-          ),
-          duration: const Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.green[600],
-        ),
-      );
-    }
-  }
-
-  // Méthode pour afficher l'aperçu d'une commande en attente
-  void showOrderPreview(CommandeAttente commande) {
-    final orderStatus = getOrderStatus(commande);
-    
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Container(
-            width: 900, // Largeur augmentée pour 2 colonnes
-            height: MediaQuery.of(context).size.height * 0.8,
-            padding: const EdgeInsets.all(24),
-            child: Row(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // Partie gauche : Calculatrice
-                Expanded(
-                  flex: 2,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey[300]!),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      children: [
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.blue[50],
-                            borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(12),
-                              topRight: Radius.circular(12),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.calculate,
-                                color: Colors.blue[700],
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Calculatrice',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blue[800],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: _buildCalculatorWidget(commande.montant),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                
-                const SizedBox(width: 20),
-                
-                // Partie droite : Aperçu de la commande
-                Expanded(
-                  flex: 3,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Titre
-                      Text(
-                        'Aperçu de la commande',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 16),
-                // Informations de la commande avec statut
-                Container(
-                  padding: EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: orderStatus['backgroundColor'],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: orderStatus['color'], width: 2),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Statut de la commande
-                      Row(
-                        children: [
-                          Icon(
-                            orderStatus['icon'],
-                            color: orderStatus['color'],
-                            size: 20,
-                          ),
-                          SizedBox(width: 8),
-                          Text(
-                            orderStatus['status'],
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: orderStatus['color'],
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Heure de composition :',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                          ),
-                          Text(
-                            '${commande.heureComposition.hour.toString().padLeft(2, '0')}:${commande.heureComposition.minute.toString().padLeft(2, '0')}',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Heure de récupération :',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                          ),
-                          Text(
-                            commande.heureRecuperationPrevue,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: orderStatus['color'],
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Montant total :',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                          ),
-                          Text(
-                            formatPrice(commande.montant),
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green[800],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: 16),
-                Text(
-                  'Articles commandés :',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 8),
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey[300]!),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: ListView.builder(
-                      itemCount: commande.articles.length,
-                      itemBuilder: (context, index) {
-                        var article = commande.articles[index];
-                        
-                        // Déterminer la couleur selon le type
-                        Color borderColor;
-                        switch (article.type) {
-                          case 'Tomate':
-                            borderColor = Colors.red[300]!;
-                            break;
-                          case 'Crème':
-                            borderColor = Colors.blue[300]!;
-                            break;
-                          case 'Softs':
-                            borderColor = Colors.amber[300]!;
-                            break;
-                          case 'Vins':
-                            borderColor = Colors.orange[300]!;
-                            break;
-                          case 'Spécialités':
-                            borderColor = Colors.green[300]!;
-                            break;
-                          case 'Glaces':
-                            borderColor = Colors.purple[300]!;
-                            break;
-                          case 'Desserts':
-                            borderColor = Colors.pink[300]!;
-                            break;
-                          default:
-                            borderColor = Colors.grey[300]!;
-                        }
-                        
-                        return Container(
-                          margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          padding: EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            border: Border(
-                              left: BorderSide(color: borderColor, width: 4),
-                            ),
-                            color: Colors.grey[50],
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      article.name,
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    Text(
-                                      article.type,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[600],
-                                        fontStyle: FontStyle.italic,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    'x${article.quantity}',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    formatPrice(article.price),
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.green[700],
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                // Boutons d'action en bas
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Fermer'),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        editOrderOnHold(commande);
-                      },
-                      icon: const Icon(Icons.edit, size: 18),
-                      label: const Text('Modifier'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange[100],
-                        foregroundColor: Colors.orange[800],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        validatePickup(commande);
-                      },
-                      icon: const Icon(Icons.check, size: 18),
-                      label: const Text('Valider'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green[100],
-                        foregroundColor: Colors.green[800],
-                      ),
-                    ),
-                  ],
-                ),
-                    ],
-                  ),
-                ),
+                Icon(Icons.check_circle, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text(AppConstants.orderValidatedMessage),
               ],
             ),
+            duration: AppConstants.snackBarDuration,
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.green[600],
           ),
         );
-      },
-    );
-  }
-
-  // Widget calculatrice intégré
-  Widget _buildCalculatorWidget(double initialValue) {
-    return StatefulBuilder(
-      builder: (context, setState) {
-        String display = initialValue.toStringAsFixed(2);
-        String operator = '';
-        double firstOperand = 0;
-        bool waitingForSecondOperand = false;
-
-        void inputNumber(String number) {
-          setState(() {
-            if (waitingForSecondOperand) {
-              display = number;
-              waitingForSecondOperand = false;
-            } else {
-              display = display == '0.00' ? number : display + number;
-            }
-          });
-        }
-
-        void inputOperator(String nextOperator) {
-          setState(() {
-            double inputValue = double.parse(display);
-            
-            if (firstOperand == 0) {
-              firstOperand = inputValue;
-            } else if (operator.isNotEmpty) {
-              double result = firstOperand;
-              switch (operator) {
-                case '+':
-                  result = firstOperand + inputValue;
-                  break;
-                case '-':
-                  result = firstOperand - inputValue;
-                  break;
-                case '×':
-                  result = firstOperand * inputValue;
-                  break;
-                case '÷':
-                  result = inputValue != 0 ? firstOperand / inputValue : firstOperand;
-                  break;
-              }
-              display = result.toStringAsFixed(2);
-              firstOperand = result;
-            }
-            
-            waitingForSecondOperand = true;
-            operator = nextOperator;
-          });
-        }
-
-        void calculate() {
-          setState(() {
-            double inputValue = double.parse(display);
-            double result = firstOperand;
-            
-            switch (operator) {
-              case '+':
-                result = firstOperand + inputValue;
-                break;
-              case '-':
-                result = firstOperand - inputValue;
-                break;
-              case '×':
-                result = firstOperand * inputValue;
-                break;
-              case '÷':
-                result = inputValue != 0 ? firstOperand / inputValue : firstOperand;
-                break;
-            }
-            
-            display = result.toStringAsFixed(2);
-            firstOperand = 0;
-            operator = '';
-            waitingForSecondOperand = true;
-          });
-        }
-
-        void clear() {
-          setState(() {
-            display = '0.00';
-            operator = '';
-            firstOperand = 0;
-            waitingForSecondOperand = false;
-          });
-        }
-
-        Widget buildButton(String text, {Color? color, VoidCallback? onPressed}) {
-          return Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(4),
-              child: ElevatedButton(
-                onPressed: onPressed,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: color ?? Colors.grey[200],
-                  foregroundColor: Colors.black87,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: Text(
-                  text,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                ),
-              ),
-            ),
-          );
-        }
-
-        return Column(
-          children: [
-            // Affichage
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey[300]!),
-              ),
-              child: Text(
-                display,
-                style: const TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-                textAlign: TextAlign.right,
-              ),
-            ),
-            
-            // Boutons
-            Expanded(
-              child: Column(
-                children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        buildButton('C', color: Colors.red[100], onPressed: clear),
-                        buildButton('÷', color: Colors.orange[100], onPressed: () => inputOperator('÷')),
-                        buildButton('×', color: Colors.orange[100], onPressed: () => inputOperator('×')),
-                        buildButton('-', color: Colors.orange[100], onPressed: () => inputOperator('-')),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Row(
-                      children: [
-                        buildButton('7', onPressed: () => inputNumber('7')),
-                        buildButton('8', onPressed: () => inputNumber('8')),
-                        buildButton('9', onPressed: () => inputNumber('9')),
-                        buildButton('+', color: Colors.orange[100], onPressed: () => inputOperator('+')),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Row(
-                      children: [
-                        buildButton('4', onPressed: () => inputNumber('4')),
-                        buildButton('5', onPressed: () => inputNumber('5')),
-                        buildButton('6', onPressed: () => inputNumber('6')),
-                        buildButton('=', 
-                          color: Colors.green[100], 
-                          onPressed: calculate),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Row(
-                      children: [
-                        buildButton('1', onPressed: () => inputNumber('1')),
-                        buildButton('2', onPressed: () => inputNumber('2')),
-                        buildButton('3', onPressed: () => inputNumber('3')),
-                        const Expanded(child: SizedBox()), // Espace pour l'égal qui s'étend
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: Padding(
-                            padding: const EdgeInsets.all(4),
-                            child: ElevatedButton(
-                              onPressed: () => inputNumber('0'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.grey[200],
-                                foregroundColor: Colors.black87,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                              child: const Text(
-                                '0',
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                              ),
-                            ),
-                          ),
-                        ),
-                        buildButton('.', onPressed: () => inputNumber('.')),
-                        const Expanded(child: SizedBox()), // Espace pour l'égal
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        );
-      },
-    );
+      }
+    }
   }
 
   // Méthode pour modifier une commande en attente
   void editOrderOnHold(CommandeAttente commande) async {
+    final cartService = context.read<CartService>();
     // Remettre la commande dans le panier
-    setState(() {
-      cart.clear();
-      for (var article in commande.articles) {
-        cart[article.name] = Pizza(
-          name: article.name,
-          price: article.price,
-          quantity: article.quantity,
-          type: article.type,
-        );
-      }
-      
-      // Afficher la commande en cours avec animation
-      if (!showCurrentOrder) {
+    cartService.loadFromOrder(commande.articles);
+    
+    // Afficher la commande en cours avec animation
+    if (!showCurrentOrder) {
+      setState(() {
         showCurrentOrder = true;
-        _animationController.forward();
-      }
-    });
+      });
+      _animationController.forward();
+    }
 
     // Supprimer la commande de la file d'attente
-    await StorageService.removeCommandeAttente(commande.id);
-    setState(() {
-      commandesAttente.removeWhere((c) => c.id == commande.id);
-    });
+    await context.read<OrderService>().removeOrder(commande.id);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Commande remise en composition'),
-        duration: Duration(seconds: 2),
-      ),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(AppConstants.orderBackToCompositionMessage),
+          duration: AppConstants.snackBarDuration,
+        ),
+      );
+    }
   }
 
   // Méthode pour annuler une commande en attente
@@ -896,119 +291,22 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
     );
 
     if (confirmed == true) {
-      await StorageService.removeCommandeAttente(commande.id);
-      setState(() {
-        commandesAttente.removeWhere((c) => c.id == commande.id);
-      });
+      await context.read<OrderService>().removeOrder(commande.id);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Commande annulée'),
-          duration: Duration(seconds: 2),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(AppConstants.orderCancelledMessage),
+            duration: AppConstants.snackBarDuration,
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Regrouper les pizzas par type
-    Map<String, List<Pizza>> groupedPizzas = {};
-    for (var pizza in availablePizzas) {
-      groupedPizzas.putIfAbsent(pizza.type, () => []).add(pizza);
-    }
-    for (var group in groupedPizzas.values) {
-      group.sort((a, b) => a.name.compareTo(b.name));
-    }
-
-    // Ordre spécifique des catégories
-    const categoryOrder = [
-      'Tomate',
-      'Crème', 
-      'Spécialités',
-      'Softs',
-      'Vins',
-      'Desserts',
-      'Glaces'
-    ];
-
-    List<Widget> categoryWidgets = [];
-    
-    // Afficher les catégories dans l'ordre spécifié
-    for (String categoryType in categoryOrder) {
-      if (groupedPizzas.containsKey(categoryType)) {
-        List<Pizza> pizzas = groupedPizzas[categoryType]!;
-        
-        categoryWidgets.add(
-          Container(
-            padding: const EdgeInsets.all(8.0),
-            child: Text(
-              categoryType.toUpperCase(),
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-          ),
-        );
-
-        categoryWidgets.add(
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 6,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-            ),
-            itemCount: pizzas.length,
-            itemBuilder: (context, index) {
-              Pizza pizza = pizzas[index];
-              Color? color;
-              switch (pizza.type) {
-                case 'Tomate':
-                  color = Colors.red[100];
-                  break;
-                case 'Crème':
-                  color = Colors.blue[100];
-                  break;
-                case 'Softs':
-                  color = Colors.amber[100];
-                  break;
-                case 'Vins':
-                  color = Colors.orange[100];
-                  break;
-                case 'Spécialités':
-                  color = Colors.green[100];
-                  break;
-                case 'Glaces':
-                  color = Colors.purple[100];
-                  break;
-                case 'Desserts':
-                  color = Colors.pink[100];
-                  break;
-              }
-
-              return GestureDetector(
-                onTap: () => addToCart(pizza),
-                child: Card(
-                  color: color,
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        Text(pizza.name, style: const TextStyle(fontSize: 18)),
-                        Text(formatPrice(pizza.price),
-                            style: const TextStyle(fontSize: 16)),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        );
-      }
-    }
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('TurboPizza'),
@@ -1049,8 +347,9 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
           // 2/3 gauche : liste des produits
           Expanded(
             flex: 2,
-            child: SingleChildScrollView(
-              child: Column(children: categoryWidgets),
+            child: ProductGrid(
+              products: availablePizzas,
+              onProductTap: addToCart,
             ),
           ),
           const VerticalDivider(
@@ -1079,33 +378,33 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Expanded(
+                                  const Expanded(
                                     child: Column(
                                       children: [
-                                        const Text(
+                                        Text(
                                           'COMMANDES EN ATTENTE',
                                           style: TextStyle(
-                                            fontSize: 16,
+                                            fontSize: AppConstants.subtitleFontSize,
                                             fontWeight: FontWeight.bold,
                                             color: Colors.black87,
                                           ),
                                           textAlign: TextAlign.center,
                                         ),
-                                        const SizedBox(height: 4),
+                                        SizedBox(height: 4),
                                         Row(
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
                                             Icon(
                                               Icons.touch_app,
                                               size: 14,
-                                              color: Colors.grey[600],
+                                              color: Colors.grey,
                                             ),
                                             SizedBox(width: 4),
                                             Text(
-                                              'Toucher pour voir le détail',
+                                              AppConstants.touchForDetailsMessage,
                                               style: TextStyle(
-                                                fontSize: 11,
-                                                color: Colors.grey[600],
+                                                fontSize: AppConstants.smallFontSize,
+                                                color: Colors.grey,
                                                 fontStyle: FontStyle.italic,
                                               ),
                                             ),
@@ -1114,19 +413,23 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                                       ],
                                     ),
                                   ),
-                                  IconButton(
-                                    icon: const Icon(Icons.calculate),
-                                    onPressed: () {
-                                      showDialog(
-                                        context: context,
-                                        builder: (BuildContext context) => CalculatorDialog(
-                                          currentOrderTotal: totalCartPrice,
-                                        ),
+                                  Consumer<CartService>(
+                                    builder: (context, cartService, child) {
+                                      return IconButton(
+                                        icon: const Icon(Icons.calculate),
+                                        onPressed: () {
+                                          showDialog(
+                                            context: context,
+                                            builder: (BuildContext context) => CalculatorDialog(
+                                              currentOrderTotal: cartService.totalPrice,
+                                            ),
+                                          );
+                                        },
+                                        tooltip: 'Calculatrice',
+                                        iconSize: 24,
+                                        color: Colors.blue[700],
                                       );
                                     },
-                                    tooltip: 'Calculatrice',
-                                    iconSize: 24,
-                                    color: Colors.blue[700],
                                   ),
                                 ],
                               ),
@@ -1134,157 +437,40 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                           ),
                         ),
                         Expanded(
-                          child: commandesAttente.isEmpty
-                              ? const Center(
+                          child: Consumer<OrderService>(
+                            builder: (context, orderService, child) {
+                              if (!orderService.hasOrders) {
+                                return const Center(
                                   child: Text(
-                                    'Aucune commande en attente',
+                                    AppConstants.noOrdersMessage,
                                     style: TextStyle(
-                                      fontSize: 14,
+                                      fontSize: AppConstants.bodyFontSize,
                                       color: Colors.grey,
                                       fontStyle: FontStyle.italic,
                                     ),
                                   ),
-                                )
-                              : ListView.builder(
-                                  padding: const EdgeInsets.all(8.0),
-                                  itemCount: commandesAttente.length,
-                                  itemBuilder: (context, index) {
-                                    final commande = commandesAttente[index];
-                                    final orderStatus = getOrderStatus(commande);
-                                    
-                                    return GestureDetector(
-                                      onTap: () => showOrderPreview(commande),
-                                      child: Card(
-                                        margin: const EdgeInsets.only(bottom: 8.0),
-                                        elevation: 2,
-                                        color: orderStatus['backgroundColor'],
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(12),
-                                            border: Border.all(
-                                              color: orderStatus['color'],
-                                              width: 2,
-                                            ),
-                                          ),
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(8.0),
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Row(
-                                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                  children: [
-                                                    Row(
-                                                      children: [
-                                                        Icon(
-                                                          orderStatus['icon'],
-                                                          size: 16,
-                                                          color: orderStatus['color'],
-                                                        ),
-                                                        SizedBox(width: 4),
-                                                        Text(
-                                                          'Récup: ${commande.heureRecuperationPrevue}',
-                                                          style: TextStyle(
-                                                            fontSize: 16,
-                                                            fontWeight: FontWeight.bold,
-                                                            color: Colors.black,
-                                                          ),
-                                                        ),
-                                                        SizedBox(width: 4),
-                                                        Text(
-                                                          '(${commande.heureComposition.hour.toString().padLeft(2, '0')}:${commande.heureComposition.minute.toString().padLeft(2, '0')})',
-                                                          style: TextStyle(
-                                                            fontSize: 11,
-                                                            color: Colors.grey[600],
-                                                            fontStyle: FontStyle.italic,
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                    Expanded(
-                                                      child: Center(
-                                                        child: Text(
-                                                          orderStatus['status'],
-                                                          style: TextStyle(
-                                                            fontSize: 11,
-                                                            fontWeight: FontWeight.w600,
-                                                            color: orderStatus['color'],
-                                                            fontStyle: FontStyle.italic,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    Text(
-                                                      formatPrice(commande.montant),
-                                                      style: const TextStyle(
-                                                        fontSize: 18,
-                                                        fontWeight: FontWeight.bold,
-                                                        color: Colors.black,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 4),
-                                                Text(
-                                                  commande.articles
-                                                      .map((a) => '${a.name} x${a.quantity}')
-                                                      .join(', '),
-                                                  style: const TextStyle(fontSize: 12),
-                                                  maxLines: 2,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                                const SizedBox(height: 8),
-                                                Row(
-                                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                                  children: [
-                                                    Expanded(
-                                                      child: ElevatedButton.icon(
-                                                        onPressed: () => validatePickup(commande),
-                                                        icon: const Icon(Icons.check, size: 16),
-                                                        label: const Text('Valider', style: TextStyle(fontSize: 12)),
-                                                        style: ElevatedButton.styleFrom(
-                                                          backgroundColor: Colors.green[100],
-                                                          foregroundColor: Colors.green[800],
-                                                          minimumSize: const Size(0, 32),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    Expanded(
-                                                      child: ElevatedButton.icon(
-                                                        onPressed: () => editOrderOnHold(commande),
-                                                        icon: const Icon(Icons.edit, size: 16),
-                                                        label: const Text('Modifier', style: TextStyle(fontSize: 12)),
-                                                        style: ElevatedButton.styleFrom(
-                                                          backgroundColor: Colors.orange[100],
-                                                          foregroundColor: Colors.orange[800],
-                                                          minimumSize: const Size(0, 32),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    Expanded(
-                                                      child: ElevatedButton.icon(
-                                                        onPressed: () => cancelOrderOnHold(commande),
-                                                        icon: const Icon(Icons.delete, size: 16),
-                                                        label: const Text('Annuler', style: TextStyle(fontSize: 12)),
-                                                        style: ElevatedButton.styleFrom(
-                                                          backgroundColor: Colors.red[100],
-                                                          foregroundColor: Colors.red[800],
-                                                          minimumSize: const Size(0, 32),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
+                                );
+                              }
+
+                              return ListView.builder(
+                                padding: const EdgeInsets.all(8.0),
+                                itemCount: orderService.orders.length,
+                                itemBuilder: (context, index) {
+                                  final order = orderService.orders[index];
+                                  final statusInfo = orderService.getOrderStatus(order);
+                                  
+                                  return OrderStatusCard(
+                                    order: order,
+                                    statusInfo: statusInfo,
+                                    onTap: () => {}, // TODO: Implémenter showOrderPreview
+                                    onValidate: () => validatePickup(order),
+                                    onEdit: () => editOrderOnHold(order),
+                                    onCancel: () => cancelOrderOnHold(order),
+                                  );
+                                },
+                              );
+                            },
+                          ),
                         ),
                       ],
                     ),
@@ -1292,113 +478,25 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                 ),
                 const Divider(height: 1, thickness: 1),
                 // Partie basse : Composition actuelle avec animation depuis le bas
-                AnimatedBuilder(
-                  animation: _slideAnimation,
-                  builder: (context, child) {
-                    return ClipRect(
-                      child: Align(
-                        alignment: Alignment.bottomCenter,
-                        heightFactor: showCurrentOrder ? _slideAnimation.value : 0.0,
-                        child: Container(
-                          height: MediaQuery.of(context).size.height * 0.4, // Hauteur fixe
-                          color: Colors.grey[200],
-                          child: Column(
-                            children: [
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.all(12.0),
-                                color: Colors.grey[300],
-                                child: const Text(
-                                  'COMMANDE EN COURS',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
+                Consumer<CartService>(
+                  builder: (context, cartService, child) {
+                    return AnimatedBuilder(
+                      animation: _slideAnimation,
+                      builder: (context, child) {
+                        return ClipRect(
+                          child: Align(
+                            alignment: Alignment.bottomCenter,
+                            heightFactor: showCurrentOrder ? _slideAnimation.value : 0.0,
+                            child: SizedBox(
+                              height: MediaQuery.of(context).size.height * 0.4,
+                              child: CurrentOrderWidget(
+                                onPutOnHold: putOrderOnHold,
+                                onCheckoutDirect: checkoutDirect,
                               ),
-                              Expanded(
-                                child: ListView(
-                                  children: cart.values.map((pizza) {
-                                    return ListTile(
-                                      tileColor: Colors.amber[100],
-                                      title: Text("${pizza.name} x${pizza.quantity}"),
-                                      subtitle: Text(formatPrice(pizza.price)),
-                                      trailing: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: <Widget>[
-                                          IconButton(
-                                            icon: const Icon(Icons.remove),
-                                            onPressed: () => adjustQuantity(pizza.name, -1),
-                                          ),
-                                          IconButton(
-                                            icon: const Icon(Icons.add),
-                                            onPressed: () => adjustQuantity(pizza.name, 1),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Column(
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            "Total: ${formatPrice(totalCartPrice)}",
-                                            style: const TextStyle(
-                                                fontSize: 20, fontWeight: FontWeight.bold),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    // Deux boutons : Mettre en attente et Encaisser directement
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: SizedBox(
-                                            height: 50,
-                                            child: ElevatedButton(
-                                              style: ElevatedButton.styleFrom(
-                                                foregroundColor: cart.isEmpty ? Colors.grey : Colors.black,
-                                                backgroundColor: cart.isEmpty ? Colors.grey[300] : Colors.orange[100],
-                                                textStyle: const TextStyle(fontSize: 16),
-                                              ),
-                                              onPressed: cart.isEmpty ? null : putOrderOnHold,
-                                              child: Text(cart.isEmpty ? "Panier vide" : "En attente"),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: SizedBox(
-                                            height: 50,
-                                            child: ElevatedButton(
-                                              style: ElevatedButton.styleFrom(
-                                                foregroundColor: cart.isEmpty ? Colors.grey : Colors.black,
-                                                backgroundColor: cart.isEmpty ? Colors.grey[300] : Colors.green[100],
-                                                textStyle: const TextStyle(fontSize: 16),
-                                              ),
-                                              onPressed: cart.isEmpty ? null : checkoutDirect,
-                                              child: Text(cart.isEmpty ? "Panier vide" : "Encaisser"),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     );
                   },
                 ),
