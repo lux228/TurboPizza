@@ -249,6 +249,229 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
     }
   }
 
+  // Méthode pour afficher l'aperçu d'une commande en attente
+  void showOrderPreview(CommandeAttente commande) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            'Aperçu de la commande',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          content: SizedBox(
+            width: 400,
+            height: MediaQuery.of(context).size.height * 0.6,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Informations de la commande
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue[200]!),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Heure de composition :',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                          ),
+                          Text(
+                            '${commande.heureComposition.hour.toString().padLeft(2, '0')}:${commande.heureComposition.minute.toString().padLeft(2, '0')}',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Heure de récupération :',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                          ),
+                          Text(
+                            commande.heureRecuperationPrevue,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue[800],
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Montant total :',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                          ),
+                          Text(
+                            formatPrice(commande.montant),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green[800],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Articles commandés :',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 8),
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: ListView.builder(
+                      itemCount: commande.articles.length,
+                      itemBuilder: (context, index) {
+                        var article = commande.articles[index];
+                        
+                        // Déterminer la couleur selon le type
+                        Color borderColor;
+                        switch (article.type) {
+                          case 'Tomate':
+                            borderColor = Colors.red[300]!;
+                            break;
+                          case 'Crème':
+                            borderColor = Colors.blue[300]!;
+                            break;
+                          case 'Softs':
+                            borderColor = Colors.amber[300]!;
+                            break;
+                          case 'Vins':
+                            borderColor = Colors.orange[300]!;
+                            break;
+                          case 'Spécialités':
+                            borderColor = Colors.green[300]!;
+                            break;
+                          case 'Glaces':
+                            borderColor = Colors.purple[300]!;
+                            break;
+                          case 'Desserts':
+                            borderColor = Colors.pink[300]!;
+                            break;
+                          default:
+                            borderColor = Colors.grey[300]!;
+                        }
+                        
+                        return Container(
+                          margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            border: Border(
+                              left: BorderSide(color: borderColor, width: 4),
+                            ),
+                            color: Colors.grey[50],
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      article.name,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(
+                                      article.type,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    'x${article.quantity}',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    formatPrice(article.price),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.green[700],
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Fermer'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.of(context).pop();
+                editOrderOnHold(commande);
+              },
+              icon: const Icon(Icons.edit, size: 18),
+              label: const Text('Modifier'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange[100],
+                foregroundColor: Colors.orange[800],
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.of(context).pop();
+                validatePickup(commande);
+              },
+              icon: const Icon(Icons.check, size: 18),
+              label: const Text('Valider'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green[100],
+                foregroundColor: Colors.green[800],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   // Méthode pour modifier une commande en attente
   void editOrderOnHold(CommandeAttente commande) async {
     // Remettre la commande dans le panier
@@ -513,88 +736,112 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                                   itemCount: commandesAttente.length,
                                   itemBuilder: (context, index) {
                                     final commande = commandesAttente[index];
-                                    return Card(
-                                      margin: const EdgeInsets.only(bottom: 8.0),
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(8.0),
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Row(
-                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                              children: [
-                                                Text(
-                                                  'Récup: ${commande.heureRecuperationPrevue}',
-                                                  style: const TextStyle(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.blue,
-                                                  ),
-                                                ),
-                                                Text(
-                                                  formatPrice(commande.montant),
-                                                  style: const TextStyle(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.green,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              commande.articles
-                                                  .map((a) => '${a.name} x${a.quantity}')
-                                                  .join(', '),
-                                              style: const TextStyle(fontSize: 12),
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            const SizedBox(height: 8),
-                                            Row(
-                                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                              children: [
-                                                Expanded(
-                                                  child: ElevatedButton.icon(
-                                                    onPressed: () => validatePickup(commande),
-                                                    icon: const Icon(Icons.check, size: 16),
-                                                    label: const Text('Valider', style: TextStyle(fontSize: 12)),
-                                                    style: ElevatedButton.styleFrom(
-                                                      backgroundColor: Colors.green[100],
-                                                      foregroundColor: Colors.green[800],
-                                                      minimumSize: const Size(0, 32),
+                                    return GestureDetector(
+                                      onTap: () => showOrderPreview(commande),
+                                      child: Card(
+                                        margin: const EdgeInsets.only(bottom: 8.0),
+                                        elevation: 2,
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(8.0),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                children: [
+                                                  Text(
+                                                    'Récup: ${commande.heureRecuperationPrevue}',
+                                                    style: const TextStyle(
+                                                      fontSize: 14,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Colors.blue,
                                                     ),
                                                   ),
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Expanded(
-                                                  child: ElevatedButton.icon(
-                                                    onPressed: () => editOrderOnHold(commande),
-                                                    icon: const Icon(Icons.edit, size: 16),
-                                                    label: const Text('Modifier', style: TextStyle(fontSize: 12)),
-                                                    style: ElevatedButton.styleFrom(
-                                                      backgroundColor: Colors.orange[100],
-                                                      foregroundColor: Colors.orange[800],
-                                                      minimumSize: const Size(0, 32),
+                                                  Text(
+                                                    formatPrice(commande.montant),
+                                                    style: const TextStyle(
+                                                      fontSize: 14,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Colors.green,
                                                     ),
                                                   ),
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Expanded(
-                                                  child: ElevatedButton.icon(
-                                                    onPressed: () => cancelOrderOnHold(commande),
-                                                    icon: const Icon(Icons.delete, size: 16),
-                                                    label: const Text('Annuler', style: TextStyle(fontSize: 12)),
-                                                    style: ElevatedButton.styleFrom(
-                                                      backgroundColor: Colors.red[100],
-                                                      foregroundColor: Colors.red[800],
-                                                      minimumSize: const Size(0, 32),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                commande.articles
+                                                    .map((a) => '${a.name} x${a.quantity}')
+                                                    .join(', '),
+                                                style: const TextStyle(fontSize: 12),
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Row(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(
+                                                    Icons.touch_app,
+                                                    size: 16,
+                                                    color: Colors.grey[600],
+                                                  ),
+                                                  SizedBox(width: 4),
+                                                  Text(
+                                                    'Toucher pour voir le détail',
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      color: Colors.grey[600],
+                                                      fontStyle: FontStyle.italic,
                                                     ),
                                                   ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
+                                                ],
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Row(
+                                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                                children: [
+                                                  Expanded(
+                                                    child: ElevatedButton.icon(
+                                                      onPressed: () => validatePickup(commande),
+                                                      icon: const Icon(Icons.check, size: 16),
+                                                      label: const Text('Valider', style: TextStyle(fontSize: 12)),
+                                                      style: ElevatedButton.styleFrom(
+                                                        backgroundColor: Colors.green[100],
+                                                        foregroundColor: Colors.green[800],
+                                                        minimumSize: const Size(0, 32),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Expanded(
+                                                    child: ElevatedButton.icon(
+                                                      onPressed: () => editOrderOnHold(commande),
+                                                      icon: const Icon(Icons.edit, size: 16),
+                                                      label: const Text('Modifier', style: TextStyle(fontSize: 12)),
+                                                      style: ElevatedButton.styleFrom(
+                                                        backgroundColor: Colors.orange[100],
+                                                        foregroundColor: Colors.orange[800],
+                                                        minimumSize: const Size(0, 32),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Expanded(
+                                                    child: ElevatedButton.icon(
+                                                      onPressed: () => cancelOrderOnHold(commande),
+                                                      icon: const Icon(Icons.delete, size: 16),
+                                                      label: const Text('Annuler', style: TextStyle(fontSize: 12)),
+                                                      style: ElevatedButton.styleFrom(
+                                                        backgroundColor: Colors.red[100],
+                                                        foregroundColor: Colors.red[800],
+                                                        minimumSize: const Size(0, 32),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     );
