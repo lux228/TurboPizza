@@ -519,6 +519,22 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
             ),
             ElevatedButton.icon(
               onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) => CalculatorDialog(
+                    currentOrderTotal: commande.montant,
+                  ),
+                );
+              },
+              icon: const Icon(Icons.calculate, size: 18),
+              label: const Text('Calculatrice'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[100],
+                foregroundColor: Colors.blue[800],
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
                 Navigator.of(context).pop();
                 editOrderOnHold(commande);
               },
@@ -722,7 +738,9 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('TurboPizza')),
+      appBar: AppBar(
+        title: const Text('TurboPizza'),
+      ),
       drawer: Drawer(
         child: ListView(
           children: <Widget>[
@@ -786,32 +804,57 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                           color: Colors.lightBlue[100],
                           child: Column(
                             children: [
-                              const Text(
-                                'COMMANDES EN ATTENTE',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 4),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Icon(
-                                    Icons.touch_app,
-                                    size: 14,
-                                    color: Colors.grey[600],
-                                  ),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'Toucher pour voir le détail',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey[600],
-                                      fontStyle: FontStyle.italic,
+                                  Expanded(
+                                    child: Column(
+                                      children: [
+                                        const Text(
+                                          'COMMANDES EN ATTENTE',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black87,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.touch_app,
+                                              size: 14,
+                                              color: Colors.grey[600],
+                                            ),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              'Toucher pour voir le détail',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.grey[600],
+                                                fontStyle: FontStyle.italic,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
                                     ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.calculate),
+                                    onPressed: () {
+                                      showDialog(
+                                        context: context,
+                                        builder: (BuildContext context) => CalculatorDialog(
+                                          currentOrderTotal: totalCartPrice,
+                                        ),
+                                      );
+                                    },
+                                    tooltip: 'Calculatrice',
+                                    iconSize: 24,
+                                    color: Colors.blue[700],
                                   ),
                                 ],
                               ),
@@ -1039,24 +1082,6 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                                             style: const TextStyle(
                                                 fontSize: 20, fontWeight: FontWeight.bold),
                                           ),
-                                        ),
-                                        ElevatedButton(
-                                          style: ElevatedButton.styleFrom(
-                                            foregroundColor: Colors.black,
-                                            backgroundColor: Colors.white,
-                                            elevation: 3,
-                                            minimumSize: const Size(100, 60),
-                                            textStyle: const TextStyle(fontSize: 16),
-                                          ),
-                                          onPressed: () {
-                                            showDialog(
-                                              context: context,
-                                              builder: (BuildContext context) => CalculatorDialog(
-                                                currentOrderTotal: totalCartPrice,
-                                              ),
-                                            );
-                                          },
-                                          child: const Icon(Icons.calculate, size: 28),
                                         ),
                                       ],
                                     ),
