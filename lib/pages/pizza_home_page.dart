@@ -309,18 +309,79 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(
-            'Aperçu de la commande',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          content: SizedBox(
-            width: 400,
-            height: MediaQuery.of(context).size.height * 0.6,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Container(
+            width: 900, // Largeur augmentée pour 2 colonnes
+            height: MediaQuery.of(context).size.height * 0.8,
+            padding: const EdgeInsets.all(24),
+            child: Row(
               children: [
+                // Partie gauche : Calculatrice
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.blue[50],
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(12),
+                              topRight: Radius.circular(12),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.calculate,
+                                color: Colors.blue[700],
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Calculatrice',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue[800],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: _buildCalculatorWidget(commande.montant),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(width: 20),
+                
+                // Partie droite : Aperçu de la commande
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Titre
+                      Text(
+                        'Aperçu de la commande',
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 16),
                 // Informations de la commande avec statut
                 Container(
                   padding: EdgeInsets.all(12),
@@ -509,52 +570,263 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                     ),
                   ),
                 ),
+                // Boutons d'action en bas
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Fermer'),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        editOrderOnHold(commande);
+                      },
+                      icon: const Icon(Icons.edit, size: 18),
+                      label: const Text('Modifier'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange[100],
+                        foregroundColor: Colors.orange[800],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        validatePickup(commande);
+                      },
+                      icon: const Icon(Icons.check, size: 18),
+                      label: const Text('Valider'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green[100],
+                        foregroundColor: Colors.green[800],
+                      ),
+                    ),
+                  ],
+                ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Fermer'),
-            ),
-            ElevatedButton.icon(
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (BuildContext context) => CalculatorDialog(
-                    currentOrderTotal: commande.montant,
+        );
+      },
+    );
+  }
+
+  // Widget calculatrice intégré
+  Widget _buildCalculatorWidget(double initialValue) {
+    return StatefulBuilder(
+      builder: (context, setState) {
+        String display = initialValue.toStringAsFixed(2);
+        String operator = '';
+        double firstOperand = 0;
+        bool waitingForSecondOperand = false;
+
+        void inputNumber(String number) {
+          setState(() {
+            if (waitingForSecondOperand) {
+              display = number;
+              waitingForSecondOperand = false;
+            } else {
+              display = display == '0.00' ? number : display + number;
+            }
+          });
+        }
+
+        void inputOperator(String nextOperator) {
+          setState(() {
+            double inputValue = double.parse(display);
+            
+            if (firstOperand == 0) {
+              firstOperand = inputValue;
+            } else if (operator.isNotEmpty) {
+              double result = firstOperand;
+              switch (operator) {
+                case '+':
+                  result = firstOperand + inputValue;
+                  break;
+                case '-':
+                  result = firstOperand - inputValue;
+                  break;
+                case '×':
+                  result = firstOperand * inputValue;
+                  break;
+                case '÷':
+                  result = inputValue != 0 ? firstOperand / inputValue : firstOperand;
+                  break;
+              }
+              display = result.toStringAsFixed(2);
+              firstOperand = result;
+            }
+            
+            waitingForSecondOperand = true;
+            operator = nextOperator;
+          });
+        }
+
+        void calculate() {
+          setState(() {
+            double inputValue = double.parse(display);
+            double result = firstOperand;
+            
+            switch (operator) {
+              case '+':
+                result = firstOperand + inputValue;
+                break;
+              case '-':
+                result = firstOperand - inputValue;
+                break;
+              case '×':
+                result = firstOperand * inputValue;
+                break;
+              case '÷':
+                result = inputValue != 0 ? firstOperand / inputValue : firstOperand;
+                break;
+            }
+            
+            display = result.toStringAsFixed(2);
+            firstOperand = 0;
+            operator = '';
+            waitingForSecondOperand = true;
+          });
+        }
+
+        void clear() {
+          setState(() {
+            display = '0.00';
+            operator = '';
+            firstOperand = 0;
+            waitingForSecondOperand = false;
+          });
+        }
+
+        Widget buildButton(String text, {Color? color, VoidCallback? onPressed}) {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: ElevatedButton(
+                onPressed: onPressed,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: color ?? Colors.grey[200],
+                  foregroundColor: Colors.black87,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                );
-              },
-              icon: const Icon(Icons.calculate, size: 18),
-              label: const Text('Calculatrice'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue[100],
-                foregroundColor: Colors.blue[800],
+                ),
+                child: Text(
+                  text,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                ),
               ),
             ),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.of(context).pop();
-                editOrderOnHold(commande);
-              },
-              icon: const Icon(Icons.edit, size: 18),
-              label: const Text('Modifier'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange[100],
-                foregroundColor: Colors.orange[800],
+          );
+        }
+
+        return Column(
+          children: [
+            // Affichage
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: Text(
+                display,
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+                textAlign: TextAlign.right,
               ),
             ),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.of(context).pop();
-                validatePickup(commande);
-              },
-              icon: const Icon(Icons.check, size: 18),
-              label: const Text('Valider'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green[100],
-                foregroundColor: Colors.green[800],
+            
+            // Boutons
+            Expanded(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        buildButton('C', color: Colors.red[100], onPressed: clear),
+                        buildButton('÷', color: Colors.orange[100], onPressed: () => inputOperator('÷')),
+                        buildButton('×', color: Colors.orange[100], onPressed: () => inputOperator('×')),
+                        buildButton('-', color: Colors.orange[100], onPressed: () => inputOperator('-')),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        buildButton('7', onPressed: () => inputNumber('7')),
+                        buildButton('8', onPressed: () => inputNumber('8')),
+                        buildButton('9', onPressed: () => inputNumber('9')),
+                        buildButton('+', color: Colors.orange[100], onPressed: () => inputOperator('+')),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        buildButton('4', onPressed: () => inputNumber('4')),
+                        buildButton('5', onPressed: () => inputNumber('5')),
+                        buildButton('6', onPressed: () => inputNumber('6')),
+                        buildButton('=', 
+                          color: Colors.green[100], 
+                          onPressed: calculate),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        buildButton('1', onPressed: () => inputNumber('1')),
+                        buildButton('2', onPressed: () => inputNumber('2')),
+                        buildButton('3', onPressed: () => inputNumber('3')),
+                        const Expanded(child: SizedBox()), // Espace pour l'égal qui s'étend
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: ElevatedButton(
+                              onPressed: () => inputNumber('0'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.grey[200],
+                                foregroundColor: Colors.black87,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: const Text(
+                                '0',
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ),
+                        ),
+                        buildButton('.', onPressed: () => inputNumber('.')),
+                        const Expanded(child: SizedBox()), // Espace pour l'égal
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
