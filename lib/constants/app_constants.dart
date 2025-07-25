@@ -23,6 +23,53 @@ class AppConstants {
     'Glaces'
   ];
 
+  // Couleurs système
+  static final Color primaryBlue = Colors.blue[700]!;
+  static final Color successGreen = Colors.green[600]!;
+  static final Color warningOrange = Colors.orange[600]!;
+  static final Color errorRed = Colors.red[600]!;
+  static final Color lightBlue = Colors.lightBlue[100]!;
+  static final Color lightBlueAccent = Colors.lightBlue[50]!;
+
+  // Couleurs d'état des commandes
+  static final Color lateColor = Colors.red[600]!;
+  static final Color lateBackgroundColor = Colors.red[50]!;
+  static final Color slightlyLateColor = Colors.orange[700]!;
+  static final Color slightlyLateBackgroundColor = Colors.orange[50]!;
+  static final Color comingSoonColor = Colors.orange[600]!;
+  static final Color comingSoonBackgroundColor = Colors.orange[50]!;
+  static final Color onTimeColor = Colors.green[600]!;
+  static final Color onTimeBackgroundColor = Colors.green[50]!;
+
+  // Couleurs des boutons d'action
+  static final Color validateButtonBg = Colors.green[100]!;
+  static final Color validateButtonFg = Colors.green[800]!;
+  static final Color editButtonBg = Colors.orange[100]!;
+  static final Color editButtonFg = Colors.orange[800]!;
+  static final Color cancelButtonBg = Colors.red[100]!;
+  static final Color cancelButtonFg = Colors.red[800]!;
+
+  // Couleurs spécifiques pour les widgets
+  static final Color cartItemTileColor = Colors.amber[100]!;
+  static final Color disabledButtonColor = Colors.grey[300]!;
+  static final Color holdButtonColor = Colors.orange[100]!;
+  static final Color checkoutButtonColor = Colors.green[100]!;
+
+  // Couleurs par type de produit pour les backgrounds
+  static final Map<String, Color> productTypeBackgroundColors = {
+    'Tomate': Colors.red[100]!,
+    'Crème': Colors.blue[100]!,
+    'Softs': Colors.amber[100]!,
+    'Vins': Colors.orange[100]!,
+    'Spécialités': Colors.green[100]!,
+    'Glaces': Colors.purple[100]!,
+    'Desserts': Colors.pink[100]!,
+  };
+
+  // Couleurs supplémentaires
+  static final Color greyText = Colors.grey[600]!;
+  static final Color successGreenDark = Colors.green[700]!;
+
   // Durées et seuils
   static const Duration animationDuration = Duration(milliseconds: 300);
   static const Duration statusUpdateInterval = Duration(minutes: 1);
@@ -46,6 +93,10 @@ class AppConstants {
   static const double bodyFontSize = 14.0;
   static const double captionFontSize = 12.0;
   static const double smallFontSize = 11.0;
+  static const double largeFontSize = 18.0;
+  static const double headerFontSize = 26.0;
+  static const double priceDisplayFontSize = 18.0;
+  static const double mediumFontSize = 15.0;
 
   // Messages
   static const String emptyCartMessage = "Panier vide";
@@ -56,6 +107,9 @@ class AppConstants {
   static const String orderCancelledMessage = "Commande annulée";
   static const String orderBackToCompositionMessage = "Commande remise en composition";
   static const String paymentSuccessMessage = "Encaissement réalisé avec succès";
+  static const String productManagementTitle = "Gestion des produits";
+  static const String encaissementHistoryTitle = "Historique des encaissements";
+  static const String noProductsMessage = "Aucun produit disponible.\nUtilisez le bouton + pour en ajouter.";
 
   // Modes de paiement par défaut
   static const String defaultPaymentMethod = "Espèces";

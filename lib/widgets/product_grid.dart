@@ -140,7 +140,7 @@ class ProductCard extends StatelessWidget {
             children: [
               Text(
                 product.name,
-                style: const TextStyle(fontSize: 18),
+                style: const TextStyle(fontSize: AppConstants.largeFontSize),
                 textAlign: TextAlign.center,
               ),
               Text(

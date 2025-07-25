@@ -140,7 +140,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
             ),
             duration: AppConstants.snackBarDuration,
             behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.green[600],
+            backgroundColor: AppConstants.successGreen,
           ),
         );
       }
@@ -189,7 +189,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
             ),
             duration: AppConstants.snackBarDuration,
             behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.orange[600],
+            backgroundColor: AppConstants.warningOrange,
           ),
         );
       }
@@ -231,7 +231,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
             ),
             duration: AppConstants.snackBarDuration,
             behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.green[600],
+            backgroundColor: AppConstants.successGreen,
           ),
         );
       }
@@ -317,7 +317,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
             const DrawerHeader(
               decoration: BoxDecoration(color: Colors.blue),
               child: Text('Menu',
-                  style: TextStyle(fontSize: 26, color: Colors.white)),
+                  style: TextStyle(fontSize: AppConstants.headerFontSize, color: Colors.white)),
             ),
             ListTile(
               leading: const Icon(Icons.manage_accounts),
@@ -366,13 +366,13 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                 Expanded(
                   flex: 1,
                   child: Container(
-                    color: Colors.lightBlue[50],
+                    color: AppConstants.lightBlueAccent,
                     child: Column(
                       children: [
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(12.0),
-                          color: Colors.lightBlue[100],
+                          color: AppConstants.lightBlue,
                           child: Column(
                             children: [
                               Row(
@@ -427,7 +427,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                                         },
                                         tooltip: 'Calculatrice',
                                         iconSize: 24,
-                                        color: Colors.blue[700],
+                                        color: AppConstants.primaryBlue,
                                       );
                                     },
                                   ),

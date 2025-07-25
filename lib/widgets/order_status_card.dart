@@ -103,7 +103,7 @@ class OrderStatusCard extends StatelessWidget {
         Text(
           formatPrice(order.montant),
           style: const TextStyle(
-            fontSize: 18,
+            fontSize: AppConstants.largeFontSize,
             fontWeight: FontWeight.bold,
             color: Colors.black,
           ),
@@ -133,8 +133,8 @@ class OrderStatusCard extends StatelessWidget {
               onPressed: onValidate!,
               icon: Icons.check,
               label: 'Valider',
-              backgroundColor: Colors.green[100]!,
-              foregroundColor: Colors.green[800]!,
+              backgroundColor: AppConstants.validateButtonBg,
+              foregroundColor: AppConstants.validateButtonFg,
             ),
           ),
         if (onValidate != null && (onEdit != null || onCancel != null))
@@ -145,8 +145,8 @@ class OrderStatusCard extends StatelessWidget {
               onPressed: onEdit!,
               icon: Icons.edit,
               label: 'Modifier',
-              backgroundColor: Colors.orange[100]!,
-              foregroundColor: Colors.orange[800]!,
+              backgroundColor: AppConstants.editButtonBg,
+              foregroundColor: AppConstants.editButtonFg,
             ),
           ),
         if (onEdit != null && onCancel != null)
@@ -157,8 +157,8 @@ class OrderStatusCard extends StatelessWidget {
               onPressed: onCancel!,
               icon: Icons.delete,
               label: 'Annuler',
-              backgroundColor: Colors.red[100]!,
-              foregroundColor: Colors.red[800]!,
+              backgroundColor: AppConstants.cancelButtonBg,
+              foregroundColor: AppConstants.cancelButtonFg,
             ),
           ),
       ],

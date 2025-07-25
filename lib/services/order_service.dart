@@ -76,32 +76,32 @@ class OrderService extends ChangeNotifier {
       return OrderStatusInfo(
         status: OrderStatus.late,
         statusText: 'En retard',
-        color: Colors.red[600]!,
-        backgroundColor: Colors.red[50]!,
+        color: AppConstants.lateColor,
+        backgroundColor: AppConstants.lateBackgroundColor,
         icon: Icons.warning,
       );
     } else if (difference < AppConstants.slightlyLateThreshold) {
       return OrderStatusInfo(
         status: OrderStatus.slightlyLate,
         statusText: 'Légèrement en retard',
-        color: Colors.orange[700]!,
-        backgroundColor: Colors.orange[50]!,
+        color: AppConstants.slightlyLateColor,
+        backgroundColor: AppConstants.slightlyLateBackgroundColor,
         icon: Icons.access_time,
       );
     } else if (difference <= AppConstants.comingSoonThreshold) {
       return OrderStatusInfo(
         status: OrderStatus.comingSoon,
         statusText: 'Bientôt là',
-        color: Colors.orange[600]!,
-        backgroundColor: Colors.orange[50]!,
+        color: AppConstants.comingSoonColor,
+        backgroundColor: AppConstants.comingSoonBackgroundColor,
         icon: Icons.schedule,
       );
     } else {
       return OrderStatusInfo(
         status: OrderStatus.onTime,
         statusText: 'À l\'heure',
-        color: Colors.green[600]!,
-        backgroundColor: Colors.green[50]!,
+        color: AppConstants.onTimeColor,
+        backgroundColor: AppConstants.onTimeBackgroundColor,
         icon: Icons.check_circle,
       );
     }

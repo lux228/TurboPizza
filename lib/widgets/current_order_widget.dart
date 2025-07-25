@@ -77,7 +77,7 @@ class CurrentOrderWidget extends StatelessWidget {
                             child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
                                 foregroundColor: cartService.isEmpty ? Colors.grey : Colors.black,
-                                backgroundColor: cartService.isEmpty ? Colors.grey[300] : Colors.orange[100],
+                                backgroundColor: cartService.isEmpty ? AppConstants.disabledButtonColor : AppConstants.holdButtonColor,
                                 textStyle: const TextStyle(fontSize: AppConstants.subtitleFontSize),
                               ),
                               onPressed: cartService.isEmpty ? null : onPutOnHold,
@@ -92,7 +92,7 @@ class CurrentOrderWidget extends StatelessWidget {
                             child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
                                 foregroundColor: cartService.isEmpty ? Colors.grey : Colors.black,
-                                backgroundColor: cartService.isEmpty ? Colors.grey[300] : Colors.green[100],
+                                backgroundColor: cartService.isEmpty ? AppConstants.disabledButtonColor : AppConstants.checkoutButtonColor,
                                 textStyle: const TextStyle(fontSize: AppConstants.subtitleFontSize),
                               ),
                               onPressed: cartService.isEmpty ? null : onCheckoutDirect,
@@ -126,7 +126,7 @@ class CartItemTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      tileColor: Colors.amber[100],
+      tileColor: AppConstants.cartItemTileColor,
       title: Text("${pizza.name} x${pizza.quantity}"),
       subtitle: Text(formatPrice(pizza.price)),
       trailing: Row(

@@ -4,6 +4,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import '../models/encaissement.dart';
 import '../utils/format_utils.dart';
 import '../utils/storage_service.dart';
+import '../constants/app_constants.dart';
 
 enum ViewMode { daily, weekly, monthly }
 
@@ -35,7 +36,7 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
   void initState() {
     super.initState();
     // Initialiser les données de localisation pour le français
-    initializeDateFormatting('fr_FR', null).then((_) {
+    initializeDateFormatting(AppConstants.frenchLocale, null).then((_) {
       StorageService.loadEncaissements().then((loadedEncaissements) {
         setState(() {
           encaissements = loadedEncaissements;
@@ -81,9 +82,9 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
 
     // Calculer les totaux
     for (var encaissement in filteredEncaissements) {
-      if (encaissement.modeReglement == "Chèque") {
+      if (encaissement.modeReglement == AppConstants.paymentMethods[1]) { // "Chèque"
         totalCheques += encaissement.montant;
-      } else if (encaissement.modeReglement == "Espèces") {
+      } else if (encaissement.modeReglement == AppConstants.paymentMethods[0]) { // "Espèces"
         totalEspeces += encaissement.montant;
       }
     }
@@ -149,43 +150,43 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Confirmer la suppression', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          title: Text('Confirmer la suppression', style: TextStyle(fontSize: AppConstants.largeFontSize, fontWeight: FontWeight.bold)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Êtes-vous sûr de vouloir supprimer cette commande ?', style: TextStyle(fontSize: 16)),
+              Text('Êtes-vous sûr de vouloir supprimer cette commande ?', style: TextStyle(fontSize: AppConstants.subtitleFontSize)),
               SizedBox(height: 12),
               Container(
                 padding: EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppConstants.borderRadius),
                   border: Border.all(color: Colors.grey[300]!),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Date : ${DateFormat('dd/MM/yyyy à HH:mm').format(encaissement.date)}', 
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                      style: TextStyle(fontSize: AppConstants.bodyFontSize, fontWeight: FontWeight.w500)),
                     SizedBox(height: 4),
                     Text('Montant : ${formatPrice(encaissement.montant)}', 
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                      style: TextStyle(fontSize: AppConstants.bodyFontSize, fontWeight: FontWeight.w500)),
                     SizedBox(height: 4),
                     Text('Mode : ${encaissement.modeReglement}', 
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                      style: TextStyle(fontSize: AppConstants.bodyFontSize, fontWeight: FontWeight.w500)),
                   ],
                 ),
               ),
               SizedBox(height: 12),
               Text('Cette action est irréversible.', 
-                style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: Colors.red[600])),
+                style: TextStyle(fontSize: AppConstants.bodyFontSize, fontStyle: FontStyle.italic, color: Colors.red[600])),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: Text('Annuler', style: TextStyle(fontSize: 16)),
+              child: Text('Annuler', style: TextStyle(fontSize: AppConstants.subtitleFontSize)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -193,7 +194,7 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
                 foregroundColor: Colors.white,
               ),
               onPressed: () => Navigator.of(context).pop(true),
-              child: Text('Supprimer', style: TextStyle(fontSize: 16)),
+              child: Text('Supprimer', style: TextStyle(fontSize: AppConstants.subtitleFontSize)),
             ),
           ],
         );
@@ -290,7 +291,7 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
       },
       child: Text(
         label,
-        style: TextStyle(fontSize: 16),
+        style: TextStyle(fontSize: AppConstants.subtitleFontSize),
       ),
     );
   }
@@ -360,7 +361,7 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Détail de la commande', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          title: Text('Détail de la commande', style: TextStyle(fontSize: AppConstants.titleFontSize, fontWeight: FontWeight.bold)),
           content: SizedBox(
             width: 500, // Largeur fixe plus petite
             height: MediaQuery.of(context).size.height * 0.7,
@@ -368,9 +369,9 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Date : $formattedDate', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                Text('Date : $formattedDate', style: TextStyle(fontSize: AppConstants.subtitleFontSize, fontWeight: FontWeight.w600)),
                 SizedBox(height: 16),
-                Text('Articles commandés :', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                Text('Articles commandés :', style: TextStyle(fontSize: AppConstants.subtitleFontSize, fontWeight: FontWeight.bold)),
                 SizedBox(height: 8),
                 if (encaissement.articles.isEmpty)
                   Container(
@@ -537,7 +538,7 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          title: const Text("Historique des Encaissements"),
+          title: const Text(AppConstants.encaissementHistoryTitle),
         ),
         body: Column(children: [
           Container(

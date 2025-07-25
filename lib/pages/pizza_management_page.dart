@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/pizza.dart';
 import '../utils/format_utils.dart';
 import '../utils/storage_service.dart';
+import '../constants/app_constants.dart';
 
 class PizzaManagementPage extends StatefulWidget {
   final List<Pizza> availablePizzas;
@@ -17,8 +18,8 @@ class PizzaManagementPage extends StatefulWidget {
 class _PizzaManagementPageState extends State<PizzaManagementPage> {
   final _nameController = TextEditingController();
   final _priceController = TextEditingController();
-  List<String> pizzaTypes = ['Tomate', 'Crème', 'Softs', 'Vins', 'Spécialités', 'Glaces', 'Desserts'];
-  String selectedType = 'Tomate'; // La valeur par défaut
+  List<String> pizzaTypes = AppConstants.categoryOrder;
+  String selectedType = AppConstants.categoryOrder.first;
 
   void _addOrUpdatePizza({String? originalName}) {
     final newOrUpdatedPizza = Pizza(
@@ -117,7 +118,7 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
           title: const Text('Confirmer la suppression'),
           content: Text(
             'Êtes-vous sûr de vouloir supprimer "${pizza.name}" ?\n\nCette action est irréversible.',
-            style: const TextStyle(fontSize: 16),
+            style: const TextStyle(fontSize: AppConstants.subtitleFontSize),
           ),
           actions: [
             TextButton(
@@ -155,24 +156,7 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
   }
 
   Color _getCategoryColor(String type) {
-    switch (type) {
-      case 'Tomate':
-        return Colors.red[100]!;
-      case 'Crème':
-        return Colors.blue[100]!;
-      case 'Softs':
-        return Colors.amber[100]!;
-      case 'Vins':
-        return Colors.orange[100]!;
-      case 'Spécialités':
-        return Colors.green[100]!;
-      case 'Glaces':
-        return Colors.purple[100]!;
-      case 'Desserts':
-        return Colors.pink[100]!;
-      default:
-        return Colors.grey[100]!;
-    }
+    return AppConstants.productTypeBackgroundColors[type] ?? Colors.grey[100]!;
   }
 
   @override
@@ -263,7 +247,7 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
                             Text(
                               pizza.name,
                               style: const TextStyle(
-                                fontSize: 15,
+                                fontSize: AppConstants.mediumFontSize,
                                 fontWeight: FontWeight.bold,
                               ),
                               maxLines: 1,
@@ -273,7 +257,7 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
                             Text(
                               formatPrice(pizza.price),
                               style: const TextStyle(
-                                fontSize: 14,
+                                fontSize: AppConstants.bodyFontSize,
                                 color: Colors.green,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -318,13 +302,13 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Gestion des produits')),
+      appBar: AppBar(title: const Text(AppConstants.productManagementTitle)),
       body: widget.availablePizzas.isEmpty
           ? const Center(
               child: Text(
-                'Aucun produit disponible.\nUtilisez le bouton + pour en ajouter.',
+                AppConstants.noProductsMessage,
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+                style: TextStyle(fontSize: AppConstants.subtitleFontSize, color: Colors.grey),
               ),
             )
           : ListView(children: categoryWidgets),
