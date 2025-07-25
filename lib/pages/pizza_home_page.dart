@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import '../models/pizza.dart';
 import '../models/encaissement.dart';
 import '../models/commande_attente.dart';
@@ -24,6 +25,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
   bool showCurrentOrder = false; // Pour contrôler l'affichage de la commande en cours
   late AnimationController _animationController;
   late Animation<double> _slideAnimation;
+  Timer? _statusUpdateTimer;
 
   @override
   void initState() {
@@ -40,11 +42,21 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
       curve: Curves.easeInOut,
     ));
     _loadData();
+    
+    // Timer pour mettre à jour les statuts toutes les minutes
+    _statusUpdateTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      if (mounted && commandesAttente.isNotEmpty) {
+        setState(() {
+          // Force la reconstruction pour mettre à jour les couleurs des statuts
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
     _animationController.dispose();
+    _statusUpdateTimer?.cancel();
     super.dispose();
   }
 
@@ -100,6 +112,47 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
 
   double get totalCartPrice =>
       cart.values.fold(0, (total, current) => total + current.totalPrice);
+
+  // Méthode pour déterminer le statut d'une commande selon l'heure
+  Map<String, dynamic> getOrderStatus(CommandeAttente commande) {
+    final now = DateTime.now();
+    final pickupTime = commande.heureRecuperationDateTime;
+    final difference = pickupTime.difference(now).inMinutes;
+
+    if (difference < -10) {
+      // Plus de 10 minutes de retard
+      return {
+        'status': 'En retard',
+        'color': Colors.red[600]!,
+        'backgroundColor': Colors.red[50]!,
+        'icon': Icons.warning,
+      };
+    } else if (difference < 0) {
+      // Légèrement en retard (moins de 10 minutes)
+      return {
+        'status': 'Légèrement en retard',
+        'color': Colors.orange[700]!,
+        'backgroundColor': Colors.orange[50]!,
+        'icon': Icons.access_time,
+      };
+    } else if (difference <= 15) {
+      // Bientôt là (dans les 15 prochaines minutes)
+      return {
+        'status': 'Bientôt là',
+        'color': Colors.orange[600]!,
+        'backgroundColor': Colors.orange[50]!,
+        'icon': Icons.schedule,
+      };
+    } else {
+      // À l'heure (plus de 15 minutes d'avance)
+      return {
+        'status': 'À l\'heure',
+        'color': Colors.green[600]!,
+        'backgroundColor': Colors.green[50]!,
+        'icon': Icons.check_circle,
+      };
+    }
+  }
 
   // Méthode pour encaisser directement une commande
   void checkoutDirect() async {
@@ -251,6 +304,8 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
 
   // Méthode pour afficher l'aperçu d'une commande en attente
   void showOrderPreview(CommandeAttente commande) {
+    final orderStatus = getOrderStatus(commande);
+    
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -266,17 +321,37 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Informations de la commande
+                // Informations de la commande avec statut
                 Container(
                   padding: EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.blue[50],
+                    color: orderStatus['backgroundColor'],
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.blue[200]!),
+                    border: Border.all(color: orderStatus['color'], width: 2),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Statut de la commande
+                      Row(
+                        children: [
+                          Icon(
+                            orderStatus['icon'],
+                            color: orderStatus['color'],
+                            size: 20,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            orderStatus['status'],
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: orderStatus['color'],
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -303,7 +378,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: Colors.blue[800],
+                              color: orderStatus['color'],
                             ),
                           ),
                         ],
@@ -709,14 +784,38 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                           width: double.infinity,
                           padding: const EdgeInsets.all(12.0),
                           color: Colors.lightBlue[100],
-                          child: const Text(
-                            'FILE D\'ATTENTE',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
-                            textAlign: TextAlign.center,
+                          child: Column(
+                            children: [
+                              const Text(
+                                'COMMANDES EN ATTENTE',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.touch_app,
+                                    size: 14,
+                                    color: Colors.grey[600],
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Toucher pour voir le détail',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey[600],
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
                         Expanded(
@@ -736,111 +835,135 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                                   itemCount: commandesAttente.length,
                                   itemBuilder: (context, index) {
                                     final commande = commandesAttente[index];
+                                    final orderStatus = getOrderStatus(commande);
+                                    
                                     return GestureDetector(
                                       onTap: () => showOrderPreview(commande),
                                       child: Card(
                                         margin: const EdgeInsets.only(bottom: 8.0),
                                         elevation: 2,
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(8.0),
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                children: [
-                                                  Text(
-                                                    'Récup: ${commande.heureRecuperationPrevue}',
-                                                    style: const TextStyle(
-                                                      fontSize: 14,
-                                                      fontWeight: FontWeight.bold,
-                                                      color: Colors.blue,
+                                        color: orderStatus['backgroundColor'],
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(
+                                              color: orderStatus['color'],
+                                              width: 2,
+                                            ),
+                                          ),
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(8.0),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                  children: [
+                                                    Row(
+                                                      children: [
+                                                        Icon(
+                                                          orderStatus['icon'],
+                                                          size: 16,
+                                                          color: orderStatus['color'],
+                                                        ),
+                                                        SizedBox(width: 4),
+                                                        Text(
+                                                          'Récup: ${commande.heureRecuperationPrevue}',
+                                                          style: TextStyle(
+                                                            fontSize: 16,
+                                                            fontWeight: FontWeight.bold,
+                                                            color: Colors.black,
+                                                          ),
+                                                        ),
+                                                        SizedBox(width: 4),
+                                                        Text(
+                                                          '(${commande.heureComposition.hour.toString().padLeft(2, '0')}:${commande.heureComposition.minute.toString().padLeft(2, '0')})',
+                                                          style: TextStyle(
+                                                            fontSize: 11,
+                                                            color: Colors.grey[600],
+                                                            fontStyle: FontStyle.italic,
+                                                          ),
+                                                        ),
+                                                      ],
                                                     ),
-                                                  ),
-                                                  Text(
-                                                    formatPrice(commande.montant),
-                                                    style: const TextStyle(
-                                                      fontSize: 14,
-                                                      fontWeight: FontWeight.bold,
-                                                      color: Colors.green,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                commande.articles
-                                                    .map((a) => '${a.name} x${a.quantity}')
-                                                    .join(', '),
-                                                style: const TextStyle(fontSize: 12),
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                              const SizedBox(height: 4),
-                                              Row(
-                                                mainAxisAlignment: MainAxisAlignment.center,
-                                                children: [
-                                                  Icon(
-                                                    Icons.touch_app,
-                                                    size: 16,
-                                                    color: Colors.grey[600],
-                                                  ),
-                                                  SizedBox(width: 4),
-                                                  Text(
-                                                    'Toucher pour voir le détail',
-                                                    style: TextStyle(
-                                                      fontSize: 11,
-                                                      color: Colors.grey[600],
-                                                      fontStyle: FontStyle.italic,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 8),
-                                              Row(
-                                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                                children: [
-                                                  Expanded(
-                                                    child: ElevatedButton.icon(
-                                                      onPressed: () => validatePickup(commande),
-                                                      icon: const Icon(Icons.check, size: 16),
-                                                      label: const Text('Valider', style: TextStyle(fontSize: 12)),
-                                                      style: ElevatedButton.styleFrom(
-                                                        backgroundColor: Colors.green[100],
-                                                        foregroundColor: Colors.green[800],
-                                                        minimumSize: const Size(0, 32),
+                                                    Expanded(
+                                                      child: Center(
+                                                        child: Text(
+                                                          orderStatus['status'],
+                                                          style: TextStyle(
+                                                            fontSize: 11,
+                                                            fontWeight: FontWeight.w600,
+                                                            color: orderStatus['color'],
+                                                            fontStyle: FontStyle.italic,
+                                                          ),
+                                                        ),
                                                       ),
                                                     ),
-                                                  ),
-                                                  const SizedBox(width: 4),
-                                                  Expanded(
-                                                    child: ElevatedButton.icon(
-                                                      onPressed: () => editOrderOnHold(commande),
-                                                      icon: const Icon(Icons.edit, size: 16),
-                                                      label: const Text('Modifier', style: TextStyle(fontSize: 12)),
-                                                      style: ElevatedButton.styleFrom(
-                                                        backgroundColor: Colors.orange[100],
-                                                        foregroundColor: Colors.orange[800],
-                                                        minimumSize: const Size(0, 32),
+                                                    Text(
+                                                      formatPrice(commande.montant),
+                                                      style: const TextStyle(
+                                                        fontSize: 18,
+                                                        fontWeight: FontWeight.bold,
+                                                        color: Colors.black,
                                                       ),
                                                     ),
-                                                  ),
-                                                  const SizedBox(width: 4),
-                                                  Expanded(
-                                                    child: ElevatedButton.icon(
-                                                      onPressed: () => cancelOrderOnHold(commande),
-                                                      icon: const Icon(Icons.delete, size: 16),
-                                                      label: const Text('Annuler', style: TextStyle(fontSize: 12)),
-                                                      style: ElevatedButton.styleFrom(
-                                                        backgroundColor: Colors.red[100],
-                                                        foregroundColor: Colors.red[800],
-                                                        minimumSize: const Size(0, 32),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  commande.articles
+                                                      .map((a) => '${a.name} x${a.quantity}')
+                                                      .join(', '),
+                                                  style: const TextStyle(fontSize: 12),
+                                                  maxLines: 2,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                                const SizedBox(height: 8),
+                                                Row(
+                                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                                  children: [
+                                                    Expanded(
+                                                      child: ElevatedButton.icon(
+                                                        onPressed: () => validatePickup(commande),
+                                                        icon: const Icon(Icons.check, size: 16),
+                                                        label: const Text('Valider', style: TextStyle(fontSize: 12)),
+                                                        style: ElevatedButton.styleFrom(
+                                                          backgroundColor: Colors.green[100],
+                                                          foregroundColor: Colors.green[800],
+                                                          minimumSize: const Size(0, 32),
+                                                        ),
                                                       ),
                                                     ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
+                                                    const SizedBox(width: 4),
+                                                    Expanded(
+                                                      child: ElevatedButton.icon(
+                                                        onPressed: () => editOrderOnHold(commande),
+                                                        icon: const Icon(Icons.edit, size: 16),
+                                                        label: const Text('Modifier', style: TextStyle(fontSize: 12)),
+                                                        style: ElevatedButton.styleFrom(
+                                                          backgroundColor: Colors.orange[100],
+                                                          foregroundColor: Colors.orange[800],
+                                                          minimumSize: const Size(0, 32),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    Expanded(
+                                                      child: ElevatedButton.icon(
+                                                        onPressed: () => cancelOrderOnHold(commande),
+                                                        icon: const Icon(Icons.delete, size: 16),
+                                                        label: const Text('Annuler', style: TextStyle(fontSize: 12)),
+                                                        style: ElevatedButton.styleFrom(
+                                                          backgroundColor: Colors.red[100],
+                                                          foregroundColor: Colors.red[800],
+                                                          minimumSize: const Size(0, 32),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -871,7 +994,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                                 padding: const EdgeInsets.all(12.0),
                                 color: Colors.grey[300],
                                 child: const Text(
-                                  'COMPOSITION ACTUELLE',
+                                  'COMMANDE EN COURS',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
