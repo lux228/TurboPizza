@@ -33,4 +33,50 @@ class Payment {
                 .toList()
             : [],
       );
+
+  Payment copyWith({
+    DateTime? date,
+    double? amount,
+    String? paymentMethod,
+    List<Pizza>? items,
+    bool? isSelected,
+  }) {
+    return Payment(
+      date: date ?? this.date,
+      amount: amount ?? this.amount,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      items: items ?? this.items,
+      isSelected: isSelected ?? this.isSelected,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Payment &&
+          runtimeType == other.runtimeType &&
+          date == other.date &&
+          amount == other.amount &&
+          paymentMethod == other.paymentMethod &&
+          _listEquals(items, other.items) &&
+          isSelected == other.isSelected;
+
+  @override
+  int get hashCode => Object.hash(
+        date,
+        amount,
+        paymentMethod,
+        Object.hashAll(items),
+        isSelected,
+      );
+
+  // Simple list equality to avoid importing collection just for this
+  static bool _listEquals<T>(List<T> a, List<T> b) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
 }

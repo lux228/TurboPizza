@@ -117,6 +117,11 @@ class AppConstants {
 
   // Configuration de l'historique
   static const String frenchLocale = 'fr_FR';
+
+  // Clés de stockage (SharedPreferences)
+  static const String spKeyPizzas = 'pizzas';
+  static const String spKeyPayments = 'encaissements';
+  static const String spKeyPendingOrders = 'commandes_attente';
 }
 
 class AppStyles {

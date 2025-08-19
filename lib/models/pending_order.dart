@@ -34,14 +34,67 @@ class PendingOrder {
 
   // Helper to get pickup DateTime for sorting
   DateTime get pickupDateTime {
-    final parts = plannedPickupTime.split(':');
     final now = DateTime.now();
-    return DateTime(
-      now.year,
-      now.month,
-      now.day,
-      int.parse(parts[0]),
-      int.parse(parts[1]),
+    try {
+      final parts = plannedPickupTime.split(':');
+      if (parts.length != 2) {
+        // format inattendu, fallback: 23:59 aujourd'hui
+        return DateTime(now.year, now.month, now.day, 23, 59);
+      }
+      final hour = int.tryParse(parts[0]);
+      final minute = int.tryParse(parts[1]);
+      if (hour == null || minute == null) {
+        return DateTime(now.year, now.month, now.day, 23, 59);
+      }
+      return DateTime(now.year, now.month, now.day, hour, minute);
+    } catch (_) {
+      // fallback en cas d'erreur
+      return DateTime(now.year, now.month, now.day, 23, 59);
+    }
+  }
+
+  PendingOrder copyWith({
+    String? id,
+    DateTime? createdAt,
+    String? plannedPickupTime,
+    List<Pizza>? items,
+    double? amount,
+  }) {
+    return PendingOrder(
+      id: id ?? this.id,
+      createdAt: createdAt ?? this.createdAt,
+      plannedPickupTime: plannedPickupTime ?? this.plannedPickupTime,
+      items: items ?? this.items,
+      amount: amount ?? this.amount,
     );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PendingOrder &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          createdAt == other.createdAt &&
+          plannedPickupTime == other.plannedPickupTime &&
+          _listEquals(items, other.items) &&
+          amount == other.amount;
+
+  @override
+  int get hashCode => Object.hash(
+        id,
+        createdAt,
+        plannedPickupTime,
+        Object.hashAll(items),
+        amount,
+      );
+
+  static bool _listEquals<T>(List<T> a, List<T> b) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 }
