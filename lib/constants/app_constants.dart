@@ -108,7 +108,7 @@ class AppConstants {
   static const String orderBackToCompositionMessage = "Commande remise en composition";
   static const String paymentSuccessMessage = "Encaissement réalisé avec succès";
   static const String productManagementTitle = "Gestion des produits";
-  static const String encaissementHistoryTitle = "Historique des encaissements";
+  static const String paymentHistoryTitle = "Historique des encaissements";
   static const String noProductsMessage = "Aucun produit disponible.\nUtilisez le bouton + pour en ajouter.";
 
   // Modes de paiement par défaut

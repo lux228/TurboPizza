@@ -27,9 +27,9 @@ class CurrentOrderWidget extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12.0),
                 color: Colors.grey[300],
-                child: const Text(
+                child: Text(
                   'COMMANDE EN COURS',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: AppConstants.subtitleFontSize,
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,

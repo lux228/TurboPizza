@@ -1,8 +1,8 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../models/pizza.dart';
-import '../models/encaissement.dart';
-import '../models/commande_attente.dart';
+import '../models/payment.dart';
+import '../models/pending_order.dart';
 
 class StorageService {
   static Future<List<Pizza>> loadPizzaList() async {
@@ -21,58 +21,60 @@ class StorageService {
     await prefs.setStringList('pizzas', pizzaJson);
   }
 
-  static Future<void> saveEncaissement(Encaissement encaissement) async {
+  // Payments
+  static Future<void> savePayment(Payment payment) async {
     final prefs = await SharedPreferences.getInstance();
-    List<String> encaissements = prefs.getStringList('encaissements') ?? [];
-    encaissements.add(json.encode(encaissement.toJson()));
-    await prefs.setStringList('encaissements', encaissements);
+  List<String> paymentsList = prefs.getStringList('encaissements') ?? [];
+  paymentsList.add(json.encode(payment.toJson()));
+  await prefs.setStringList('encaissements', paymentsList);
   }
 
-  static Future<List<Encaissement>> loadEncaissements() async {
+  static Future<List<Payment>> loadPayments() async {
     final prefs = await SharedPreferences.getInstance();
-    List<String>? encaissementsJson = prefs.getStringList('encaissements');
-    return encaissementsJson
-            ?.map((string) => Encaissement.fromJson(json.decode(string)))
+  List<String>? paymentsJson = prefs.getStringList('encaissements');
+  return paymentsJson
+            ?.map((string) => Payment.fromJson(json.decode(string)))
             .toList() ??
         [];
   }
 
-  static Future<void> saveEncaissements(List<Encaissement> encaissements) async {
+  static Future<void> savePayments(List<Payment> payments) async {
     final prefs = await SharedPreferences.getInstance();
-    final encaissementsJson = encaissements.map((encaissement) {
-      return json.encode(encaissement.toJson());
+  final paymentsJson = payments.map((payment) {
+      return json.encode(payment.toJson());
     }).toList();
-    await prefs.setStringList('encaissements', encaissementsJson);
+  await prefs.setStringList('encaissements', paymentsJson);
   }
 
-  // Méthodes pour les commandes en attente
-  static Future<void> saveCommandeAttente(CommandeAttente commande) async {
+  // Pending orders
+  static Future<void> savePendingOrder(PendingOrder order) async {
     final prefs = await SharedPreferences.getInstance();
-    List<String> commandes = prefs.getStringList('commandes_attente') ?? [];
-    commandes.add(json.encode(commande.toJson()));
-    await prefs.setStringList('commandes_attente', commandes);
+  List<String> pendingOrdersList =
+    prefs.getStringList('commandes_attente') ?? [];
+  pendingOrdersList.add(json.encode(order.toJson()));
+  await prefs.setStringList('commandes_attente', pendingOrdersList);
   }
 
-  static Future<List<CommandeAttente>> loadCommandesAttente() async {
+  static Future<List<PendingOrder>> loadPendingOrders() async {
     final prefs = await SharedPreferences.getInstance();
-    List<String>? commandesJson = prefs.getStringList('commandes_attente');
-    return commandesJson
-            ?.map((string) => CommandeAttente.fromJson(json.decode(string)))
+  List<String>? pendingOrdersJson = prefs.getStringList('commandes_attente');
+  return pendingOrdersJson
+            ?.map((string) => PendingOrder.fromJson(json.decode(string)))
             .toList() ??
         [];
   }
 
-  static Future<void> saveCommandesAttente(List<CommandeAttente> commandes) async {
+  static Future<void> savePendingOrders(List<PendingOrder> orders) async {
     final prefs = await SharedPreferences.getInstance();
-    final commandesJson = commandes.map((commande) {
-      return json.encode(commande.toJson());
+  final pendingOrdersJson = orders.map((order) {
+      return json.encode(order.toJson());
     }).toList();
-    await prefs.setStringList('commandes_attente', commandesJson);
+  await prefs.setStringList('commandes_attente', pendingOrdersJson);
   }
 
-  static Future<void> removeCommandeAttente(String commandeId) async {
-    final commandes = await loadCommandesAttente();
-    final updatedCommandes = commandes.where((c) => c.id != commandeId).toList();
-    await saveCommandesAttente(updatedCommandes);
+  static Future<void> removePendingOrder(String orderId) async {
+  final orders = await loadPendingOrders();
+  final updatedOrders = orders.where((c) => c.id != orderId).toList();
+  await savePendingOrders(updatedOrders);
   }
 }

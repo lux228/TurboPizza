@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import '../models/commande_attente.dart';
+import '../models/pending_order.dart';
 import '../services/order_service.dart';
 import '../utils/format_utils.dart';
 import '../constants/app_constants.dart';
 
 class OrderStatusCard extends StatelessWidget {
-  final CommandeAttente order;
+  final PendingOrder order;
   final OrderStatusInfo statusInfo;
   final VoidCallback? onTap;
   final VoidCallback? onValidate;
@@ -69,7 +69,7 @@ class OrderStatusCard extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Text(
-              'Récup: ${order.heureRecuperationPrevue}',
+              'Récup: ${order.plannedPickupTime}',
               style: const TextStyle(
                 fontSize: AppConstants.subtitleFontSize,
                 fontWeight: FontWeight.bold,
@@ -78,7 +78,7 @@ class OrderStatusCard extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Text(
-              '(${order.heureComposition.hour.toString().padLeft(2, '0')}:${order.heureComposition.minute.toString().padLeft(2, '0')})',
+              '(${order.createdAt.hour.toString().padLeft(2, '0')}:${order.createdAt.minute.toString().padLeft(2, '0')})',
               style: const TextStyle(
                 fontSize: AppConstants.smallFontSize,
                 color: Colors.grey,
@@ -100,7 +100,7 @@ class OrderStatusCard extends StatelessWidget {
           ),
         ),
         Text(
-          formatPrice(order.montant),
+          formatPrice(order.amount),
           style: const TextStyle(
             fontSize: AppConstants.largeFontSize,
             fontWeight: FontWeight.bold,
@@ -113,7 +113,7 @@ class OrderStatusCard extends StatelessWidget {
 
   Widget _buildOrderItems() {
     return Text(
-      order.articles
+      order.items
           .map((a) => '${a.name} x${a.quantity}')
           .join(', '),
       style: const TextStyle(fontSize: AppConstants.captionFontSize),

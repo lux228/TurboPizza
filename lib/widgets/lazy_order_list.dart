@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import '../models/commande_attente.dart';
+import '../models/pending_order.dart';
 import '../services/order_service.dart';
 import '../widgets/order_status_card.dart';
 
 /// Widget optimisé pour l'affichage lazy des commandes
 class LazyOrderList extends StatelessWidget {
-  final List<CommandeAttente> orders;
-  final Function(CommandeAttente) onTap;
-  final Function(CommandeAttente) onValidate;
-  final Function(CommandeAttente) onEdit;
-  final Function(CommandeAttente) onCancel;
+  final List<PendingOrder> orders;
+  final Function(PendingOrder) onTap;
+  final Function(PendingOrder) onValidate;
+  final Function(PendingOrder) onEdit;
+  final Function(PendingOrder) onCancel;
   final OrderService orderService;
 
   const LazyOrderList({
@@ -44,12 +44,12 @@ class LazyOrderList extends StatelessWidget {
 
 /// Widget de carte optimisé avec construction lazy
 class _LazyOrderCard extends StatelessWidget {
-  final CommandeAttente order;
+  final PendingOrder order;
   final OrderService orderService;
-  final Function(CommandeAttente) onTap;
-  final Function(CommandeAttente) onValidate;
-  final Function(CommandeAttente) onEdit;
-  final Function(CommandeAttente) onCancel;
+  final Function(PendingOrder) onTap;
+  final Function(PendingOrder) onValidate;
+  final Function(PendingOrder) onEdit;
+  final Function(PendingOrder) onCancel;
 
   const _LazyOrderCard({
     required this.order,

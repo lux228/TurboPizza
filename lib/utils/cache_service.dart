@@ -7,7 +7,7 @@ class CacheService {
   CacheService._internal();
 
   // Cache pour le tri des articles par catégorie
-  final Map<String, List<Pizza>> _sortedArticlesCache = {};
+  final Map<String, List<Pizza>> _sortedItemsCache = {};
   
   // Ordre de priorité des catégories pour le tri
   static const List<String> _categoryOrder = [
@@ -21,24 +21,24 @@ class CacheService {
   ];
 
   /// Génère une clé de cache basée sur la liste d'articles
-  String _generateCacheKey(List<Pizza> articles) {
-    return articles
+  String _generateCacheKey(List<Pizza> items) {
+    return items
         .map((a) => '${a.name}_${a.type}_${a.quantity}')
         .join('|');
   }
 
   /// Retourne les articles triés par catégorie (avec cache)
-  List<Pizza> getSortedArticles(List<Pizza> articles) {
-    final cacheKey = _generateCacheKey(articles);
+  List<Pizza> getSortedItems(List<Pizza> items) {
+    final cacheKey = _generateCacheKey(items);
     
     // Vérifier si le résultat est déjà en cache
-    if (_sortedArticlesCache.containsKey(cacheKey)) {
-      return _sortedArticlesCache[cacheKey]!;
+    if (_sortedItemsCache.containsKey(cacheKey)) {
+      return _sortedItemsCache[cacheKey]!;
     }
 
     // Trier les articles par catégorie
-    final sortedArticles = List<Pizza>.from(articles);
-    sortedArticles.sort((a, b) {
+  final sortedItems = List<Pizza>.from(items);
+  sortedItems.sort((a, b) {
       int aIndex = _categoryOrder.indexOf(a.type);
       int bIndex = _categoryOrder.indexOf(b.type);
       
@@ -55,30 +55,30 @@ class CacheService {
     });
 
     // Mettre en cache et retourner
-    _sortedArticlesCache[cacheKey] = sortedArticles;
+  _sortedItemsCache[cacheKey] = sortedItems;
     
     // Nettoyer le cache si nécessaire
     _cleanupCacheIfNeeded();
     
-    return sortedArticles;
+  return sortedItems;
   }
 
   /// Vide le cache (à appeler quand nécessaire pour libérer la mémoire)
   void clearCache() {
-    _sortedArticlesCache.clear();
+    _sortedItemsCache.clear();
   }
 
   /// Retourne le nombre d'entrées en cache
-  int get cacheSize => _sortedArticlesCache.length;
+  int get cacheSize => _sortedItemsCache.length;
 
   /// Vide le cache si il devient trop volumineux (>50 entrées)
   void _cleanupCacheIfNeeded() {
-    if (_sortedArticlesCache.length > 50) {
+  if (_sortedItemsCache.length > 50) {
       // Garder seulement les 25 entrées les plus récentes
-      final keys = _sortedArticlesCache.keys.toList();
+  final keys = _sortedItemsCache.keys.toList();
       final keysToRemove = keys.take(keys.length - 25);
       for (final key in keysToRemove) {
-        _sortedArticlesCache.remove(key);
+  _sortedItemsCache.remove(key);
       }
     }
   }

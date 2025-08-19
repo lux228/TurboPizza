@@ -1,9 +1,10 @@
+// ignore_for_file: library_private_types_in_public_api
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
 import '../models/pizza.dart';
-import '../models/encaissement.dart';
-import '../models/commande_attente.dart';
+import '../models/payment.dart';
+import '../models/pending_order.dart';
 import '../utils/format_utils.dart';
 import '../utils/storage_service.dart';
 import '../utils/cache_service.dart';
@@ -17,7 +18,7 @@ import '../services/cart_service.dart';
 import '../services/order_service.dart';
 import '../constants/app_constants.dart';
 import 'pizza_management_page.dart';
-import 'encaissement_history_page.dart';
+import 'payment_history_page.dart';
 
 class PizzaHomePage extends StatefulWidget {
   const PizzaHomePage({super.key});
@@ -76,8 +77,10 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
 
   void _loadData() async {
     final loadedPizzas = await StorageService.loadPizzaList();
-    await context.read<OrderService>().loadOrders();
-    setState(() {
+  if (!mounted) return;
+  await context.read<OrderService>().loadOrders();
+  if (!mounted) return;
+  setState(() {
       availablePizzas = loadedPizzas;
     });
   }
@@ -106,15 +109,16 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
           PaymentMethodDialog(currentSelection: AppConstants.defaultPaymentMethod),
     );
 
-    if (result != null) {
+  if (!mounted) return;
+  if (result != null) {
       final String selectedMethod = result['method'];
 
       // Enregistrement de l'encaissement
-      await StorageService.saveEncaissement(Encaissement(
+      await StorageService.savePayment(Payment(
         date: DateTime.now(),
-        montant: cartService.totalPrice,
-        modeReglement: selectedMethod,
-        articles: cartService.items,
+        amount: cartService.totalPrice,
+        paymentMethod: selectedMethod,
+        items: cartService.items,
       ));
 
       // Nettoyage du panier
@@ -130,14 +134,14 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
       }
 
       // Affichage d'un message de confirmation
-      if (mounted) {
+  if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Row(
+            content: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.check_circle, color: Colors.white, size: 20),
-                const SizedBox(width: 8),
+                Icon(Icons.check_circle, color: Colors.white, size: 20),
+                SizedBox(width: 8),
                 Text(AppConstants.paymentSuccessMessage),
               ],
             ),
@@ -146,7 +150,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
             backgroundColor: AppConstants.successGreen,
           ),
         );
-      }
+      
     }
   }
 
@@ -160,10 +164,11 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
       builder: (BuildContext context) => const PickupTimeDialog(),
     );
 
-    if (selectedTime != null) {
+  if (!mounted) return;
+  if (selectedTime != null) {
       final orderService = context.read<OrderService>();
       await orderService.createOrder(
-        articles: cartService.items,
+        items: cartService.items,
         amount: cartService.totalPrice,
         pickupTime: selectedTime,
       );
@@ -179,15 +184,15 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
         });
       }
 
-      if (mounted) {
+  if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Row(
+            content: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.access_time, color: Colors.white, size: 20),
-                const SizedBox(width: 8),
-                const Text(AppConstants.orderOnHoldMessage),
+                Icon(Icons.access_time, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text(AppConstants.orderOnHoldMessage),
               ],
             ),
             duration: AppConstants.snackBarDuration,
@@ -195,41 +200,43 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
             backgroundColor: AppConstants.warningOrange,
           ),
         );
-      }
+      
     }
   }
 
   // Méthode pour valider la récupération d'une commande
-  void validatePickup(CommandeAttente commande) async {
+  void validatePickup(PendingOrder order) async {
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (BuildContext context) =>
           PaymentMethodDialog(currentSelection: AppConstants.defaultPaymentMethod),
     );
 
-    if (result != null) {
+  if (!mounted) return;
+  if (result != null) {
       final String selectedMethod = result['method'];
 
       // Créer un encaissement à partir de la commande
-      final encaissement = Encaissement(
+      final payment = Payment(
         date: DateTime.now(),
-        montant: commande.montant,
-        modeReglement: selectedMethod,
-        articles: commande.articles,
+        amount: order.amount,
+        paymentMethod: selectedMethod,
+        items: order.items,
       );
 
-      await StorageService.saveEncaissement(encaissement);
-      await context.read<OrderService>().removeOrder(commande.id);
+  await StorageService.savePayment(payment);
+  if (!mounted) return;
+  await context.read<OrderService>().removeOrder(order.id);
 
-      if (mounted) {
+  if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Row(
+    content: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.check_circle, color: Colors.white, size: 20),
-                const SizedBox(width: 8),
-                const Text(AppConstants.orderValidatedMessage),
+        Icon(Icons.check_circle, color: Colors.white, size: 20),
+        SizedBox(width: 8),
+        Text(AppConstants.orderValidatedMessage),
               ],
             ),
             duration: AppConstants.snackBarDuration,
@@ -242,10 +249,10 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
   }
 
   // Méthode pour modifier une commande en attente
-  void editOrderOnHold(CommandeAttente commande) async {
+  void editOrderOnHold(PendingOrder order) async {
     final cartService = context.read<CartService>();
     // Remettre la commande dans le panier
-    cartService.loadFromOrder(commande.articles);
+  cartService.loadFromOrder(order.items);
     
     // Afficher la commande en cours avec animation
     if (!showCurrentOrder) {
@@ -256,7 +263,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
     }
 
     // Supprimer la commande de la file d'attente
-    await context.read<OrderService>().removeOrder(commande.id);
+  await context.read<OrderService>().removeOrder(order.id);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -269,8 +276,8 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
   }
 
   // Méthode pour afficher l'aperçu d'une commande en attente
-  void showOrderPreview(CommandeAttente commande) {
-    String formattedCompositionTime = '${commande.heureComposition.hour.toString().padLeft(2, '0')}:${commande.heureComposition.minute.toString().padLeft(2, '0')}';
+  void showOrderPreview(PendingOrder order) {
+    String formattedCompositionTime = '${order.createdAt.hour.toString().padLeft(2, '0')}:${order.createdAt.minute.toString().padLeft(2, '0')}';
     
     showDialog(
       context: context,
@@ -286,11 +293,11 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
               children: [
                 Text('Heure de composition : $formattedCompositionTime', style: TextStyle(fontSize: AppConstants.subtitleFontSize, fontWeight: FontWeight.w600)),
                 SizedBox(height: 8),
-                Text('Heure de récupération prévue : ${commande.heureRecuperationPrevue}', style: TextStyle(fontSize: AppConstants.subtitleFontSize, fontWeight: FontWeight.w600)),
+                Text('Heure de récupération prévue : ${order.plannedPickupTime}', style: TextStyle(fontSize: AppConstants.subtitleFontSize, fontWeight: FontWeight.w600)),
                 SizedBox(height: 16),
                 Text('Articles commandés :', style: TextStyle(fontSize: AppConstants.subtitleFontSize, fontWeight: FontWeight.bold)),
                 SizedBox(height: 8),
-                if (commande.articles.isEmpty)
+                if (order.items.isEmpty)
                   Container(
                     padding: EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -312,17 +319,17 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                     child: Builder(
                       builder: (context) {
                         // Utiliser le cache pour le tri des articles
-                        final sortedArticles = _cacheService.getSortedArticles(commande.articles);
+                  final sortedItems = _cacheService.getSortedItems(order.items);
                         
                         return ListView.builder(
                           shrinkWrap: true,
-                          itemCount: sortedArticles.length,
+                          itemCount: sortedItems.length,
                           itemBuilder: (context, index) {
-                            var article = sortedArticles[index];
+                    var item = sortedItems[index];
                         
                             // Déterminer la couleur selon le type
                             Color borderColor;
-                            switch (article.type) {
+                    switch (item.type) {
                               case 'Tomate':
                                 borderColor = Colors.red;
                                 break;
@@ -370,21 +377,21 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            Text(article.name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-                                            Text(article.type, style: TextStyle(fontSize: 14, color: borderColor.withValues(alpha: 0.8))),
+                            Text(item.name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                            Text(item.type, style: TextStyle(fontSize: 14, color: borderColor.withValues(alpha: 0.8))),
                                           ],
                                         ),
                                       ),
                                       SizedBox(
                                         width: 40,
-                                        child: Text('x${article.quantity}', 
+                          child: Text('x${item.quantity}', 
                                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                                           textAlign: TextAlign.center,
                                         ),
                                       ),
                                       SizedBox(
                                         width: 60,
-                                        child: Text(formatPrice(article.price), 
+                          child: Text(formatPrice(item.price), 
                                           style: TextStyle(fontSize: 16),
                                           textAlign: TextAlign.right,
                                         ),
@@ -392,7 +399,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                                       SizedBox(width: 8),
                                       SizedBox(
                                         width: 70,
-                                        child: Text(formatPrice(article.totalPrice), 
+                          child: Text(formatPrice(item.totalPrice), 
                                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green[700]),
                                           textAlign: TextAlign.right,
                                         ),
@@ -408,7 +415,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                     ),
                   ),
                 SizedBox(height: 16),
-                Text('Montant total : ${formatPrice(commande.montant)}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                Text('Montant total : ${formatPrice(order.amount)}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               ],
             ),
           ),
@@ -424,14 +431,14 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
   }
 
   // Méthode pour annuler une commande en attente
-  void cancelOrderOnHold(CommandeAttente commande) async {
+  void cancelOrderOnHold(PendingOrder order) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Confirmer l\'annulation'),
           content: Text(
-            'Êtes-vous sûr de vouloir annuler cette commande ?\n\nHeure de récupération : ${commande.heureRecuperationPrevue}\nMontant : ${formatPrice(commande.montant)}',
+            'Êtes-vous sûr de vouloir annuler cette commande ?\n\nHeure de récupération : ${order.plannedPickupTime}\nMontant : ${formatPrice(order.amount)}',
           ),
           actions: [
             TextButton(
@@ -448,8 +455,9 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
       },
     );
 
+    if (!mounted) return;
     if (confirmed == true) {
-      await context.read<OrderService>().removeOrder(commande.id);
+  await context.read<OrderService>().removeOrder(order.id);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -487,13 +495,13 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
             ),
             ListTile(
               leading: const Icon(Icons.history),
-              title: const Text('Historique des Encaissements'),
+              title: const Text('Historique des encaissements'),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => const EncaissementHistoryPage()),
+                      builder: (context) => const PaymentHistoryPage()),
                 );
               },
             ),

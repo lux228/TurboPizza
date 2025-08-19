@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:turbo_pizza/models/pizza.dart';
-import 'package:turbo_pizza/models/encaissement.dart';
+import 'package:turbo_pizza/models/payment.dart';
 
 void main() {
   group('Pizza Model Tests', () {
@@ -33,22 +33,22 @@ void main() {
     });
   });
 
-  group('Encaissement Model Tests', () {
-    test('Encaissement creation', () {
+  group('Payment Model Tests', () {
+    test('Payment creation', () {
       final articles = [
         Pizza(name: 'Margherita', price: 12.50, quantity: 1, type: 'Tomate'),
       ];
 
-      final encaissement = Encaissement(
+      final payment = Payment(
         date: DateTime.now(),
-        montant: 12.50,
-        modeReglement: 'Espèces',
-        articles: articles,
+        amount: 12.50,
+        paymentMethod: 'Espèces',
+        items: articles,
       );
 
-      expect(encaissement.montant, 12.50);
-      expect(encaissement.modeReglement, 'Espèces');
-      expect(encaissement.articles.length, 1);
+      expect(payment.amount, 12.50);
+      expect(payment.paymentMethod, 'Espèces');
+      expect(payment.items.length, 1);
     });
   });
 }

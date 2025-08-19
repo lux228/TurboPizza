@@ -48,14 +48,14 @@ class CartService extends ChangeNotifier {
     notifyListeners();
   }
 
-  void loadFromOrder(List<Pizza> articles) {
+  void loadFromOrder(List<Pizza> items) {
     _cart.clear();
-    for (var article in articles) {
-      _cart[article.name] = Pizza(
-        name: article.name,
-        price: article.price,
-        quantity: article.quantity,
-        type: article.type,
+    for (var item in items) {
+      _cart[item.name] = Pizza(
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        type: item.type,
       );
     }
     notifyListeners();

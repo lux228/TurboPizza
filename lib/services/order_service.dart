@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/commande_attente.dart';
+import '../models/pending_order.dart';
 import '../models/pizza.dart';
 import '../utils/storage_service.dart';
 import '../constants/app_constants.dart';
@@ -28,38 +28,38 @@ class OrderStatusInfo {
 }
 
 class OrderService extends ChangeNotifier {
-  List<CommandeAttente> _orders = [];
+  List<PendingOrder> _orders = [];
   
-  List<CommandeAttente> get orders => List.unmodifiable(_orders);
+  List<PendingOrder> get orders => List.unmodifiable(_orders);
   
   bool get hasOrders => _orders.isNotEmpty;
   
   int get orderCount => _orders.length;
 
   Future<void> loadOrders() async {
-    _orders = await StorageService.loadCommandesAttente();
+    _orders = await StorageService.loadPendingOrders();
     _sortOrders();
     notifyListeners();
   }
 
   void _sortOrders() {
-    _orders.sort((a, b) => a.heureRecuperationDateTime.compareTo(b.heureRecuperationDateTime));
+    _orders.sort((a, b) => a.pickupDateTime.compareTo(b.pickupDateTime));
   }
 
-  Future<void> addOrder(CommandeAttente order) async {
-    await StorageService.saveCommandeAttente(order);
+  Future<void> addOrder(PendingOrder order) async {
+    await StorageService.savePendingOrder(order);
     _orders.add(order);
     _sortOrders();
     notifyListeners();
   }
 
   Future<void> removeOrder(String orderId) async {
-    await StorageService.removeCommandeAttente(orderId);
+    await StorageService.removePendingOrder(orderId);
     _orders.removeWhere((order) => order.id == orderId);
     notifyListeners();
   }
 
-  CommandeAttente? getOrderById(String orderId) {
+  PendingOrder? getOrderById(String orderId) {
     try {
       return _orders.firstWhere((order) => order.id == orderId);
     } catch (e) {
@@ -67,9 +67,9 @@ class OrderService extends ChangeNotifier {
     }
   }
 
-  OrderStatusInfo getOrderStatus(CommandeAttente order) {
+  OrderStatusInfo getOrderStatus(PendingOrder order) {
     final now = DateTime.now();
-    final pickupTime = order.heureRecuperationDateTime;
+    final pickupTime = order.pickupDateTime;
     final difference = pickupTime.difference(now).inMinutes;
 
     if (difference < AppConstants.lateThreshold) {
@@ -107,19 +107,18 @@ class OrderService extends ChangeNotifier {
     }
   }
 
-  Future<CommandeAttente> createOrder({
-    required List<Pizza> articles,
+  Future<PendingOrder> createOrder({
+    required List<Pizza> items,
     required double amount,
     required String pickupTime,
   }) async {
-    final order = CommandeAttente(
+    final order = PendingOrder(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      heureComposition: DateTime.now(),
-      heureRecuperationPrevue: pickupTime,
-      articles: articles,
-      montant: amount,
+      createdAt: DateTime.now(),
+      plannedPickupTime: pickupTime,
+      items: items,
+      amount: amount,
     );
-    
     await addOrder(order);
     return order;
   }
