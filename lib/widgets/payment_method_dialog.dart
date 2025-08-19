@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 class PaymentMethodDialog extends StatefulWidget {
   final String currentSelection;
 
-  const PaymentMethodDialog({Key? key, required this.currentSelection})
-      : super(key: key);
+  const PaymentMethodDialog({super.key, required this.currentSelection});
 
   @override
   _PaymentMethodDialogState createState() => _PaymentMethodDialogState();

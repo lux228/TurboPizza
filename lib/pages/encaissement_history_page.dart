@@ -493,7 +493,7 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
                                   ),
                                   SizedBox(
                                     width: 60,
-                                    child: Text('${formatPrice(article.price)}', 
+                                    child: Text(formatPrice(article.price), 
                                       style: TextStyle(fontSize: 16),
                                       textAlign: TextAlign.right,
                                     ),
@@ -501,7 +501,7 @@ class _EncaissementHistoryPageState extends State<EncaissementHistoryPage> {
                                   SizedBox(width: 8),
                                   SizedBox(
                                     width: 70,
-                                    child: Text('${formatPrice(article.totalPrice)}', 
+                                    child: Text(formatPrice(article.totalPrice), 
                                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green[700]),
                                       textAlign: TextAlign.right,
                                     ),
