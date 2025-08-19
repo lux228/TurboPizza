@@ -136,8 +136,8 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
             content: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.check_circle, color: Colors.white, size: 20),
-                SizedBox(width: 8),
+                const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
                 Text(AppConstants.paymentSuccessMessage),
               ],
             ),
@@ -185,9 +185,9 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
             content: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.access_time, color: Colors.white, size: 20),
-                SizedBox(width: 8),
-                Text(AppConstants.orderOnHoldMessage),
+                const Icon(Icons.access_time, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                const Text(AppConstants.orderOnHoldMessage),
               ],
             ),
             duration: AppConstants.snackBarDuration,
@@ -227,9 +227,9 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
             content: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.check_circle, color: Colors.white, size: 20),
-                SizedBox(width: 8),
-                Text(AppConstants.orderValidatedMessage),
+                const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                const Text(AppConstants.orderValidatedMessage),
               ],
             ),
             duration: AppConstants.snackBarDuration,

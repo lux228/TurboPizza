@@ -79,9 +79,9 @@ class OrderStatusCard extends StatelessWidget {
             const SizedBox(width: 4),
             Text(
               '(${order.heureComposition.hour.toString().padLeft(2, '0')}:${order.heureComposition.minute.toString().padLeft(2, '0')})',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: AppConstants.smallFontSize,
-                color: Colors.grey[600],
+                color: Colors.grey,
                 fontStyle: FontStyle.italic,
               ),
             ),
@@ -91,10 +91,9 @@ class OrderStatusCard extends StatelessWidget {
           child: Center(
             child: Text(
               statusInfo.statusText,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: AppConstants.smallFontSize,
                 fontWeight: FontWeight.w600,
-                color: statusInfo.color,
                 fontStyle: FontStyle.italic,
               ),
             ),
