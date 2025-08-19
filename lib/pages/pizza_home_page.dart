@@ -6,6 +6,7 @@ import '../models/encaissement.dart';
 import '../models/commande_attente.dart';
 import '../utils/format_utils.dart';
 import '../utils/storage_service.dart';
+import '../utils/cache_service.dart';
 import '../widgets/payment_method_dialog.dart';
 import '../widgets/calculator_dialog.dart';
 import '../widgets/pickup_time_dialog.dart';
@@ -31,6 +32,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
   late AnimationController _animationController;
   late Animation<double> _slideAnimation;
   Timer? _statusUpdateTimer;
+  final CacheService _cacheService = CacheService();
 
   @override
   void initState() {
@@ -68,6 +70,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
   void dispose() {
     _animationController.dispose();
     _statusUpdateTimer?.cancel();
+    _cacheService.clearCache(); // Nettoyer le cache pour libérer la mémoire
     super.dispose();
   }
 
@@ -308,34 +311,8 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                   Expanded(
                     child: Builder(
                       builder: (context) {
-                        // Trier les articles par catégorie
-                        var sortedArticles = List.from(commande.articles);
-                        sortedArticles.sort((a, b) {
-                          // Ordre de priorité des catégories
-                          const categoryOrder = [
-                            'Tomate',
-                            'Crème', 
-                            'Spécialités',
-                            'Softs',
-                            'Vins',
-                            'Desserts',
-                            'Glaces'
-                          ];
-                          
-                          int aIndex = categoryOrder.indexOf(a.type);
-                          int bIndex = categoryOrder.indexOf(b.type);
-                          
-                          // Si une catégorie n'est pas trouvée, la mettre à la fin
-                          if (aIndex == -1) aIndex = categoryOrder.length;
-                          if (bIndex == -1) bIndex = categoryOrder.length;
-                          
-                          // Si même catégorie, trier par nom
-                          if (aIndex == bIndex) {
-                            return a.name.compareTo(b.name);
-                          }
-                          
-                          return aIndex.compareTo(bIndex);
-                        });
+                        // Utiliser le cache pour le tri des articles
+                        final sortedArticles = _cacheService.getSortedArticles(commande.articles);
                         
                         return ListView.builder(
                           shrinkWrap: true,
