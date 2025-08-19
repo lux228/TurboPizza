@@ -1,6 +1,7 @@
 import 'package:intl/intl.dart';
 
 String formatPrice(double price) {
-  final NumberFormat formatter = NumberFormat('0.00', 'fr_FR');
-  return '${formatter.format(price)}€';
+  // Utilise le format monétaire FR officiel, ex: 12,50 €
+  final NumberFormat formatter = NumberFormat.simpleCurrency(locale: 'fr_FR', name: 'EUR');
+  return formatter.format(price);
 }

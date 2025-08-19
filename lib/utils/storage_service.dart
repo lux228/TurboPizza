@@ -57,11 +57,14 @@ class StorageService {
 
   // Pending orders
   static Future<void> savePendingOrder(PendingOrder order) async {
-    final prefs = await SharedPreferences.getInstance();
-  List<String> pendingOrdersList =
-    prefs.getStringList(AppConstants.spKeyPendingOrders) ?? [];
-  pendingOrdersList.add(json.encode(order.toJson()));
-  await prefs.setStringList(AppConstants.spKeyPendingOrders, pendingOrdersList);
+    // Déduplique par id
+    final existing = await loadPendingOrders();
+    final updated = [
+      // retire toute commande existante avec le même id
+      ...existing.where((o) => o.id != order.id),
+      order,
+    ];
+    await savePendingOrders(updated);
   }
 
   static Future<List<PendingOrder>> loadPendingOrders() async {
