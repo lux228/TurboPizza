@@ -7,12 +7,12 @@ import '../models/commande_attente.dart';
 import '../utils/format_utils.dart';
 import '../utils/storage_service.dart';
 import '../utils/cache_service.dart';
+import '../widgets/lazy_order_list.dart';
 import '../widgets/payment_method_dialog.dart';
 import '../widgets/calculator_dialog.dart';
 import '../widgets/pickup_time_dialog.dart';
 import '../widgets/product_grid.dart';
 import '../widgets/current_order_widget.dart';
-import '../widgets/order_status_card.dart';
 import '../services/cart_service.dart';
 import '../services/order_service.dart';
 import '../constants/app_constants.dart';
@@ -610,22 +610,13 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                                 );
                               }
 
-                              return ListView.builder(
-                                padding: const EdgeInsets.all(8.0),
-                                itemCount: orderService.orders.length,
-                                itemBuilder: (context, index) {
-                                  final order = orderService.orders[index];
-                                  final statusInfo = orderService.getOrderStatus(order);
-                                  
-                                  return OrderStatusCard(
-                                    order: order,
-                                    statusInfo: statusInfo,
-                                    onTap: () => showOrderPreview(order),
-                                    onValidate: () => validatePickup(order),
-                                    onEdit: () => editOrderOnHold(order),
-                                    onCancel: () => cancelOrderOnHold(order),
-                                  );
-                                },
+                              return LazyOrderList(
+                                orders: orderService.orders,
+                                orderService: orderService,
+                                onTap: showOrderPreview,
+                                onValidate: validatePickup,
+                                onEdit: editOrderOnHold,
+                                onCancel: cancelOrderOnHold,
                               );
                             },
                           ),
