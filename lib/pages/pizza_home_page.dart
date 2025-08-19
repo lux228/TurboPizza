@@ -265,6 +265,187 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
     }
   }
 
+  // Méthode pour afficher l'aperçu d'une commande en attente
+  void showOrderPreview(CommandeAttente commande) {
+    String formattedCompositionTime = '${commande.heureComposition.hour.toString().padLeft(2, '0')}:${commande.heureComposition.minute.toString().padLeft(2, '0')}';
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Aperçu de la commande', style: TextStyle(fontSize: AppConstants.titleFontSize, fontWeight: FontWeight.bold)),
+          content: SizedBox(
+            width: 500,
+            height: MediaQuery.of(context).size.height * 0.7,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Heure de composition : $formattedCompositionTime', style: TextStyle(fontSize: AppConstants.subtitleFontSize, fontWeight: FontWeight.w600)),
+                SizedBox(height: 8),
+                Text('Heure de récupération prévue : ${commande.heureRecuperationPrevue}', style: TextStyle(fontSize: AppConstants.subtitleFontSize, fontWeight: FontWeight.w600)),
+                SizedBox(height: 16),
+                Text('Articles commandés :', style: TextStyle(fontSize: AppConstants.subtitleFontSize, fontWeight: FontWeight.bold)),
+                SizedBox(height: 8),
+                if (commande.articles.isEmpty)
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline, color: Colors.grey[600], size: 20),
+                        SizedBox(width: 8),
+                        Text('Aucun article enregistré pour cette commande', 
+                          style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: Colors.grey[600])),
+                      ],
+                    ),
+                  )
+                else
+                  Expanded(
+                    child: Builder(
+                      builder: (context) {
+                        // Trier les articles par catégorie
+                        var sortedArticles = List.from(commande.articles);
+                        sortedArticles.sort((a, b) {
+                          // Ordre de priorité des catégories
+                          const categoryOrder = [
+                            'Tomate',
+                            'Crème', 
+                            'Spécialités',
+                            'Softs',
+                            'Vins',
+                            'Desserts',
+                            'Glaces'
+                          ];
+                          
+                          int aIndex = categoryOrder.indexOf(a.type);
+                          int bIndex = categoryOrder.indexOf(b.type);
+                          
+                          // Si une catégorie n'est pas trouvée, la mettre à la fin
+                          if (aIndex == -1) aIndex = categoryOrder.length;
+                          if (bIndex == -1) bIndex = categoryOrder.length;
+                          
+                          // Si même catégorie, trier par nom
+                          if (aIndex == bIndex) {
+                            return a.name.compareTo(b.name);
+                          }
+                          
+                          return aIndex.compareTo(bIndex);
+                        });
+                        
+                        return ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: sortedArticles.length,
+                          itemBuilder: (context, index) {
+                            var article = sortedArticles[index];
+                        
+                            // Déterminer la couleur selon le type
+                            Color borderColor;
+                            switch (article.type) {
+                              case 'Tomate':
+                                borderColor = Colors.red;
+                                break;
+                              case 'Crème':
+                                borderColor = Colors.blue;
+                                break;
+                              case 'Softs':
+                                borderColor = Colors.amber;
+                                break;
+                              case 'Vins':
+                                borderColor = Colors.orange;
+                                break;
+                              case 'Spécialités':
+                                borderColor = Colors.green;
+                                break;
+                              case 'Glaces':
+                                borderColor = Colors.purple;
+                                break;
+                              case 'Desserts':
+                                borderColor = Colors.pink;
+                                break;
+                              default:
+                                borderColor = Colors.grey;
+                            }
+                            
+                            return Container(
+                              margin: EdgeInsets.symmetric(vertical: 2),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border(
+                                  left: BorderSide(
+                                    color: borderColor,
+                                    width: 4,
+                                  ),
+                                ),
+                              ),
+                              child: Card(
+                                margin: EdgeInsets.zero,
+                                child: Padding(
+                                  padding: EdgeInsets.all(12),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        flex: 3,
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(article.name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                                            Text(article.type, style: TextStyle(fontSize: 14, color: borderColor.withValues(alpha: 0.8))),
+                                          ],
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: 40,
+                                        child: Text('x${article.quantity}', 
+                                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: 60,
+                                        child: Text(formatPrice(article.price), 
+                                          style: TextStyle(fontSize: 16),
+                                          textAlign: TextAlign.right,
+                                        ),
+                                      ),
+                                      SizedBox(width: 8),
+                                      SizedBox(
+                                        width: 70,
+                                        child: Text(formatPrice(article.totalPrice), 
+                                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green[700]),
+                                          textAlign: TextAlign.right,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                SizedBox(height: 16),
+                Text('Montant total : ${formatPrice(commande.montant)}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Fermer', style: TextStyle(fontSize: 16)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   // Méthode pour annuler une commande en attente
   void cancelOrderOnHold(CommandeAttente commande) async {
     final confirmed = await showDialog<bool>(
@@ -462,7 +643,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                                   return OrderStatusCard(
                                     order: order,
                                     statusInfo: statusInfo,
-                                    onTap: () => {}, // TODO: Implémenter showOrderPreview
+                                    onTap: () => showOrderPreview(order),
                                     onValidate: () => validatePickup(order),
                                     onEdit: () => editOrderOnHold(order),
                                     onCancel: () => cancelOrderOnHold(order),
