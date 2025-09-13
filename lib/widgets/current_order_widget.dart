@@ -127,7 +127,7 @@ class CartItemTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       tileColor: AppConstants.cartItemTileColor,
-      title: Text("${pizza.name} x${pizza.quantity}"),
+  title: Text("${pizza.quantity} x ${pizza.name}"),
       subtitle: Text(formatPrice(pizza.price)),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,

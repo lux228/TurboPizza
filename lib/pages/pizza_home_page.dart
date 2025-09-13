@@ -34,6 +34,9 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
   late Animation<double> _slideAnimation;
   Timer? _statusUpdateTimer;
   final CacheService _cacheService = CacheService();
+  // Délais de réduction (debounce) pour éviter des variations brusques de hauteur
+  Timer? _currentOrderShrinkTimer;
+  int _appliedItemCountForHeight = 0;
 
   @override
   void initState() {
@@ -71,6 +74,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
   void dispose() {
     _animationController.dispose();
     _statusUpdateTimer?.cancel();
+    _currentOrderShrinkTimer?.cancel();
     _cacheService.clearCache(); // Nettoyer le cache pour libérer la mémoire
     super.dispose();
   }
@@ -372,21 +376,21 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                                   padding: EdgeInsets.all(12),
                                   child: Row(
                                     children: [
+                                      SizedBox(
+                                        width: 48,
+                                        child: Text('${item.quantity} x',
+                                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
                                       Expanded(
                                         flex: 3,
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                            Text(item.name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-                            Text(item.type, style: TextStyle(fontSize: 14, color: borderColor.withValues(alpha: 0.8))),
+                                            Text(item.name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                                            Text(item.type, style: TextStyle(fontSize: 14, color: borderColor.withValues(alpha: 0.8))),
                                           ],
-                                        ),
-                                      ),
-                                      SizedBox(
-                                        width: 40,
-                          child: Text('x${item.quantity}', 
-                                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                                          textAlign: TextAlign.center,
                                         ),
                                       ),
                                       SizedBox(
@@ -637,6 +641,53 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                 // Partie basse : Composition actuelle avec animation depuis le bas
                 Consumer<CartService>(
                   builder: (context, cartService, child) {
+                    // Calcul dynamique de la hauteur de la commande en cours
+                    final screenHeight = MediaQuery.of(context).size.height;
+                    const double headerHeight = 56; // bandeau "COMMANDE EN COURS"
+                    const double footerHeight = 140; // total + boutons
+                    const double perItemHeight = 64; // hauteur approximative par ligne du panier
+                    final int itemCount = cartService.items.length;
+
+                    // Gestion du debounce: 
+                    // - si le nombre d'items augmente, on applique immédiatement la nouvelle hauteur
+                    // - s'il diminue, on attend un court délai avant de réduire la hauteur
+                    if (itemCount > _appliedItemCountForHeight) {
+                      _currentOrderShrinkTimer?.cancel();
+                      if (mounted) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (!mounted) return;
+                          setState(() {
+                            _appliedItemCountForHeight = itemCount;
+                          });
+                        });
+                      }
+                    } else if (itemCount < _appliedItemCountForHeight) {
+                      // Redémarrer le timer de réduction
+                      _currentOrderShrinkTimer?.cancel();
+                      _currentOrderShrinkTimer = Timer(AppConstants.currentOrderShrinkDelay, () {
+                        if (!mounted) return;
+                        final int latestCount = context.read<CartService>().items.length;
+                        setState(() {
+                          _appliedItemCountForHeight = latestCount;
+                        });
+                        // Si après délai le panier est vide, refermer la fenêtre en douceur
+                        if (latestCount == 0 && showCurrentOrder) {
+                          if (_animationController.status == AnimationStatus.dismissed) {
+                            setState(() => showCurrentOrder = false);
+                          } else if (_animationController.status != AnimationStatus.reverse) {
+                            _animationController.reverse().then((_) {
+                              if (mounted) setState(() => showCurrentOrder = false);
+                            });
+                          }
+                        }
+                      });
+                    }
+
+                    final double desiredHeight = headerHeight + footerHeight + (_appliedItemCountForHeight * perItemHeight);
+                    final double minHeight = screenHeight * 0.25; // min 25% écran
+                    final double maxHeight = screenHeight * 0.70; // max 70% écran pour laisser de la place à la file d'attente
+                    final double currentOrderHeight = desiredHeight.clamp(minHeight, maxHeight).toDouble();
+
                     return AnimatedBuilder(
                       animation: _slideAnimation,
                       builder: (context, child) {
@@ -644,8 +695,10 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                           child: Align(
                             alignment: Alignment.bottomCenter,
                             heightFactor: showCurrentOrder ? _slideAnimation.value : 0.0,
-                            child: SizedBox(
-                              height: MediaQuery.of(context).size.height * 0.4,
+                            child: AnimatedContainer(
+                              duration: AppConstants.animationDuration,
+                              curve: Curves.easeInOut,
+                              height: currentOrderHeight,
                               child: CurrentOrderWidget(
                                 onPutOnHold: putOrderOnHold,
                                 onCheckoutDirect: checkoutDirect,

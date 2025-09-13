@@ -113,8 +113,8 @@ class OrderStatusCard extends StatelessWidget {
 
   Widget _buildOrderItems() {
     return Text(
-      order.items
-          .map((a) => '${a.name} x${a.quantity}')
+    order.items
+      .map((a) => '${a.quantity} x ${a.name}')
           .join(', '),
       style: const TextStyle(fontSize: AppConstants.captionFontSize),
       maxLines: 2,

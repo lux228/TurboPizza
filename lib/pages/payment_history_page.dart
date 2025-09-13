@@ -514,6 +514,14 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                                   padding: EdgeInsets.all(12),
                                   child: Row(
                                     children: [
+                    SizedBox(
+                    width: 48,
+                    child: Text('${item.quantity} x',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center),
+                    ),
                                       Expanded(
                                         flex: 3,
                                         child: Column(
@@ -529,14 +537,6 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                                                     color: borderColor.withValues(alpha: 0.8))),
                                           ],
                                         ),
-                                      ),
-                                      SizedBox(
-                                        width: 40,
-                                        child: Text('x${item.quantity}',
-                                            style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold),
-                                            textAlign: TextAlign.center),
                                       ),
                                       SizedBox(
                                         width: 60,
@@ -764,7 +764,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                             ),
                             if (payment.items.isNotEmpty)
                               Text(
-                                "Articles: ${payment.items.map((pizza) => '${pizza.name} x${pizza.quantity}').join(', ')}",
+                                "Articles: ${payment.items.map((pizza) => '${pizza.quantity} x ${pizza.name}').join(', ')}",
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: payment.isSelected
