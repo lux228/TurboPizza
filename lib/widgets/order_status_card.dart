@@ -39,14 +39,14 @@ class OrderStatusCard extends StatelessWidget {
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.all(12.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildOrderHeader(),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 _buildOrderItems(),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 _buildActionButtons(),
               ],
             ),
@@ -137,7 +137,7 @@ class OrderStatusCard extends StatelessWidget {
             ),
           ),
         if (onValidate != null && (onEdit != null || onCancel != null))
-          const SizedBox(width: 4),
+          const SizedBox(width: 8),
         if (onEdit != null)
           Expanded(
             child: _buildActionButton(
@@ -149,7 +149,7 @@ class OrderStatusCard extends StatelessWidget {
             ),
           ),
         if (onEdit != null && onCancel != null)
-          const SizedBox(width: 4),
+          const SizedBox(width: 8),
         if (onCancel != null)
           Expanded(
             child: _buildActionButton(
@@ -173,12 +173,13 @@ class OrderStatusCard extends StatelessWidget {
   }) {
     return ElevatedButton.icon(
       onPressed: onPressed,
-      icon: Icon(icon, size: 16),
-      label: Text(label, style: const TextStyle(fontSize: AppConstants.captionFontSize)),
+      icon: Icon(icon, size: 20),
+      label: Text(label, style: const TextStyle(fontSize: AppConstants.bodyFontSize)),
       style: ElevatedButton.styleFrom(
         backgroundColor: backgroundColor,
         foregroundColor: foregroundColor,
-        minimumSize: const Size(0, 32),
+        minimumSize: const Size(0, 44),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
     );
   }
