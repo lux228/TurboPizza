@@ -2,7 +2,9 @@
 import 'package:flutter/material.dart';
 
 class PickupTimeDialog extends StatefulWidget {
-  const PickupTimeDialog({super.key});
+  final String? initialTime;
+  
+  const PickupTimeDialog({super.key, this.initialTime});
 
   @override
   _PickupTimeDialogState createState() => _PickupTimeDialogState();
@@ -18,6 +20,30 @@ class _PickupTimeDialogState extends State<PickupTimeDialog> {
   @override
   void initState() {
     super.initState();
+    
+    if (widget.initialTime != null) {
+      // Utiliser l'horaire initial fourni
+      final parts = widget.initialTime!.split(':');
+      if (parts.length == 2) {
+        selectedHour = int.tryParse(parts[0]) ?? DateTime.now().hour;
+        selectedMinute = int.tryParse(parts[1]) ?? 0;
+        // S'assurer que les minutes sont un multiple de 5
+        selectedMinute = (selectedMinute ~/ 5) * 5;
+      } else {
+        _initializeWithCurrentTime();
+      }
+    } else {
+      _initializeWithCurrentTime();
+    }
+    
+    // Initialiser les contrôleurs de défilement
+    _hourController = FixedExtentScrollController(initialItem: selectedHour);
+    _minuteController = FixedExtentScrollController(initialItem: selectedMinute ~/ 5);
+    
+    _updateSelectedTime();
+  }
+  
+  void _initializeWithCurrentTime() {
     // Initialiser avec l'heure actuelle + 5 minutes minimum
     DateTime now = DateTime.now();
     DateTime futureTime = now.add(const Duration(minutes: 5));
@@ -34,12 +60,6 @@ class _PickupTimeDialogState extends State<PickupTimeDialog> {
       selectedHour = 23;
       selectedMinute = 55;
     }
-    
-    // Initialiser les contrôleurs de défilement
-    _hourController = FixedExtentScrollController(initialItem: selectedHour);
-    _minuteController = FixedExtentScrollController(initialItem: selectedMinute ~/ 5);
-    
-    _updateSelectedTime();
   }
 
   @override

@@ -9,6 +9,7 @@ class LazyOrderList extends StatelessWidget {
   final Function(PendingOrder) onTap;
   final Function(PendingOrder) onValidate;
   final Function(PendingOrder) onEdit;
+  final Function(PendingOrder) onChangeTime;
   final Function(PendingOrder) onCancel;
   final OrderService orderService;
 
@@ -18,6 +19,7 @@ class LazyOrderList extends StatelessWidget {
     required this.onTap,
     required this.onValidate,
     required this.onEdit,
+    required this.onChangeTime,
     required this.onCancel,
     required this.orderService,
   });
@@ -35,6 +37,7 @@ class LazyOrderList extends StatelessWidget {
           onTap: onTap,
           onValidate: onValidate,
           onEdit: onEdit,
+          onChangeTime: onChangeTime,
           onCancel: onCancel,
         );
       },
@@ -49,6 +52,7 @@ class _LazyOrderCard extends StatelessWidget {
   final Function(PendingOrder) onTap;
   final Function(PendingOrder) onValidate;
   final Function(PendingOrder) onEdit;
+  final Function(PendingOrder) onChangeTime;
   final Function(PendingOrder) onCancel;
 
   const _LazyOrderCard({
@@ -57,6 +61,7 @@ class _LazyOrderCard extends StatelessWidget {
     required this.onTap,
     required this.onValidate,
     required this.onEdit,
+    required this.onChangeTime,
     required this.onCancel,
   });
 
@@ -71,6 +76,7 @@ class _LazyOrderCard extends StatelessWidget {
       onTap: () => onTap(order),
       onValidate: () => onValidate(order),
       onEdit: () => onEdit(order),
+      onChangeTime: () => onChangeTime(order),
       onCancel: () => onCancel(order),
     );
   }

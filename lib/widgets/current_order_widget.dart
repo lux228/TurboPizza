@@ -81,7 +81,11 @@ class CurrentOrderWidget extends StatelessWidget {
                                 textStyle: const TextStyle(fontSize: AppConstants.subtitleFontSize),
                               ),
                               onPressed: cartService.isEmpty ? null : onPutOnHold,
-                              child: Text(cartService.isEmpty ? AppConstants.emptyCartMessage : "En attente"),
+                              child: Text(cartService.isEmpty 
+                                ? AppConstants.emptyCartMessage 
+                                : cartService.lastPickupTime != null 
+                                  ? "En attente (${cartService.lastPickupTime})"
+                                  : "En attente"),
                             ),
                           ),
                         ),

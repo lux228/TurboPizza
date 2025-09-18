@@ -163,13 +163,15 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
     final cartService = context.read<CartService>();
     if (cartService.isEmpty) return;
 
-    final selectedTime = await showDialog<String>(
-      context: context,
-      builder: (BuildContext context) => const PickupTimeDialog(),
-    );
+    // Utiliser l'horaire mémorisé s'il existe, sinon demander un nouvel horaire
+    String? selectedTime = cartService.lastPickupTime ??
+        await showDialog<String>(
+          context: context,
+          builder: (BuildContext context) => const PickupTimeDialog(),
+        );
 
-  if (!mounted) return;
-  if (selectedTime != null) {
+    if (!mounted) return;
+    if (selectedTime != null) {
       final orderService = context.read<OrderService>();
       await orderService.createOrder(
         items: cartService.items,
@@ -256,7 +258,10 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
   void editOrderOnHold(PendingOrder order) async {
     final cartService = context.read<CartService>();
     // Remettre la commande dans le panier
-  cartService.loadFromOrder(order.items);
+    cartService.loadFromOrder(order.items);
+    
+    // Mémoriser l'horaire de récupération pour pouvoir le réutiliser
+    cartService.setLastPickupTime(order.plannedPickupTime);
     
     // Afficher la commande en cours avec animation
     if (!showCurrentOrder) {
@@ -267,7 +272,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
     }
 
     // Supprimer la commande de la file d'attente
-  await context.read<OrderService>().removeOrder(order.id);
+    await context.read<OrderService>().removeOrder(order.id);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -276,6 +281,47 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
           duration: AppConstants.snackBarDuration,
         ),
       );
+    }
+  }
+
+  // Nouvelle méthode pour modifier uniquement l'horaire d'une commande
+  void changeOrderTime(PendingOrder order) async {
+    final selectedTime = await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) => const PickupTimeDialog(),
+    );
+
+    if (!mounted) return;
+    if (selectedTime != null) {
+      final orderService = context.read<OrderService>();
+      
+      // Créer une nouvelle commande avec le nouvel horaire
+      final updatedOrder = order.copyWith(
+        id: DateTime.now().millisecondsSinceEpoch.toString(), // Nouvel ID
+        plannedPickupTime: selectedTime,
+      );
+      
+      // Supprimer l'ancienne commande et ajouter la nouvelle
+      await orderService.removeOrder(order.id);
+      await orderService.addOrder(updatedOrder);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.schedule, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text('Horaire modifié : $selectedTime'),
+              ],
+            ),
+            duration: AppConstants.snackBarDuration,
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppConstants.primaryBlue,
+          ),
+        );
+      }
     }
   }
 
@@ -628,6 +674,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                                 onTap: showOrderPreview,
                                 onValidate: validatePickup,
                                 onEdit: editOrderOnHold,
+                                onChangeTime: changeOrderTime,
                                 onCancel: cancelOrderOnHold,
                               );
                             },

@@ -10,6 +10,7 @@ class OrderStatusCard extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onValidate;
   final VoidCallback? onEdit;
+  final VoidCallback? onChangeTime;
   final VoidCallback? onCancel;
 
   const OrderStatusCard({
@@ -19,6 +20,7 @@ class OrderStatusCard extends StatelessWidget {
     this.onTap,
     this.onValidate,
     this.onEdit,
+    this.onChangeTime,
     this.onCancel,
   });
 
@@ -136,7 +138,7 @@ class OrderStatusCard extends StatelessWidget {
               foregroundColor: AppConstants.validateButtonFg,
             ),
           ),
-        if (onValidate != null && (onEdit != null || onCancel != null))
+        if (onValidate != null && (onEdit != null || onChangeTime != null || onCancel != null))
           const SizedBox(width: 8),
         if (onEdit != null)
           Expanded(
@@ -148,7 +150,19 @@ class OrderStatusCard extends StatelessWidget {
               foregroundColor: AppConstants.editButtonFg,
             ),
           ),
-        if (onEdit != null && onCancel != null)
+        if (onEdit != null && (onChangeTime != null || onCancel != null))
+          const SizedBox(width: 8),
+        if (onChangeTime != null)
+          Expanded(
+            child: _buildActionButton(
+              onPressed: onChangeTime!,
+              icon: Icons.schedule,
+              label: 'Horaire',
+              backgroundColor: Colors.blue[100]!,
+              foregroundColor: Colors.blue[800]!,
+            ),
+          ),
+        if (onChangeTime != null && onCancel != null)
           const SizedBox(width: 8),
         if (onCancel != null)
           Expanded(
