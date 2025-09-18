@@ -39,7 +39,6 @@ TurboPizza est une application de caisse pour pizzeria développée en Flutter. 
 
 - Flutter SDK (>=3.2.3 <4.0.0)
 - Dart SDK
-- Un émulateur Android/iOS ou un appareil physique
 
 ## Lancer le projet
 
@@ -48,26 +47,6 @@ git clone https://github.com/lux228/TurboPizza.git
 cd TurboPizza
 flutter pub get
 flutter run
-```
-
-## Organisation du code
-
-```
-lib/
-├── main.dart                          # Point d'entrée de l'application
-├── models/                            # Modèles de données
-│   ├── pizza.dart                     # Modèle Pizza
-│   └── encaissement.dart              # Modèle Encaissement
-├── pages/                             # Écrans de l'application
-│   ├── pizza_home_page.dart           # Écran principal (caisse)
-│   ├── pizza_management_page.dart     # Gestion des pizzas
-│   └── encaissement_history_page.dart # Historique des encaissements
-├── utils/                             # Utilitaires
-│   ├── format_utils.dart              # Formatage des prix
-│   └── storage_service.dart           # Service de stockage local
-└── widgets/                           # Composants réutilisables
-    ├── payment_method_dialog.dart     # Dialog de sélection du paiement
-    └── calculator_dialog.dart         # Calculatrice intégrée
 ```
 
 ## Comment ça marche
