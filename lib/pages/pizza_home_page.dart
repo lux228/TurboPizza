@@ -19,6 +19,7 @@ import '../services/order_service.dart';
 import '../constants/app_constants.dart';
 import 'pizza_management_page.dart';
 import 'payment_history_page.dart';
+import 'settings_page.dart';
 
 class PizzaHomePage extends StatefulWidget {
   const PizzaHomePage({super.key});
@@ -555,6 +556,18 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                 );
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.backup),
+              title: const Text('Sauvegarde & export'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const SettingsPage()),
+                );
+              },
+            ),
           ],
         ),
       ),
@@ -765,16 +778,29 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
     );
   }
 
-  void openPizzaManagementPage() {
-    Navigator.of(context)
-        .push(
-          MaterialPageRoute(
-            builder: (context) => PizzaManagementPage(
-              availablePizzas: availablePizzas,
-              onUpdate: () => setState(() {}),
-            ),
-          ),
-        )
-        .then((_) => setState(() {}));
+  Future<void> openPizzaManagementPage() async {
+    final allPizzas = await StorageService.loadPizzaList(includeInactive: true);
+    if (!mounted) return;
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => PizzaManagementPage(
+          availablePizzas: allPizzas,
+          onUpdate: () async {
+            final refreshed = await StorageService.loadPizzaList();
+            if (!mounted) return;
+            setState(() {
+              availablePizzas = refreshed;
+            });
+          },
+        ),
+      ),
+    );
+
+    final refreshed = await StorageService.loadPizzaList();
+    if (!mounted) return;
+    setState(() {
+      availablePizzas = refreshed;
+    });
   }
 }

@@ -8,9 +8,9 @@ class StorageService {
     await DatabaseService.instance.init();
   }
 
-  static Future<List<Pizza>> loadPizzaList() async {
+  static Future<List<Pizza>> loadPizzaList({bool includeInactive = false}) async {
     await _ensureDb();
-    return DatabaseService.instance.fetchProducts();
+    return DatabaseService.instance.fetchProducts(includeInactive: includeInactive);
   }
 
   static Future<void> savePizzaList(List<Pizza> pizzas) async {
