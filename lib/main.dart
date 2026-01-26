@@ -5,6 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'pages/pizza_home_page.dart';
 import 'services/cart_service.dart';
 import 'services/order_service.dart';
+import 'services/database_service.dart';
 import 'constants/app_constants.dart';
 
 void main() async {
@@ -12,6 +13,7 @@ void main() async {
   
   // Initialiser les données de localisation française
   await initializeDateFormatting(AppConstants.frenchLocale, null);
+  await DatabaseService.instance.init();
   
   runApp(const MyApp());
 }
