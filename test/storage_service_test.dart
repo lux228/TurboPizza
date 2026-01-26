@@ -1,14 +1,32 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
-import 'package:turbo_pizza/utils/storage_service.dart';
+import 'package:path/path.dart' as p;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:turbo_pizza/models/pending_order.dart';
 import 'package:turbo_pizza/models/pizza.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:turbo_pizza/services/database_service.dart';
+import 'package:turbo_pizza/utils/storage_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  setUp(() {
+  late Directory tempDir;
+
+  setUp(() async {
     SharedPreferences.setMockInitialValues({});
+    tempDir = await Directory.systemTemp.createTemp('tp_storage_test');
+    final dbPath = p.join(tempDir.path, 'test.db');
+    await DatabaseService.instance.close();
+    await DatabaseService.instance
+        .init(overridePath: dbPath, skipMigration: true);
+  });
+
+  tearDown(() async {
+    await DatabaseService.instance.close();
+    if (await tempDir.exists()) {
+      await tempDir.delete(recursive: true);
+    }
   });
 
   test('savePendingOrder deduplicates by id and remove works', () async {

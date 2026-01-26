@@ -1,16 +1,35 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
-import 'package:turbo_pizza/services/cart_service.dart';
-import 'package:turbo_pizza/services/order_service.dart';
-import 'package:turbo_pizza/models/pizza.dart';
-import 'package:turbo_pizza/models/pending_order.dart';
+import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:turbo_pizza/models/pending_order.dart';
+import 'package:turbo_pizza/models/pizza.dart';
+import 'package:turbo_pizza/services/cart_service.dart';
+import 'package:turbo_pizza/services/database_service.dart';
+import 'package:turbo_pizza/services/order_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  late Directory tempDir;
+
   setUp(() async {
     // Reset mock storage before each test
     SharedPreferences.setMockInitialValues({});
+
+    tempDir = await Directory.systemTemp.createTemp('tp_services_test');
+    final dbPath = p.join(tempDir.path, 'test.db');
+    await DatabaseService.instance.close();
+    await DatabaseService.instance
+        .init(overridePath: dbPath, skipMigration: true);
+  });
+
+  tearDown(() async {
+    await DatabaseService.instance.close();
+    if (await tempDir.exists()) {
+      await tempDir.delete(recursive: true);
+    }
   });
   group('CartService', () {
     test('add, adjust and total price', () {

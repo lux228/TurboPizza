@@ -1,96 +1,57 @@
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import '../models/pizza.dart';
 import '../models/payment.dart';
 import '../models/pending_order.dart';
-import '../constants/app_constants.dart';
+import '../services/database_service.dart';
 
 class StorageService {
-  static Future<List<Pizza>> loadPizzaList() async {
-    final prefs = await SharedPreferences.getInstance();
-  List<String>? pizzaJson = prefs.getStringList(AppConstants.spKeyPizzas);
-    try {
-      return pizzaJson
-              ?.map((string) => Pizza.fromJson(json.decode(string)))
-              .toList() ??
-          [];
-    } catch (_) {
-      return [];
-    }
+  static Future<void> _ensureDb() async {
+    await DatabaseService.instance.init();
+  }
+
+  static Future<List<Pizza>> loadPizzaList({bool includeInactive = false}) async {
+    await _ensureDb();
+    return DatabaseService.instance.fetchProducts(includeInactive: includeInactive);
   }
 
   static Future<void> savePizzaList(List<Pizza> pizzas) async {
-    final prefs = await SharedPreferences.getInstance();
-    List<String> pizzaJson =
-        pizzas.map((pizza) => json.encode(pizza.toJson())).toList();
-  await prefs.setStringList(AppConstants.spKeyPizzas, pizzaJson);
+    await _ensureDb();
+    await DatabaseService.instance.replaceProducts(pizzas);
   }
 
   // Payments
   static Future<void> savePayment(Payment payment) async {
-    final prefs = await SharedPreferences.getInstance();
-  List<String> paymentsList = prefs.getStringList(AppConstants.spKeyPayments) ?? [];
-  paymentsList.add(json.encode(payment.toJson()));
-  await prefs.setStringList(AppConstants.spKeyPayments, paymentsList);
+    await _ensureDb();
+    await DatabaseService.instance.insertPayment(payment);
   }
 
   static Future<List<Payment>> loadPayments() async {
-    final prefs = await SharedPreferences.getInstance();
-  List<String>? paymentsJson = prefs.getStringList(AppConstants.spKeyPayments);
-  try {
-    return paymentsJson
-              ?.map((string) => Payment.fromJson(json.decode(string)))
-              .toList() ??
-          [];
-  } catch (_) {
-    return [];
-  }
+    await _ensureDb();
+    return DatabaseService.instance.fetchPayments();
   }
 
   static Future<void> savePayments(List<Payment> payments) async {
-    final prefs = await SharedPreferences.getInstance();
-  final paymentsJson = payments.map((payment) {
-      return json.encode(payment.toJson());
-    }).toList();
-  await prefs.setStringList(AppConstants.spKeyPayments, paymentsJson);
+    await _ensureDb();
+    await DatabaseService.instance.replacePayments(payments);
   }
 
   // Pending orders
   static Future<void> savePendingOrder(PendingOrder order) async {
-    // Déduplique par id
-    final existing = await loadPendingOrders();
-    final updated = [
-      // retire toute commande existante avec le même id
-      ...existing.where((o) => o.id != order.id),
-      order,
-    ];
-    await savePendingOrders(updated);
+    await _ensureDb();
+    await DatabaseService.instance.savePendingOrder(order);
   }
 
   static Future<List<PendingOrder>> loadPendingOrders() async {
-    final prefs = await SharedPreferences.getInstance();
-  List<String>? pendingOrdersJson = prefs.getStringList(AppConstants.spKeyPendingOrders);
-  try {
-    return pendingOrdersJson
-              ?.map((string) => PendingOrder.fromJson(json.decode(string)))
-              .toList() ??
-          [];
-  } catch (_) {
-    return [];
-  }
+    await _ensureDb();
+    return DatabaseService.instance.fetchPendingOrders();
   }
 
   static Future<void> savePendingOrders(List<PendingOrder> orders) async {
-    final prefs = await SharedPreferences.getInstance();
-  final pendingOrdersJson = orders.map((order) {
-      return json.encode(order.toJson());
-    }).toList();
-  await prefs.setStringList(AppConstants.spKeyPendingOrders, pendingOrdersJson);
+    await _ensureDb();
+    await DatabaseService.instance.replacePendingOrders(orders);
   }
 
   static Future<void> removePendingOrder(String orderId) async {
-  final orders = await loadPendingOrders();
-  final updatedOrders = orders.where((c) => c.id != orderId).toList();
-  await savePendingOrders(updatedOrders);
+    await _ensureDb();
+    await DatabaseService.instance.removePendingOrder(orderId);
   }
 }

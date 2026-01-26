@@ -59,12 +59,11 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
           break;
         case ViewMode.weekly:
           final weekStart = _getWeekStart(selectedDate);
-          final weekEnd = weekStart.add(const Duration(days: 7));
-          filteredPayments = payments
+            final weekEnd = weekStart.add(const Duration(days: 7));
+            filteredPayments = payments
               .where((payment) =>
-                  payment.date
-                      .isAfter(weekStart.subtract(const Duration(days: 1))) &&
-                  payment.date.isBefore(weekEnd))
+                !payment.date.isBefore(weekStart) &&
+                payment.date.isBefore(weekEnd))
               .toList();
           break;
         case ViewMode.monthly:
@@ -99,19 +98,10 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
 
   // Obtenir le début de la semaine (dimanche soir 20h)
   DateTime _getWeekStart(DateTime date) {
-    // Trouver le dimanche précédent à 20h
-    int daysToSunday = (date.weekday == 7) ? 0 : date.weekday;
-    DateTime sundayStart =
-        DateTime(date.year, date.month, date.day, 20, 0, 0).subtract(
-      Duration(days: daysToSunday),
-    );
-
-    // Si on est dimanche mais avant 20h, prendre le dimanche précédent
-    if (date.weekday == 7 && date.hour < 20) {
-      sundayStart = sundayStart.subtract(const Duration(days: 7));
-    }
-
-    return sundayStart;
+    // Semaine du dimanche 00:00 au dimanche suivant 00:00 (service terminé samedi soir)
+    final daysSinceSunday = date.weekday % 7; // Sunday -> 0, Monday -> 1, ...
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    return normalizedDate.subtract(Duration(days: daysSinceSunday));
   }
 
   void calculatePreviousYearTotal() {
@@ -135,8 +125,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
         final weekEndPreviousYear =
             weekStartPreviousYear.add(const Duration(days: 7));
         for (var payment in payments) {
-          if (payment.date
-                  .isAfter(weekStartPreviousYear.subtract(const Duration(days: 1))) &&
+          if (!payment.date.isBefore(weekStartPreviousYear) &&
               payment.date.isBefore(weekEndPreviousYear)) {
             previousYearTotal += payment.amount;
           }

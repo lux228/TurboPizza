@@ -17,6 +17,39 @@ class _CalculatorDialogState extends State<CalculatorDialog> {
   String _operation = '';
   bool _waitingForOperand = false;
 
+  String _formatResult(double value) {
+    return value % 1 == 0
+        ? value.toInt().toString()
+        : value.toStringAsFixed(2);
+  }
+
+  double? _performCalculation() {
+    if (_previousNumber.isEmpty || _operation.isEmpty) return null;
+
+    final prev = double.tryParse(_previousNumber) ?? 0;
+    final current = double.tryParse(_display) ?? 0;
+    double result = 0;
+
+    switch (_operation) {
+      case '+':
+        result = prev + current;
+        break;
+      case '-':
+        result = prev - current;
+        break;
+      case '×':
+        result = prev * current;
+        break;
+      case '÷':
+        result = current != 0 ? prev / current : 0;
+        break;
+      default:
+        return null;
+    }
+
+    return result;
+  }
+
   void _inputNumber(String number) {
     setState(() {
       if (_waitingForOperand) {
@@ -33,38 +66,24 @@ class _CalculatorDialogState extends State<CalculatorDialog> {
       if (_previousNumber.isEmpty) {
         _previousNumber = _display;
       } else if (!_waitingForOperand) {
-        _calculate();
+        final result = _performCalculation();
+        if (result != null) {
+          _display = _formatResult(result);
+          _previousNumber = _display; // enchaîner sans appuyer sur =
+        }
       }
-      
+
       _operation = operation;
       _waitingForOperand = true;
     });
   }
 
   void _calculate() {
-    if (_previousNumber.isEmpty || _operation.isEmpty) return;
-
-    double prev = double.tryParse(_previousNumber) ?? 0;
-    double current = double.tryParse(_display) ?? 0;
-    double result = 0;
-
-    switch (_operation) {
-      case '+':
-        result = prev + current;
-        break;
-      case '-':
-        result = prev - current;
-        break;
-      case '×':
-        result = prev * current;
-        break;
-      case '÷':
-        result = current != 0 ? prev / current : 0;
-        break;
-    }
+    final result = _performCalculation();
+    if (result == null) return;
 
     setState(() {
-      _display = result % 1 == 0 ? result.toInt().toString() : result.toStringAsFixed(2);
+      _display = _formatResult(result);
       _previousNumber = '';
       _operation = '';
       _waitingForOperand = true;
