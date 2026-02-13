@@ -22,11 +22,16 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
   DateTime? _customEnd;
 
   List<Map<String, dynamic>>? _dailyRevenue;
+  List<Map<String, dynamic>>? _dailyRevenuePrev;
   List<Map<String, dynamic>>? _topByQuantity;
   List<Map<String, dynamic>>? _topByRevenue;
   Map<String, double>? _totalsByMethod;
   Map<String, Map<String, num>>? _totalsByType;
   double? _totalRevenue;
+
+  DateTime? _currentStart;
+  DateTime? _currentEndExclusive;
+  DateTime? _previousStart;
 
   bool _isLoading = true;
 
@@ -70,9 +75,13 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
 
     try {
       final (start, end) = _getDateRange();
+      final rangeDuration = end.difference(start);
+      final previousStart = DateTime(start.year - 1, start.month, start.day);
+      final previousEnd = previousStart.add(rangeDuration);
 
       final results = await Future.wait([
         _paymentRepo.fetchDailyRevenue(start: start, endExclusive: end),
+        _paymentRepo.fetchDailyRevenue(start: previousStart, endExclusive: previousEnd),
         _paymentRepo.fetchTopProductsByQuantity(start: start, endExclusive: end, limit: 5),
         _paymentRepo.fetchTopProductsByRevenue(start: start, endExclusive: end, limit: 5),
         _paymentRepo.fetchTotalsByMethodBetween(start: start, endExclusive: end),
@@ -82,11 +91,15 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
 
       setState(() {
         _dailyRevenue = results[0] as List<Map<String, dynamic>>;
-        _topByQuantity = results[1] as List<Map<String, dynamic>>;
-        _topByRevenue = results[2] as List<Map<String, dynamic>>;
-        _totalsByMethod = results[3] as Map<String, double>;
-        _totalsByType = results[4] as Map<String, Map<String, num>>;
-        _totalRevenue = results[5] as double;
+        _dailyRevenuePrev = results[1] as List<Map<String, dynamic>>;
+        _topByQuantity = results[2] as List<Map<String, dynamic>>;
+        _topByRevenue = results[3] as List<Map<String, dynamic>>;
+        _totalsByMethod = results[4] as Map<String, double>;
+        _totalsByType = results[5] as Map<String, Map<String, num>>;
+        _totalRevenue = results[6] as double;
+        _currentStart = start;
+        _currentEndExclusive = end;
+        _previousStart = previousStart;
         _isLoading = false;
       });
     } catch (e) {
@@ -244,6 +257,24 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
       return const SizedBox.shrink();
     }
 
+    final start = _currentStart;
+    final endExclusive = _currentEndExclusive;
+    final prevStart = _previousStart;
+    if (start == null || endExclusive == null || prevStart == null) {
+      return const SizedBox.shrink();
+    }
+
+    final days = _buildDayList(start, endExclusive);
+    if (days.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final currentTotals = _buildDailyTotalsMap(_dailyRevenue!);
+    final previousTotals = _dailyRevenuePrev == null
+        ? <String, double>{}
+        : _buildDailyTotalsMap(_dailyRevenuePrev!);
+    final prevDays = _buildDayList(prevStart, prevStart.add(endExclusive.difference(start)));
+
     return Card(
       elevation: 4,
       child: Padding(
@@ -256,6 +287,18 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
+            Row(
+              children: [
+                _buildLegendDot(Colors.orange),
+                const SizedBox(width: 6),
+                const Text('Cette année', style: TextStyle(fontSize: 12)),
+                const SizedBox(width: 16),
+                _buildLegendDot(Colors.blueGrey),
+                const SizedBox(width: 6),
+                const Text('Année-1', style: TextStyle(fontSize: 12)),
+              ],
+            ),
+            const SizedBox(height: 12),
             SizedBox(
               height: 250,
               child: LineChart(
@@ -278,13 +321,13 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
                       sideTitles: SideTitles(
                         showTitles: true,
                         reservedSize: 30,
-                        interval: _dailyRevenue!.length > 10
-                            ? (_dailyRevenue!.length / 5).ceilToDouble()
+                        interval: days.length > 10
+                            ? (days.length / 5).ceilToDouble()
                             : 1,
                         getTitlesWidget: (value, meta) {
                           final index = value.toInt();
-                          if (index >= 0 && index < _dailyRevenue!.length) {
-                            final date = DateTime.parse(_dailyRevenue![index]['date'] as String);
+                          if (index >= 0 && index < days.length) {
+                            final date = days[index];
                             return Padding(
                               padding: const EdgeInsets.only(top: 8),
                               child: Text(
@@ -303,8 +346,9 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
                   borderData: FlBorderData(show: true),
                   lineBarsData: [
                     LineChartBarData(
-                      spots: _dailyRevenue!.asMap().entries.map((entry) {
-                        final total = (entry.value['total'] as num).toDouble();
+                      spots: days.asMap().entries.map((entry) {
+                        final key = _dateKey(entry.value);
+                        final total = currentTotals[key] ?? 0.0;
                         return FlSpot(entry.key.toDouble(), total);
                       }).toList(),
                       isCurved: true,
@@ -315,6 +359,19 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
                         show: true,
                         color: Colors.orange.withValues(alpha: 0.3),
                       ),
+                    ),
+                    LineChartBarData(
+                      spots: prevDays.asMap().entries.map((entry) {
+                        final key = _dateKey(entry.value);
+                        final total = previousTotals[key] ?? 0.0;
+                        return FlSpot(entry.key.toDouble(), total);
+                      }).toList(),
+                      isCurved: true,
+                      color: Colors.blueGrey,
+                      barWidth: 2,
+                      dotData: const FlDotData(show: false),
+                      dashArray: [6, 4],
+                      belowBarData: BarAreaData(show: false),
                     ),
                   ],
                 ),
@@ -349,6 +406,40 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  List<DateTime> _buildDayList(DateTime start, DateTime endExclusive) {
+    final startDate = DateTime(start.year, start.month, start.day);
+    final endDate = DateTime(endExclusive.year, endExclusive.month, endExclusive.day);
+    final days = endDate.difference(startDate).inDays;
+    if (days <= 0) return [];
+    return List.generate(days, (index) => startDate.add(Duration(days: index)));
+  }
+
+  Map<String, double> _buildDailyTotalsMap(List<Map<String, dynamic>> source) {
+    final map = <String, double>{};
+    for (final row in source) {
+      final rawDate = row['date'] as String;
+      final date = DateTime.parse(rawDate);
+      final total = (row['total'] as num?)?.toDouble() ?? 0.0;
+      map[_dateKey(date)] = total;
+    }
+    return map;
+  }
+
+  String _dateKey(DateTime date) {
+    return DateFormat('yyyy-MM-dd').format(date);
+  }
+
+  Widget _buildLegendDot(Color color) {
+    return Container(
+      width: 10,
+      height: 10,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
       ),
     );
   }
