@@ -300,14 +300,17 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
         final textStyles = context.appTextStyles;
         final colors = context.appColors;
         final colorScheme = Theme.of(context).colorScheme;
+        final size = MediaQuery.of(context).size;
+        final dialogWidth = size.width < 600 ? size.width * 0.9 : 520.0;
+        final dialogHeight = size.height < 700 ? size.height * 0.85 : size.height * 0.7;
         return AlertDialog(
           title: Text(
             'Aperçu de la commande',
             style: textStyles.title.copyWith(fontWeight: FontWeight.bold),
           ),
           content: SizedBox(
-            width: 500,
-            height: MediaQuery.of(context).size.height * 0.7,
+            width: dialogWidth,
+            height: dialogHeight,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -563,210 +566,253 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
           ],
         ),
       ),
-      body: Row(
-        children: [
-          // 2/3 gauche : liste des produits
-          Expanded(
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          const minWidth = 900.0;
+          const minHeight = 600.0;
+          final isWide = constraints.maxWidth >= 1100;
+
+          if (constraints.maxWidth < minWidth || constraints.maxHeight < minHeight) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Text(
+                  'Fenetre trop petite. Agrandissez la fenetre pour un affichage correct.',
+                  textAlign: TextAlign.center,
+                  style: textStyles.subtitle.copyWith(
+                    color: colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
+              ),
+            );
+          }
+
+          final leftPanel = Expanded(
             flex: 2,
             child: ProductGrid(
               products: availablePizzas,
               onProductTap: addToCart,
             ),
-          ),
-          VerticalDivider(
-            width: 1,
-            thickness: 1,
-            color: colorScheme.outline,
-          ),
-          // 1/3 droite : file d'attente + composition
-          Expanded(
+          );
+          final rightPanel = Expanded(
             flex: 1,
+            child: _buildQueuePanel(colors, textStyles, colorScheme),
+          );
+
+          if (isWide) {
+            return Row(
+              children: [
+                leftPanel,
+                VerticalDivider(
+                  width: 1,
+                  thickness: 1,
+                  color: colorScheme.outline,
+                ),
+                rightPanel,
+              ],
+            );
+          }
+
+          return Column(
+            children: [
+              leftPanel,
+              Divider(height: 1, thickness: 1, color: colorScheme.outline),
+              rightPanel,
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildQueuePanel(
+    AppThemeColors colors,
+    AppTextStyles textStyles,
+    ColorScheme colorScheme,
+  ) {
+    return Column(
+      children: [
+        // Partie haute : File d'attente des commandes
+        Expanded(
+          flex: 1,
+          child: Container(
+            color: colors.lightBlueAccent,
             child: Column(
               children: [
-                // Partie haute : File d'attente des commandes
-                Expanded(
-                  flex: 1,
-                  child: Container(
-                    color: colors.lightBlueAccent,
-                    child: Column(
-                      children: [
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12.0),
-                          color: colors.lightBlue,
-                          child: Column(
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      children: [
-                                        Text(
-                                          'COMMANDES EN ATTENTE',
-                                          style: textStyles.subtitle.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                            color: colorScheme.onSurface,
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Icon(
-                                              Icons.touch_app,
-                                              size: 14,
-                                              color: colorScheme.onSurface
-                                                  .withValues(alpha: 0.6),
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              AppStrings.touchForDetailsMessage,
-                                              style: textStyles.small.copyWith(
-                                                color: colorScheme.onSurface
-                                                    .withValues(alpha: 0.6),
-                                                fontStyle: FontStyle.italic,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12.0),
+                  color: colors.lightBlue,
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              children: [
+                                Text(
+                                  'COMMANDES EN ATTENTE',
+                                  style: textStyles.subtitle.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: colorScheme.onSurface,
                                   ),
-                                  Consumer<CartService>(
-                                    builder: (context, cartService, child) {
-                                      return IconButton(
-                                        icon: const Icon(Icons.calculate),
-                                        onPressed: () {
-                                          showDialog(
-                                            context: context,
-                                            builder: (BuildContext context) => CalculatorDialog(
-                                              currentOrderTotal: cartService.totalPrice,
-                                            ),
-                                          );
-                                        },
-                                        tooltip: 'Calculatrice',
-                                        iconSize: 24,
-                                        color: colors.primaryBlue,
-                                      );
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          child: Consumer<OrderService>(
-                            builder: (context, orderService, child) {
-                              if (!orderService.hasOrders) {
-                                return Center(
-                                  child: Text(
-                                    AppStrings.noOrdersMessage,
-                                    style: textStyles.body.copyWith(
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.touch_app,
+                                      size: 14,
                                       color: colorScheme.onSurface
                                           .withValues(alpha: 0.6),
-                                      fontStyle: FontStyle.italic,
                                     ),
-                                  ),
-                                );
-                              }
-
-                              return LazyOrderList(
-                                orders: orderService.orders,
-                                orderService: orderService,
-                                onTap: showOrderPreview,
-                                onValidate: validatePickup,
-                                onEdit: editOrderOnHold,
-                                onChangeTime: changeOrderTime,
-                                onCancel: cancelOrderOnHold,
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      AppStrings.touchForDetailsMessage,
+                                      style: textStyles.small.copyWith(
+                                        color: colorScheme.onSurface
+                                            .withValues(alpha: 0.6),
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          Consumer<CartService>(
+                            builder: (context, cartService, child) {
+                              return IconButton(
+                                icon: const Icon(Icons.calculate),
+                                onPressed: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (BuildContext context) => CalculatorDialog(
+                                      currentOrderTotal: cartService.totalPrice,
+                                    ),
+                                  );
+                                },
+                                tooltip: 'Calculatrice',
+                                iconSize: 24,
+                                color: colors.primaryBlue,
                               );
                             },
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                const Divider(height: 1, thickness: 1),
-                // Partie basse : Composition actuelle avec animation depuis le bas
-                Consumer<CartService>(
-                  builder: (context, cartService, child) {
-                    // Calcul dynamique de la hauteur de la commande en cours
-                    final screenHeight = MediaQuery.of(context).size.height;
-                    const double headerHeight = 56; // bandeau "COMMANDE EN COURS"
-                    const double footerHeight = 140; // total + boutons
-                    const double perItemHeight = 64; // hauteur approximative par ligne du panier
-                    final int itemCount = cartService.items.length;
-
-                    // Gestion du debounce: 
-                    // - si le nombre d'items augmente, on applique immédiatement la nouvelle hauteur
-                    // - s'il diminue, on attend un court délai avant de réduire la hauteur
-                    if (itemCount > _appliedItemCountForHeight) {
-                      _currentOrderShrinkTimer?.cancel();
-                      if (mounted) {
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (!mounted) return;
-                          setState(() {
-                            _appliedItemCountForHeight = itemCount;
-                          });
-                        });
-                      }
-                    } else if (itemCount < _appliedItemCountForHeight) {
-                      // Redémarrer le timer de réduction
-                      _currentOrderShrinkTimer?.cancel();
-                      _currentOrderShrinkTimer = Timer(AppDurations.currentOrderShrinkDelay, () {
-                        if (!mounted) return;
-                        final int latestCount = context.read<CartService>().items.length;
-                        setState(() {
-                          _appliedItemCountForHeight = latestCount;
-                        });
-                        // Si après délai le panier est vide, refermer la fenêtre en douceur
-                        if (latestCount == 0 && showCurrentOrder) {
-                          if (_animationController.status == AnimationStatus.dismissed) {
-                            setState(() => showCurrentOrder = false);
-                          } else if (_animationController.status != AnimationStatus.reverse) {
-                            _animationController.reverse().then((_) {
-                              if (mounted) setState(() => showCurrentOrder = false);
-                            });
-                          }
-                        }
-                      });
-                    }
-
-                    final double desiredHeight = headerHeight + footerHeight + (_appliedItemCountForHeight * perItemHeight);
-                    final double minHeight = screenHeight * 0.25; // min 25% écran
-                    final double maxHeight = screenHeight * 0.70; // max 70% écran pour laisser de la place à la file d'attente
-                    final double currentOrderHeight = desiredHeight.clamp(minHeight, maxHeight).toDouble();
-
-                    return AnimatedBuilder(
-                      animation: _slideAnimation,
-                      builder: (context, child) {
-                        return ClipRect(
-                          child: Align(
-                            alignment: Alignment.bottomCenter,
-                            heightFactor: showCurrentOrder ? _slideAnimation.value : 0.0,
-                            child: AnimatedContainer(
-                              duration: AppDurations.animationDuration,
-                              curve: Curves.easeInOut,
-                              height: currentOrderHeight,
-                              child: CurrentOrderWidget(
-                                onPutOnHold: putOrderOnHold,
-                                onCheckoutDirect: checkoutDirect,
-                              ),
+                Expanded(
+                  child: Consumer<OrderService>(
+                    builder: (context, orderService, child) {
+                      if (!orderService.hasOrders) {
+                        return Center(
+                          child: Text(
+                            AppStrings.noOrdersMessage,
+                            style: textStyles.body.copyWith(
+                              color: colorScheme.onSurface
+                                  .withValues(alpha: 0.6),
+                              fontStyle: FontStyle.italic,
                             ),
                           ),
                         );
-                      },
-                    );
-                  },
+                      }
+
+                      return LazyOrderList(
+                        orders: orderService.orders,
+                        orderService: orderService,
+                        onTap: showOrderPreview,
+                        onValidate: validatePickup,
+                        onEdit: editOrderOnHold,
+                        onChangeTime: changeOrderTime,
+                        onCancel: cancelOrderOnHold,
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+        const Divider(height: 1, thickness: 1),
+        // Partie basse : Composition actuelle avec animation depuis le bas
+        Consumer<CartService>(
+          builder: (context, cartService, child) {
+            // Calcul dynamique de la hauteur de la commande en cours
+            final screenHeight = MediaQuery.of(context).size.height;
+            const double headerHeight = 56; // bandeau "COMMANDE EN COURS"
+            const double footerHeight = 140; // total + boutons
+            const double perItemHeight = 64; // hauteur approximative par ligne du panier
+            final int itemCount = cartService.items.length;
+
+            // Gestion du debounce: 
+            // - si le nombre d'items augmente, on applique immédiatement la nouvelle hauteur
+            // - s'il diminue, on attend un court délai avant de réduire la hauteur
+            if (itemCount > _appliedItemCountForHeight) {
+              _currentOrderShrinkTimer?.cancel();
+              if (mounted) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted) return;
+                  setState(() {
+                    _appliedItemCountForHeight = itemCount;
+                  });
+                });
+              }
+            } else if (itemCount < _appliedItemCountForHeight) {
+              // Redémarrer le timer de réduction
+              _currentOrderShrinkTimer?.cancel();
+              _currentOrderShrinkTimer = Timer(AppDurations.currentOrderShrinkDelay, () {
+                if (!mounted) return;
+                final int latestCount = context.read<CartService>().items.length;
+                setState(() {
+                  _appliedItemCountForHeight = latestCount;
+                });
+                // Si après délai le panier est vide, refermer la fenêtre en douceur
+                if (latestCount == 0 && showCurrentOrder) {
+                  if (_animationController.status == AnimationStatus.dismissed) {
+                    setState(() => showCurrentOrder = false);
+                  } else if (_animationController.status != AnimationStatus.reverse) {
+                    _animationController.reverse().then((_) {
+                      if (mounted) setState(() => showCurrentOrder = false);
+                    });
+                  }
+                }
+              });
+            }
+
+            final double desiredHeight =
+                headerHeight + footerHeight + (_appliedItemCountForHeight * perItemHeight);
+            final double minHeight = screenHeight * 0.25; // min 25% écran
+            final double maxHeight = screenHeight * 0.70; // max 70% écran
+            final double currentOrderHeight = desiredHeight.clamp(minHeight, maxHeight).toDouble();
+
+            return AnimatedBuilder(
+              animation: _slideAnimation,
+              builder: (context, child) {
+                return ClipRect(
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
+                    heightFactor: showCurrentOrder ? _slideAnimation.value : 0.0,
+                    child: AnimatedContainer(
+                      duration: AppDurations.animationDuration,
+                      curve: Curves.easeInOut,
+                      height: currentOrderHeight,
+                      child: CurrentOrderWidget(
+                        onPutOnHold: putOrderOnHold,
+                        onCheckoutDirect: checkoutDirect,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ],
     );
   }
 

@@ -97,11 +97,14 @@ class _PickupTimeDialogState extends State<PickupTimeDialog> {
   Widget build(BuildContext context) {
     final textStyles = context.appTextStyles;
     final colorScheme = Theme.of(context).colorScheme;
+    final size = MediaQuery.of(context).size;
+    final dialogWidth = size.width < 560 ? size.width * 0.92 : 520.0;
+    final dialogHeight = size.height < 720 ? size.height * 0.85 : 600.0;
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
-        width: 500,
-        height: 600,
+        width: dialogWidth,
+        height: dialogHeight,
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
