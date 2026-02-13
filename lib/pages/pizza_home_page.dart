@@ -402,15 +402,15 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                                         ),
                                       ),
                                       SizedBox(
-                                        width: 60,
+                                        width: 80,
                           child: Text(formatPrice(item.price), 
                                           style: TextStyle(fontSize: 16),
                                           textAlign: TextAlign.right,
                                         ),
                                       ),
-                                      SizedBox(width: 8),
+                                      SizedBox(width: 12),
                                       SizedBox(
-                                        width: 70,
+                                        width: 95,
                           child: Text(formatPrice(item.totalPrice), 
                                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green[700]),
                                           textAlign: TextAlign.right,

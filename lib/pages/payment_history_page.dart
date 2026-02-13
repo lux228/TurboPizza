@@ -336,6 +336,106 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
     totalSelectedSum = totalSelectedCash + totalSelectedChecks + totalSelectedTransfers;
   }
 
+  int _selectedCount() {
+    return filteredPayments.where((payment) => payment.isSelected).length;
+  }
+
+  void _setAllSelections(bool selected) {
+    setState(() {
+      for (final payment in filteredPayments) {
+        payment.isSelected = selected;
+      }
+      calculateSelectedTotals();
+    });
+  }
+
+  void _showPointageSheet() {
+    final selectedCount = _selectedCount();
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Pointage',
+                      style: TextStyle(
+                        fontSize: AppConstants.subtitleFontSize,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      '$selectedCount selection${selectedCount > 1 ? 's' : ''}',
+                      style: TextStyle(
+                        fontSize: AppConstants.bodyFontSize,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 8,
+                  children: [
+                    Text(
+                      'Chèques: ${formatPrice(totalSelectedChecks)} / ${formatPrice(totalChecks)}',
+                      style: TextStyle(fontSize: AppConstants.bodyFontSize),
+                    ),
+                    Text(
+                      'Espèces: ${formatPrice(totalSelectedCash)} / ${formatPrice(totalCash)}',
+                      style: TextStyle(fontSize: AppConstants.bodyFontSize),
+                    ),
+                    Text(
+                      'Virements: ${formatPrice(totalSelectedTransfers)} / ${formatPrice(totalTransfers)}',
+                      style: TextStyle(fontSize: AppConstants.bodyFontSize),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Total: ${formatPrice(totalSelectedSum)} / ${formatPrice(totalSum)}',
+                  style: TextStyle(
+                    fontSize: AppConstants.subtitleFontSize,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 12,
+                  children: [
+                    OutlinedButton(
+                      onPressed: () {
+                        _setAllSelections(true);
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('Tout selectionner'),
+                    ),
+                    OutlinedButton(
+                      onPressed: () {
+                        _setAllSelections(false);
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('Tout deselectionner'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
         context: context,
@@ -738,7 +838,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                             foregroundColor: Colors.black,
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 8),
-                            minimumSize: const Size(200, 42),
+                            fixedSize: const Size(280, 42),
                           ),
                           onPressed: currentViewMode == ViewMode.daily
                               ? () => _selectDate(context)
@@ -896,49 +996,17 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                   runSpacing: 8,
                   children: [
                     Text(
-                      "Total pointé Chèques: ${formatPrice(totalSelectedChecks)}",
+                      "Chèques: ${formatPrice(totalSelectedChecks)} / ${formatPrice(totalChecks)}",
                       style:
                           const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      "Total pointé Espèces: ${formatPrice(totalSelectedCash)}",
+                      "Espèces: ${formatPrice(totalSelectedCash)} / ${formatPrice(totalCash)}",
                       style:
                           const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      "Total pointé Virements: ${formatPrice(totalSelectedTransfers)}",
-                      style:
-                          const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      "Total pointé: ${formatPrice(totalSelectedSum)}",
-                      style:
-                          const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-                Wrap(
-                  alignment: WrapAlignment.spaceEvenly,
-                  spacing: 16,
-                  runSpacing: 8,
-                  children: [
-                    Text(
-                      "Total Chèques: ${formatPrice(totalChecks)}",
-                      style:
-                          const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      "Total Espèces: ${formatPrice(totalCash)}",
-                      style:
-                          const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      "Total Virements: ${formatPrice(totalTransfers)}",
-                      style:
-                          const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      "Total: ${formatPrice(totalSum)}",
+                      "Virements: ${formatPrice(totalSelectedTransfers)} / ${formatPrice(totalTransfers)}",
                       style:
                           const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
