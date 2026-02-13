@@ -7,6 +7,7 @@ import '../models/payment.dart';
 import '../models/pending_order.dart';
 import '../utils/format_utils.dart';
 import '../utils/storage_service.dart';
+import '../utils/snack_bar_utils.dart';
 import '../utils/cache_service.dart';
 import '../widgets/lazy_order_list.dart';
 import '../widgets/payment_method_dialog.dart';
@@ -141,20 +142,10 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
 
       // Affichage d'un message de confirmation
   if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.check_circle, color: Colors.white, size: 20),
-                SizedBox(width: 8),
-                Text(AppConstants.paymentSuccessMessage),
-              ],
-            ),
-            duration: AppConstants.snackBarDuration,
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: AppConstants.successGreen,
-          ),
+        showAppSnackBar(
+          context,
+          AppConstants.paymentSuccessMessage,
+          type: AppSnackBarType.success,
         );
       
     }
@@ -193,20 +184,10 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
       }
 
   if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.access_time, color: Colors.white, size: 20),
-                SizedBox(width: 8),
-                Text(AppConstants.orderOnHoldMessage),
-              ],
-            ),
-            duration: AppConstants.snackBarDuration,
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: AppConstants.warningOrange,
-          ),
+        showAppSnackBar(
+          context,
+          AppConstants.orderOnHoldMessage,
+          type: AppSnackBarType.info,
         );
       
     }
@@ -237,20 +218,10 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
   await context.read<OrderService>().removeOrder(order.id);
 
   if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-    content: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-        Icon(Icons.check_circle, color: Colors.white, size: 20),
-        SizedBox(width: 8),
-        Text(AppConstants.orderValidatedMessage),
-              ],
-            ),
-            duration: AppConstants.snackBarDuration,
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: AppConstants.successGreen,
-          ),
+        showAppSnackBar(
+          context,
+          AppConstants.orderValidatedMessage,
+          type: AppSnackBarType.success,
         );
       }
     }
@@ -277,11 +248,10 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
     await context.read<OrderService>().removeOrder(order.id);
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(AppConstants.orderBackToCompositionMessage),
-          duration: AppConstants.snackBarDuration,
-        ),
+      showAppSnackBar(
+        context,
+        AppConstants.orderBackToCompositionMessage,
+        type: AppSnackBarType.info,
       );
     }
   }
@@ -308,20 +278,10 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
       await orderService.addOrder(updatedOrder);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.schedule, color: Colors.white, size: 20),
-                SizedBox(width: 8),
-                Text('Horaire modifié : $selectedTime'),
-              ],
-            ),
-            duration: AppConstants.snackBarDuration,
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: AppConstants.primaryBlue,
-          ),
+        showAppSnackBar(
+          context,
+          'Horaire modifié : $selectedTime',
+          type: AppSnackBarType.info,
         );
       }
     }
@@ -512,12 +472,10 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
   await context.read<OrderService>().removeOrder(order.id);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(AppConstants.orderCancelledMessage),
-            duration: AppConstants.snackBarDuration,
-            backgroundColor: Colors.red,
-          ),
+        showAppSnackBar(
+          context,
+          AppConstants.orderCancelledMessage,
+          type: AppSnackBarType.warning,
         );
       }
     }

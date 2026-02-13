@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../utils/migration_utility.dart';
+import '../utils/snack_bar_utils.dart';
 
 /// Debug widget to display migration diagnostic information.
 /// 
@@ -232,24 +233,22 @@ class _MigrationDiagnosticWidgetState extends State<MigrationDiagnosticWidget> {
     try {
       final stats = await MigrationUtility.forceMigration();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(stats != null
-                ? 'Migration réussie: ${stats.productsCount} produits, '
-                    '${stats.paymentsCount} paiements'
-                : 'Migration ignorée (déjà effectuée)'),
-            backgroundColor: Colors.green,
-          ),
+        showAppSnackBar(
+          context,
+          stats != null
+              ? 'Migration réussie: ${stats.productsCount} produits, '
+                  '${stats.paymentsCount} paiements'
+              : 'Migration ignorée (déjà effectuée)',
+          type: AppSnackBarType.success,
         );
         await _loadDiagnostic();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur: $e'),
-            backgroundColor: Colors.red,
-          ),
+        showAppSnackBar(
+          context,
+          'Erreur: $e',
+          type: AppSnackBarType.error,
         );
       }
     }
@@ -285,21 +284,19 @@ class _MigrationDiagnosticWidgetState extends State<MigrationDiagnosticWidget> {
     try {
       await MigrationUtility.clearLegacyData();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Données legacy supprimées'),
-            backgroundColor: Colors.green,
-          ),
+        showAppSnackBar(
+          context,
+          'Données legacy supprimées',
+          type: AppSnackBarType.success,
         );
         await _loadDiagnostic();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur: $e'),
-            backgroundColor: Colors.red,
-          ),
+        showAppSnackBar(
+          context,
+          'Erreur: $e',
+          type: AppSnackBarType.error,
         );
       }
     }

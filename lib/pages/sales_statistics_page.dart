@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../services/database_service.dart';
 import '../repositories/payment_repository.dart';
+import '../utils/snack_bar_utils.dart';
 
 /// Page displaying sales statistics with charts and analytics.
 class SalesStatisticsPage extends StatefulWidget {
@@ -91,8 +92,10 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur lors du chargement : $e')),
+        showAppSnackBar(
+          context,
+          'Erreur lors du chargement : $e',
+          type: AppSnackBarType.error,
         );
       }
     }

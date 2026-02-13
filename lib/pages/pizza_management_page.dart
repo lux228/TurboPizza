@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/pizza.dart';
 import '../utils/format_utils.dart';
 import '../utils/storage_service.dart';
+import '../utils/snack_bar_utils.dart';
 import '../constants/app_constants.dart';
 
 class PizzaManagementPage extends StatefulWidget {
@@ -142,11 +143,10 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
                 StorageService.savePizzaList(widget.availablePizzas);
                 
                 // Afficher un message de confirmation
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('${pizza.name} supprimé avec succès'),
-                    duration: const Duration(seconds: 2),
-                  ),
+                showAppSnackBar(
+                  context,
+                  '${pizza.name} supprimé avec succès',
+                  type: AppSnackBarType.success,
                 );
               },
             ),

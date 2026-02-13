@@ -5,6 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import '../models/payment.dart';
 import '../utils/format_utils.dart';
 import '../utils/storage_service.dart';
+import '../utils/snack_bar_utils.dart';
 import '../constants/app_constants.dart';
 import '../widgets/payment_method_dialog.dart';
 
@@ -242,8 +243,10 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
     if (confirmDelete == true) {
       if (payment.id == null) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Suppression impossible: identifiant manquant.')),
+        showAppSnackBar(
+          context,
+          'Suppression impossible: identifiant manquant.',
+          type: AppSnackBarType.error,
         );
         return;
       }
@@ -261,20 +264,10 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
 
   // Afficher un message de confirmation
   if (!mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.check_circle, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Text('Commande supprimée avec succès'),
-            ],
-          ),
-          duration: Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.green[600],
-        ),
+  showAppSnackBar(
+        context,
+        'Commande supprimée avec succès',
+        type: AppSnackBarType.success,
       );
     }
   }
@@ -291,8 +284,10 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
     if (newMethod == payment.paymentMethod) return;
 
     if (payment.id == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Modification impossible: identifiant manquant.')),
+      showAppSnackBar(
+        context,
+        'Modification impossible: identifiant manquant.',
+        type: AppSnackBarType.error,
       );
       return;
     }
@@ -310,20 +305,10 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
     await _loadTotalsForCurrentPeriod();
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.check_circle, color: Colors.white, size: 20),
-            SizedBox(width: 8),
-            Text('Mode de règlement mis à jour'),
-          ],
-        ),
-        duration: Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: Colors.green[600],
-      ),
+    showAppSnackBar(
+      context,
+      'Mode de règlement mis à jour',
+      type: AppSnackBarType.success,
     );
   }
 

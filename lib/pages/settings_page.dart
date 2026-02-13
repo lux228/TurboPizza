@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import '../services/order_service.dart';
 import '../services/backup_service.dart';
+import '../utils/snack_bar_utils.dart';
 import '../widgets/migration_diagnostic_widget.dart';
 import '../widgets/duplicate_diagnostic_widget.dart';
 
@@ -36,13 +37,17 @@ class _SettingsPageState extends State<SettingsPage> {
       final dest = p.join(dir.path, 'turbopizza-backup-$ts.db');
       await BackupService.instance.exportDatabase(dest);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Base exportée vers $dest')),
+      showAppSnackBar(
+        context,
+        'Base exportée vers $dest',
+        type: AppSnackBarType.success,
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Export échoué: $e')),
+      showAppSnackBar(
+        context,
+        'Export échoué: $e',
+        type: AppSnackBarType.error,
       );
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -64,13 +69,17 @@ class _SettingsPageState extends State<SettingsPage> {
       // Reload orders from new database
       await context.read<OrderService>().loadOrders();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Import réussi et données rechargées.')),
+      showAppSnackBar(
+        context,
+        'Import réussi et données rechargées.',
+        type: AppSnackBarType.success,
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Import échoué: $e')),
+      showAppSnackBar(
+        context,
+        'Import échoué: $e',
+        type: AppSnackBarType.error,
       );
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -101,13 +110,17 @@ class _SettingsPageState extends State<SettingsPage> {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('CSV exporté vers $dest')),
+      showAppSnackBar(
+        context,
+        'CSV exporté vers $dest',
+        type: AppSnackBarType.success,
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Export CSV échoué: $e')),
+      showAppSnackBar(
+        context,
+        'Export CSV échoué: $e',
+        type: AppSnackBarType.error,
       );
     } finally {
       if (mounted) setState(() => _busy = false);
