@@ -1,5 +1,5 @@
 import '../models/pizza.dart';
-import '../constants/app_constants.dart';
+import '../constants/app_categories.dart';
 
 /// Service de cache pour optimiser les performances
 class CacheService {
@@ -11,7 +11,7 @@ class CacheService {
   final Map<String, List<Pizza>> _sortedItemsCache = {};
   
   // Utilise l'ordre de catégories centralisé dans AppConstants
-  static const List<String> _categoryOrder = AppConstants.categoryOrder;
+  static const List<String> _categoryOrder = AppCategories.categoryOrder;
 
   /// Génère une clé de cache basée sur la liste d'articles
   String _generateCacheKey(List<Pizza> items) {

@@ -4,7 +4,8 @@ import 'package:fl_chart/fl_chart.dart';
 import '../services/database_service.dart';
 import '../repositories/payment_repository.dart';
 import '../utils/snack_bar_utils.dart';
-import '../constants/app_constants.dart';
+import '../constants/app_payments.dart';
+import '../theme/app_theme.dart';
 
 /// Page displaying sales statistics with charts and analytics.
 class SalesStatisticsPage extends StatefulWidget {
@@ -117,14 +118,17 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textStyles = context.appTextStyles;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Statistiques de vente'),
-        backgroundColor: Colors.orange,
+        backgroundColor: colorScheme.primary,
+        foregroundColor: colorScheme.onPrimary,
       ),
       body: Column(
         children: [
-          _buildPeriodSelector(),
+          _buildPeriodSelector(colorScheme, textStyles),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -135,13 +139,16 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
     );
   }
 
-  Widget _buildPeriodSelector() {
+  Widget _buildPeriodSelector(ColorScheme colorScheme, AppTextStyles textStyles) {
     return Container(
       padding: const EdgeInsets.all(16),
-      color: Colors.grey[200],
+      color: colorScheme.surfaceContainerHighest,
       child: Row(
         children: [
-          const Text('Période : ', style: TextStyle(fontWeight: FontWeight.bold)),
+          Text(
+            'Période : ',
+            style: textStyles.subtitle.copyWith(fontWeight: FontWeight.bold),
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Wrap(
@@ -162,8 +169,16 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
 
   Widget _buildPeriodChip(String label, String value) {
     final isSelected = _selectedPeriod == value;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textStyles = context.appTextStyles;
     return ChoiceChip(
       label: Text(label),
+      labelStyle: textStyles.caption.copyWith(
+        color: isSelected ? colorScheme.onPrimary : colorScheme.onSurface,
+      ),
+      selectedColor: colorScheme.primary,
+      backgroundColor: colorScheme.surface,
+      side: BorderSide(color: colorScheme.outline),
       selected: isSelected,
       onSelected: (selected) async {
         if (selected) {
@@ -202,8 +217,9 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
 
   Widget _buildStatisticsContent() {
     if (_dailyRevenue == null || _dailyRevenue!.isEmpty) {
-      return const Center(
-        child: Text('Aucune donnée pour cette période'),
+      final textStyles = context.appTextStyles;
+      return Center(
+        child: Text('Aucune donnée pour cette période', style: textStyles.body),
       );
     }
 
@@ -228,24 +244,22 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
 
   Widget _buildTotalRevenueCard() {
     final formatter = NumberFormat.currency(locale: 'fr_FR', symbol: '€', decimalDigits: 2);
+    final textStyles = context.appTextStyles;
+    final colors = context.appColors;
     return Card(
       elevation: 4,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            const Text(
+            Text(
               'Chiffre d\'affaires total',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: textStyles.subtitle.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
               formatter.format(_totalRevenue ?? 0),
-              style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: Colors.green,
-              ),
+              style: textStyles.header.copyWith(color: colors.successGreen),
             ),
           ],
         ),
@@ -257,6 +271,11 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
     if (_dailyRevenue == null || _dailyRevenue!.isEmpty) {
       return const SizedBox.shrink();
     }
+
+    final textStyles = context.appTextStyles;
+    final colorScheme = Theme.of(context).colorScheme;
+    final currentColor = context.appColors.warningOrange;
+    final previousColor = colorScheme.onSurface.withValues(alpha: 0.6);
 
     final start = _currentStart;
     final endExclusive = _currentEndExclusive;
@@ -283,20 +302,20 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Évolution du chiffre d\'affaires',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: textStyles.subtitle.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             Row(
               children: [
-                _buildLegendDot(Colors.orange),
+                _buildLegendDot(currentColor),
                 const SizedBox(width: 6),
-                const Text('Cette année', style: TextStyle(fontSize: 12)),
+                Text('Cette année', style: textStyles.caption),
                 const SizedBox(width: 16),
-                _buildLegendDot(Colors.blueGrey),
+                _buildLegendDot(previousColor),
                 const SizedBox(width: 6),
-                const Text('Année-1', style: TextStyle(fontSize: 12)),
+                Text('N-1', style: textStyles.caption),
               ],
             ),
             const SizedBox(height: 12),
@@ -313,7 +332,9 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
                         getTitlesWidget: (value, meta) {
                           return Text(
                             '${value.toInt()}€',
-                            style: const TextStyle(fontSize: 10),
+                            style: textStyles.caption.copyWith(
+                              color: colorScheme.onSurface,
+                            ),
                           );
                         },
                       ),
@@ -333,7 +354,9 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
                               padding: const EdgeInsets.only(top: 8),
                               child: Text(
                                 DateFormat('dd/MM').format(date),
-                                style: const TextStyle(fontSize: 10),
+                                style: textStyles.caption.copyWith(
+                                  color: colorScheme.onSurface,
+                                ),
                               ),
                             );
                           }
@@ -353,12 +376,12 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
                         return FlSpot(entry.key.toDouble(), total);
                       }).toList(),
                       isCurved: true,
-                      color: Colors.orange,
+                      color: currentColor,
                       barWidth: 3,
                       dotData: const FlDotData(show: true),
                       belowBarData: BarAreaData(
                         show: true,
-                        color: Colors.orange.withValues(alpha: 0.3),
+                        color: currentColor.withValues(alpha: 0.3),
                       ),
                     ),
                     LineChartBarData(
@@ -368,7 +391,7 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
                         return FlSpot(entry.key.toDouble(), total);
                       }).toList(),
                       isCurved: true,
-                      color: Colors.blueGrey,
+                      color: previousColor,
                       barWidth: 2,
                       dotData: const FlDotData(show: false),
                       dashArray: [6, 4],
@@ -385,6 +408,7 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
   }
 
   Widget _buildTopProductsSection() {
+    final textStyles = context.appTextStyles;
     return Card(
       elevation: 4,
       child: Padding(
@@ -392,9 +416,9 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Top 5 des produits',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: textStyles.subtitle.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             Row(
@@ -447,13 +471,16 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
 
   Widget _buildTopByQuantity() {
     if (_topByQuantity == null || _topByQuantity!.isEmpty) {
-      return const Text('Aucune donnée');
+      return Text('Aucune donnée', style: context.appTextStyles.body);
     }
+
+    final textStyles = context.appTextStyles;
+    final colors = context.appColors;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Par quantité', style: TextStyle(fontWeight: FontWeight.bold)),
+        Text('Par quantité', style: textStyles.subtitle.copyWith(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         ..._topByQuantity!.asMap().entries.map((entry) {
           final index = entry.key + 1;
@@ -466,13 +493,16 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
               children: [
                 Text(
                   '$index.',
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
+                  style: textStyles.body.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colors.warningOrange,
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(child: Text(name)),
                 Text(
                   '×$quantity',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  style: textStyles.body.copyWith(fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -484,15 +514,20 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
 
   Widget _buildTopByRevenue() {
     if (_topByRevenue == null || _topByRevenue!.isEmpty) {
-      return const Text('Aucune donnée');
+      return Text('Aucune donnée', style: context.appTextStyles.body);
     }
 
     final formatter = NumberFormat.currency(locale: 'fr_FR', symbol: '€', decimalDigits: 0);
+    final textStyles = context.appTextStyles;
+    final colors = context.appColors;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Par chiffre d\'affaires', style: TextStyle(fontWeight: FontWeight.bold)),
+        Text(
+          'Par chiffre d\'affaires',
+          style: textStyles.subtitle.copyWith(fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         ..._topByRevenue!.asMap().entries.map((entry) {
           final index = entry.key + 1;
@@ -505,13 +540,16 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
               children: [
                 Text(
                   '$index.',
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
+                  style: textStyles.body.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colors.warningOrange,
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(child: Text(name)),
                 Text(
                   formatter.format(revenue),
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  style: textStyles.body.copyWith(fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -529,6 +567,8 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
     final formatter = NumberFormat.currency(locale: 'fr_FR', symbol: '€', decimalDigits: 2);
     final totals = _totalsByMethod ?? <String, double>{};
     final total = totals.values.fold(0.0, (sum, val) => sum + val);
+    final textStyles = context.appTextStyles;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
       elevation: 4,
@@ -537,12 +577,12 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Répartition par méthode de paiement',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: textStyles.subtitle.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            ...AppConstants.paymentMethods.map((method) {
+            ...AppPayments.methods.map((method) {
               final amount = totals[method] ?? 0.0;
               final percent = total > 0 ? (amount / total * 100) : 0.0;
               return Padding(
@@ -554,7 +594,9 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
                     const SizedBox(width: 8),
                     Text(
                       '(${percent.toStringAsFixed(1)}%)',
-                      style: const TextStyle(color: Colors.grey),
+                      style: textStyles.caption.copyWith(
+                        color: colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
                     ),
                   ],
                 ),
@@ -573,6 +615,8 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
 
     final formatter = NumberFormat.currency(locale: 'fr_FR', symbol: '€', decimalDigits: 2);
     final totalRevenue = _totalsByType!.values.fold(0.0, (sum, val) => sum + (val['revenue'] as num).toDouble());
+    final textStyles = context.appTextStyles;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
       elevation: 4,
@@ -581,9 +625,9 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Répartition par type de pizza',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: textStyles.subtitle.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             ..._totalsByType!.entries.map((entry) {
@@ -602,7 +646,9 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
                     const SizedBox(width: 8),
                     Text(
                       '(${percent.toStringAsFixed(1)}%)',
-                      style: const TextStyle(color: Colors.grey),
+                      style: textStyles.caption.copyWith(
+                        color: colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
                     ),
                   ],
                 ),

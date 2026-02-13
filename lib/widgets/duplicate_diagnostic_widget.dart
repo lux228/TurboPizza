@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../utils/duplicate_diagnostic.dart';
+import '../theme/app_theme.dart';
 
 class DuplicateDiagnosticWidget extends StatefulWidget {
   const DuplicateDiagnosticWidget({super.key});
@@ -20,6 +21,7 @@ class _DuplicateDiagnosticWidgetState extends State<DuplicateDiagnosticWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final textStyles = context.appTextStyles;
     return Card(
       child: ExpansionTile(
         leading: const Icon(Icons.copy_all_outlined),
@@ -34,11 +36,11 @@ class _DuplicateDiagnosticWidgetState extends State<DuplicateDiagnosticWidget> {
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (snapshot.hasError) {
-                  return Text('Erreur: ${snapshot.error}');
+                  return Text('Erreur: ${snapshot.error}', style: textStyles.body);
                 }
                 final data = snapshot.data;
                 if (data == null) {
-                  return const Text('Aucune information disponible.');
+                  return Text('Aucune information disponible.', style: textStyles.body);
                 }
 
                 return Column(
@@ -66,6 +68,7 @@ class _DuplicateDiagnosticWidgetState extends State<DuplicateDiagnosticWidget> {
   }
 
   Widget _buildLine(String label, int? count, DateTime? date) {
+    final textStyles = context.appTextStyles;
     final countText = (count == null) ? '0' : count.toString();
     final dateText = (date == null)
         ? 'n/a'
@@ -74,9 +77,9 @@ class _DuplicateDiagnosticWidgetState extends State<DuplicateDiagnosticWidget> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(child: Text(label)),
+        Expanded(child: Text(label, style: textStyles.body)),
         const SizedBox(width: 12),
-        Text('$countText  ·  $dateText'),
+        Text('$countText  ·  $dateText', style: textStyles.caption),
       ],
     );
   }

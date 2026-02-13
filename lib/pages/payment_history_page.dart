@@ -6,8 +6,11 @@ import '../models/payment.dart';
 import '../utils/format_utils.dart';
 import '../utils/storage_service.dart';
 import '../utils/snack_bar_utils.dart';
-import '../constants/app_constants.dart';
+import '../constants/app_locales.dart';
+import '../constants/app_payments.dart';
+import '../constants/app_strings.dart';
 import '../widgets/payment_method_dialog.dart';
+import '../theme/app_theme.dart';
 
 enum ViewMode { daily, weekly, monthly }
 
@@ -49,7 +52,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
     super.initState();
     _scrollController.addListener(_onScroll);
     // Initialiser les données de localisation pour le français
-    initializeDateFormatting(AppConstants.frenchLocale, null).then((_) {
+    initializeDateFormatting(AppLocales.french, null).then((_) {
       _reloadForCurrentPeriod();
     });
   }
@@ -88,9 +91,9 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
       endExclusive: endExclusive,
     );
 
-    final cashTotal = totals[AppConstants.paymentMethods[0]] ?? 0.0;
-    final checkTotal = totals[AppConstants.paymentMethods[1]] ?? 0.0;
-    final transferTotal = totals[AppConstants.paymentMethods[2]] ?? 0.0;
+    final cashTotal = totals[AppPayments.methods[0]] ?? 0.0;
+    final checkTotal = totals[AppPayments.methods[1]] ?? 0.0;
+    final transferTotal = totals[AppPayments.methods[2]] ?? 0.0;
 
     final previousRange = _getPeriodRange(
       DateTime(selectedDate.year - 1, selectedDate.month, selectedDate.day),
@@ -175,68 +178,64 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
     bool? confirmDelete = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
+        final textStyles = context.appTextStyles;
+        final layout = context.appLayout;
+        final colors = context.appColors;
+        final colorScheme = Theme.of(context).colorScheme;
         return AlertDialog(
           title: Text('Confirmer la suppression',
-              style: TextStyle(
-                  fontSize: AppConstants.largeFontSize,
-                  fontWeight: FontWeight.bold)),
+              style: textStyles.large.copyWith(fontWeight: FontWeight.bold)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Êtes-vous sûr de vouloir supprimer cette commande ?',
-                  style: TextStyle(fontSize: AppConstants.subtitleFontSize)),
-              SizedBox(height: 12),
+                  style: textStyles.subtitle),
+              const SizedBox(height: 12),
               Container(
-                padding: EdgeInsets.all(12),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(AppConstants.borderRadius),
-                  border: Border.all(color: Colors.grey[300]!),
+                  color: colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(layout.borderRadius),
+                  border: Border.all(color: colorScheme.outline),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                         'Date : ${DateFormat('dd/MM/yyyy à HH:mm').format(payment.date)}',
-                        style: TextStyle(
-                            fontSize: AppConstants.bodyFontSize,
-                            fontWeight: FontWeight.w500)),
-                    SizedBox(height: 4),
+                        style: textStyles.body.copyWith(fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 4),
                     Text('Montant : ${formatPrice(payment.amount)}',
-                        style: TextStyle(
-                            fontSize: AppConstants.bodyFontSize,
-                            fontWeight: FontWeight.w500)),
-                    SizedBox(height: 4),
+                        style: textStyles.body.copyWith(fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 4),
                     Text('Mode : ${payment.paymentMethod}',
-                        style: TextStyle(
-                            fontSize: AppConstants.bodyFontSize,
-                            fontWeight: FontWeight.w500)),
+                        style: textStyles.body.copyWith(fontWeight: FontWeight.w500)),
                   ],
                 ),
               ),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
               Text('Cette action est irréversible.',
-                  style: TextStyle(
-                      fontSize: AppConstants.bodyFontSize,
-                      fontStyle: FontStyle.italic,
-                      color: Colors.red[600])),
+                  style: textStyles.body.copyWith(
+                    fontStyle: FontStyle.italic,
+                    color: colors.errorRed,
+                  )),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
               child: Text('Annuler',
-                  style: TextStyle(fontSize: AppConstants.subtitleFontSize)),
+                  style: textStyles.subtitle),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
+                backgroundColor: colorScheme.error,
+                foregroundColor: colorScheme.onError,
               ),
               onPressed: () => Navigator.of(context).pop(true),
               child: Text('Supprimer',
-                  style: TextStyle(fontSize: AppConstants.subtitleFontSize)),
+                  style: textStyles.subtitle),
             ),
           ],
         );
@@ -336,105 +335,6 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
     totalSelectedSum = totalSelectedCash + totalSelectedChecks + totalSelectedTransfers;
   }
 
-  int _selectedCount() {
-    return filteredPayments.where((payment) => payment.isSelected).length;
-  }
-
-  void _setAllSelections(bool selected) {
-    setState(() {
-      for (final payment in filteredPayments) {
-        payment.isSelected = selected;
-      }
-      calculateSelectedTotals();
-    });
-  }
-
-  void _showPointageSheet() {
-    final selectedCount = _selectedCount();
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Pointage',
-                      style: TextStyle(
-                        fontSize: AppConstants.subtitleFontSize,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      '$selectedCount selection${selectedCount > 1 ? 's' : ''}',
-                      style: TextStyle(
-                        fontSize: AppConstants.bodyFontSize,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 16,
-                  runSpacing: 8,
-                  children: [
-                    Text(
-                      'Chèques: ${formatPrice(totalSelectedChecks)} / ${formatPrice(totalChecks)}',
-                      style: TextStyle(fontSize: AppConstants.bodyFontSize),
-                    ),
-                    Text(
-                      'Espèces: ${formatPrice(totalSelectedCash)} / ${formatPrice(totalCash)}',
-                      style: TextStyle(fontSize: AppConstants.bodyFontSize),
-                    ),
-                    Text(
-                      'Virements: ${formatPrice(totalSelectedTransfers)} / ${formatPrice(totalTransfers)}',
-                      style: TextStyle(fontSize: AppConstants.bodyFontSize),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Total: ${formatPrice(totalSelectedSum)} / ${formatPrice(totalSum)}',
-                  style: TextStyle(
-                    fontSize: AppConstants.subtitleFontSize,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 12,
-                  children: [
-                    OutlinedButton(
-                      onPressed: () {
-                        _setAllSelections(true);
-                        Navigator.of(context).pop();
-                      },
-                      child: const Text('Tout selectionner'),
-                    ),
-                    OutlinedButton(
-                      onPressed: () {
-                        _setAllSelections(false);
-                        Navigator.of(context).pop();
-                      },
-                      child: const Text('Tout deselectionner'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -459,14 +359,17 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
   }
 
   Widget _buildDateShortcut(String label, DateTime date) {
+    final colors = context.appColors;
+    final textStyles = context.appTextStyles;
+    final colorScheme = Theme.of(context).colorScheme;
     bool isSelected = selectedDate.year == date.year &&
         selectedDate.month == date.month &&
         selectedDate.day == date.day;
 
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
-        backgroundColor: isSelected ? Colors.blue : Colors.white,
-        foregroundColor: isSelected ? Colors.white : Colors.black,
+        backgroundColor: isSelected ? colors.primaryBlue : colorScheme.surface,
+        foregroundColor: isSelected ? colorScheme.onPrimary : colorScheme.onSurface,
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         minimumSize: Size(104, 42),
       ),
@@ -478,7 +381,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
       },
       child: Text(
         label,
-        style: TextStyle(fontSize: AppConstants.subtitleFontSize),
+        style: textStyles.subtitle,
       ),
     );
   }
@@ -549,11 +452,12 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
+        final textStyles = context.appTextStyles;
+        final colors = context.appColors;
+        final colorScheme = Theme.of(context).colorScheme;
         return AlertDialog(
           title: Text('Détail de la commande',
-              style: TextStyle(
-                  fontSize: AppConstants.titleFontSize,
-                  fontWeight: FontWeight.bold)),
+              style: textStyles.title.copyWith(fontWeight: FontWeight.bold)),
           content: SizedBox(
             width: 500, // Largeur fixe plus petite
             height: MediaQuery.of(context).size.height * 0.7,
@@ -562,32 +466,32 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Date : $formattedDate',
-                    style: TextStyle(
-                        fontSize: AppConstants.subtitleFontSize,
-                        fontWeight: FontWeight.w600)),
-                SizedBox(height: 16),
+                    style: textStyles.subtitle.copyWith(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 16),
                 Text('Articles commandés :',
-                    style: TextStyle(
-                        fontSize: AppConstants.subtitleFontSize,
-                        fontWeight: FontWeight.bold)),
-                SizedBox(height: 8),
+                    style: textStyles.subtitle.copyWith(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
                 if (payment.items.isEmpty)
                   Container(
                     padding: EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.grey[100],
+                      color: colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey[300]!),
+                      border: Border.all(color: colorScheme.outline),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.info_outline, color: Colors.grey[600], size: 20),
+                        Icon(
+                          Icons.info_outline,
+                          color: colorScheme.onSurface.withValues(alpha: 0.7),
+                          size: 20,
+                        ),
                         SizedBox(width: 8),
                         Text('Aucun article enregistré pour cette commande',
-                            style: TextStyle(
-                                fontSize: 14,
-                                fontStyle: FontStyle.italic,
-                                color: Colors.grey[600])),
+                            style: textStyles.caption.copyWith(
+                              fontStyle: FontStyle.italic,
+                              color: colorScheme.onSurface.withValues(alpha: 0.7),
+                            )),
                       ],
                     ),
                   )
@@ -631,32 +535,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                             var item = sortedItems[index];
 
                             // Déterminer la couleur selon le type
-                            Color borderColor;
-                            switch (item.type) {
-                              case 'Tomate':
-                                borderColor = Colors.red;
-                                break;
-                              case 'Crème':
-                                borderColor = Colors.blue;
-                                break;
-                              case 'Softs':
-                                borderColor = Colors.amber;
-                                break;
-                              case 'Vins':
-                                borderColor = Colors.orange;
-                                break;
-                              case 'Spécialités':
-                                borderColor = Colors.green;
-                                break;
-                              case 'Glaces':
-                                borderColor = Colors.purple;
-                                break;
-                              case 'Desserts':
-                                borderColor = Colors.pink;
-                                break;
-                              default:
-                                borderColor = Colors.grey;
-                            }
+                            final borderColor = colors.productTypeColor(item.type);
 
                             return Container(
                               margin: EdgeInsets.symmetric(vertical: 2),
@@ -677,8 +556,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                     SizedBox(
                     width: 48,
                     child: Text('${item.quantity} x',
-                      style: TextStyle(
-                        fontSize: 16,
+                      style: textStyles.body.copyWith(
                         fontWeight: FontWeight.bold),
                       textAlign: TextAlign.center),
                     ),
@@ -688,12 +566,10 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
                                             Text(item.name,
-                                                style: TextStyle(
-                                                    fontSize: 16,
+                                                style: textStyles.body.copyWith(
                                                     fontWeight: FontWeight.w500)),
                                             Text(item.type,
-                                                style: TextStyle(
-                                                    fontSize: 14,
+                                                style: textStyles.caption.copyWith(
                                                     color: borderColor.withValues(alpha: 0.8))),
                                           ],
                                         ),
@@ -701,17 +577,17 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                                       SizedBox(
                                         width: 60,
                                         child: Text(formatPrice(item.price),
-                                            style: TextStyle(fontSize: 16),
+                                            style: textStyles.body,
                                             textAlign: TextAlign.right),
                                       ),
                                       SizedBox(width: 8),
                                       SizedBox(
                                         width: 70,
                                         child: Text(formatPrice(item.totalPrice),
-                                            style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.green[700]),
+                                            style: textStyles.body.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                              color: colors.successGreenDark,
+                                            ),
                                             textAlign: TextAlign.right),
                                       ),
                                     ],
@@ -726,17 +602,17 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                   ),
                 SizedBox(height: 16),
                 Text('Mode de règlement : ${payment.paymentMethod}',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    style: textStyles.body.copyWith(fontWeight: FontWeight.w600)),
                 SizedBox(height: 8),
                 Text('Montant total : ${formatPrice(payment.amount)}',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    style: textStyles.body.copyWith(fontWeight: FontWeight.w600)),
               ],
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text('Fermer', style: TextStyle(fontSize: 16)),
+              child: Text('Fermer', style: textStyles.body),
             ),
           ],
         );
@@ -746,13 +622,16 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textStyles = context.appTextStyles;
+    final colors = context.appColors;
     return Scaffold(
         appBar: AppBar(
-          title: const Text(AppConstants.paymentHistoryTitle),
+          title: const Text(AppStrings.paymentHistoryTitle),
         ),
         body: Column(children: [
           Container(
-            color: Colors.blue[50],
+            color: colorScheme.surfaceContainerHighest,
             padding: const EdgeInsets.all(12.0),
             child: Column(
               children: [
@@ -799,8 +678,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                           : currentViewMode == ViewMode.weekly
                               ? "Sélectionner la semaine:"
                               : "Sélectionner le mois:",
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w600),
+                      style: textStyles.body.copyWith(fontWeight: FontWeight.w600),
                     ),
                     // Boutons de raccourcis centrés (seulement pour le mode journalier)
                     if (currentViewMode == ViewMode.daily)
@@ -834,8 +712,8 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                         // Affichage de la période actuelle
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black,
+                            backgroundColor: colorScheme.surface,
+                            foregroundColor: colorScheme.onSurface,
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 8),
                             fixedSize: const Size(280, 42),
@@ -845,8 +723,9 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                               : null,
                           child: Text(
                             _getPeriodTitle(),
-                            style: const TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.w500),
+                            style: textStyles.caption.copyWith(
+                              fontWeight: FontWeight.w500,
+                            ),
                             textAlign: TextAlign.center,
                           ),
                         ),
@@ -881,10 +760,13 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                           child: Center(child: CircularProgressIndicator()),
                         );
                       }
-                      return const Center(
+                      return Center(
                         child: Padding(
-                          padding: EdgeInsets.all(24.0),
-                          child: Text('Aucun encaissement pour cette periode.'),
+                          padding: const EdgeInsets.all(24.0),
+                          child: Text(
+                            'Aucun encaissement pour cette periode.',
+                            style: textStyles.body,
+                          ),
                         ),
                       );
                     }
@@ -904,9 +786,10 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                         DateFormat('dd/MM/yyyy à H:mm').format(payment.date);
 
                     // Utiliser l'index pour alterner la couleur de fond
-                    Color bgColor = index % 2 == 0
-                        ? Colors.grey[200]!
-                        : Colors.white; // Couleurs alternées
+                    final bgColor = index % 2 == 0
+                      ? colorScheme.surfaceContainerLow
+                      : colorScheme.surface; // Couleurs alternées
+                    final muted = colorScheme.onSurface.withValues(alpha: 0.5);
 
                     return ListTile(
                         tileColor: bgColor, // Appliquer la couleur de fond
@@ -922,8 +805,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                               child: Text(
                                 "Montant: ${formatPrice(payment.amount)}",
                                 style: TextStyle(
-                                  color:
-                                      payment.isSelected ? Colors.grey : null,
+                                  color: payment.isSelected ? muted : null,
                                 ),
                               ),
                             ),
@@ -933,8 +815,8 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
                                 color: payment.isSelected
-                                    ? Colors.grey
-                                    : Colors.blue[700],
+                                    ? muted
+                                    : colorScheme.primary,
                               ),
                             ),
                           ],
@@ -945,8 +827,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                             Text(
                               "Mode: ${payment.paymentMethod}",
                               style: TextStyle(
-                                color:
-                                    payment.isSelected ? Colors.grey : null,
+                                color: payment.isSelected ? muted : null,
                               ),
                             ),
                             if (payment.items.isNotEmpty)
@@ -955,8 +836,8 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: payment.isSelected
-                                      ? Colors.grey
-                                      : Colors.grey[600],
+                                      ? muted
+                                      : colorScheme.onSurface.withValues(alpha: 0.7),
                                 ),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
@@ -967,19 +848,19 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
-                              icon: Icon(Icons.edit, color: Colors.orange),
+                              icon: Icon(Icons.edit, color: colors.warningOrange),
                               onPressed: () => _changePaymentMethod(payment),
                               tooltip: 'Modifier le mode de règlement',
                             ),
                             // Icône pour voir le détail de la commande
                             IconButton(
-                              icon: Icon(Icons.visibility, color: Colors.blue),
+                              icon: Icon(Icons.visibility, color: colorScheme.primary),
                               onPressed: () => _showPaymentDetails(payment),
                               tooltip: 'Voir le détail de la commande',
                             ),
                             // Icône pour supprimer l'encaissement
                             IconButton(
-                              icon: Icon(Icons.delete, color: Colors.red),
+                              icon: Icon(Icons.delete, color: colorScheme.error),
                               onPressed: () => _deletePayment(payment),
                               tooltip: 'Supprimer cet encaissement',
                             ),
@@ -987,7 +868,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                         ));
                   })),
           Container(
-              color: Colors.lightBlue[100], // Définit la couleur de fond pour les totaux
+              color: colorScheme.surfaceContainerHighest,
               padding: const EdgeInsets.all(16.0),
               child: Column(children: [
                 Wrap(
@@ -997,18 +878,15 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                   children: [
                     Text(
                       "Chèques: ${formatPrice(totalSelectedChecks)} / ${formatPrice(totalChecks)}",
-                      style:
-                          const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: textStyles.body.copyWith(fontWeight: FontWeight.bold),
                     ),
                     Text(
                       "Espèces: ${formatPrice(totalSelectedCash)} / ${formatPrice(totalCash)}",
-                      style:
-                          const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: textStyles.body.copyWith(fontWeight: FontWeight.bold),
                     ),
                     Text(
                       "Virements: ${formatPrice(totalSelectedTransfers)} / ${formatPrice(totalTransfers)}",
-                      style:
-                          const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: textStyles.body.copyWith(fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
@@ -1017,21 +895,20 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                   padding:
                       const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                   decoration: BoxDecoration(
-                    color: Colors.orange[100],
+                    color: colorScheme.secondaryContainer,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.orange[300]!),
+                    border: Border.all(color: colorScheme.outline),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.history, color: Colors.orange[700], size: 20),
+                      Icon(Icons.history, color: colorScheme.onSecondaryContainer, size: 20),
                       const SizedBox(width: 8),
                       Text(
                         _getComparisonText(),
-                        style: TextStyle(
-                          fontSize: 16,
+                        style: textStyles.body.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: Colors.orange[700],
+                          color: colorScheme.onSecondaryContainer,
                         ),
                       ),
                       if (totalSum > 0 && previousYearTotal > 0)
@@ -1044,8 +921,8 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
                                 color: totalSum >= previousYearTotal
-                                    ? Colors.green[700]
-                                    : Colors.red[700],
+                                    ? colors.successGreenDark
+                                    : colorScheme.error,
                               ),
                             ),
                           ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../utils/migration_utility.dart';
 import '../utils/snack_bar_utils.dart';
+import '../theme/app_theme.dart';
 
 /// Debug widget to display migration diagnostic information.
 /// 
@@ -46,6 +47,7 @@ class _MigrationDiagnosticWidgetState extends State<MigrationDiagnosticWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final textStyles = context.appTextStyles;
     return Card(
       child: ExpansionTile(
         leading: const Icon(Icons.info_outline),
@@ -53,7 +55,8 @@ class _MigrationDiagnosticWidgetState extends State<MigrationDiagnosticWidget> {
         subtitle: _diagnostic != null
             ? Text(_diagnostic!.isMigrationCompleted
                 ? '✅ Migration complétée'
-                : '⚠️ Migration en attente')
+                : '⚠️ Migration en attente',
+                style: textStyles.caption)
             : null,
         children: [
           Padding(
@@ -119,13 +122,16 @@ class _MigrationDiagnosticWidgetState extends State<MigrationDiagnosticWidget> {
 
   Widget _buildStatusSection() {
     final stats = _diagnostic!.migrationStats;
-    
+    final colors = context.appColors;
+    final textStyles = context.appTextStyles;
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: _diagnostic!.isMigrationCompleted
-            ? Colors.green.shade50
-            : Colors.orange.shade50,
+            ? colorScheme.secondaryContainer
+            : colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -138,25 +144,25 @@ class _MigrationDiagnosticWidgetState extends State<MigrationDiagnosticWidget> {
                     ? Icons.check_circle
                     : Icons.warning,
                 color: _diagnostic!.isMigrationCompleted
-                    ? Colors.green
-                    : Colors.orange,
+                    ? colors.successGreen
+                    : colors.warningOrange,
               ),
               const SizedBox(width: 8),
               Text(
                 _diagnostic!.isMigrationCompleted
                     ? 'Migration complétée'
                     : 'Migration non effectuée',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                style: textStyles.subtitle.copyWith(fontWeight: FontWeight.bold),
               ),
             ],
           ),
           if (stats != null) ...[
             const SizedBox(height: 8),
             Text('Date: ${stats.migrationDate.toLocal()}',
-                style: Theme.of(context).textTheme.bodySmall),
+                style: textStyles.caption),
             Text('${stats.productsCount} produits, ${stats.paymentsCount} paiements, '
                 '${stats.pendingOrdersCount} commandes migrées',
-                style: Theme.of(context).textTheme.bodySmall),
+                style: textStyles.caption),
           ],
         ],
       ),
@@ -164,17 +170,18 @@ class _MigrationDiagnosticWidgetState extends State<MigrationDiagnosticWidget> {
   }
 
   Widget _buildDataSection(String title, List<String> items) {
+    final textStyles = context.appTextStyles;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: textStyles.subtitle.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 4),
         ...items.map((item) => Padding(
               padding: const EdgeInsets.only(left: 16, top: 2),
-              child: Text('• $item'),
+              child: Text('• $item', style: textStyles.body),
             )),
       ],
     );

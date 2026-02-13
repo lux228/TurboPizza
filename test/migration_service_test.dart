@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:turbo_pizza/constants/app_constants.dart';
+import 'package:turbo_pizza/constants/app_storage_keys.dart';
 import 'package:turbo_pizza/models/payment.dart';
 import 'package:turbo_pizza/models/pizza.dart';
 import 'package:turbo_pizza/services/database_service.dart';
@@ -47,7 +47,7 @@ void main() {
 
       // 2. Setup SharedPreferences with legacy data (including duplicates)
       SharedPreferences.setMockInitialValues({
-        AppConstants.spKeyPizzas: [
+        AppStorageKeys.pizzas: [
           json.encode({
             'name': 'Margherita', // Duplicate - should be skipped/updated
             'price': 11.0, // Different price - should update
@@ -61,7 +61,7 @@ void main() {
             'type': 'Pizza',
           }),
         ],
-        AppConstants.spKeyPayments: [
+        AppStorageKeys.payments: [
           json.encode({
             'date': '2026-01-01T12:00:00.000',
             'montant': 10.0,
@@ -89,7 +89,7 @@ void main() {
             ],
           }), // New - should be added
         ],
-        AppConstants.spKeyPendingOrders: [
+        AppStorageKeys.pendingOrders: [
           json.encode({
             'id': 'order123',
             'heureComposition': '2026-02-12T10:00:00.000',
@@ -149,7 +149,7 @@ void main() {
 
       // Setup SharedPreferences
       SharedPreferences.setMockInitialValues({
-        AppConstants.spKeyPizzas: [
+        AppStorageKeys.pizzas: [
           json.encode({
             'name': 'Calzone',
             'price': 13.0,
@@ -171,7 +171,7 @@ void main() {
 
       // Add more data to SharedPreferences
       SharedPreferences.setMockInitialValues({
-        AppConstants.spKeyPizzas: [
+        AppStorageKeys.pizzas: [
           json.encode({
             'name': 'Calzone',
             'price': 13.0,

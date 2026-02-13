@@ -3,7 +3,8 @@ import 'package:provider/provider.dart';
 import '../models/pizza.dart';
 import '../services/cart_service.dart';
 import '../utils/format_utils.dart';
-import '../constants/app_constants.dart';
+import '../constants/app_strings.dart';
+import '../theme/app_theme.dart';
 
 class CurrentOrderWidget extends StatelessWidget {
   final VoidCallback onPutOnHold;
@@ -17,22 +18,24 @@ class CurrentOrderWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
+    final textStyles = context.appTextStyles;
+    final colorScheme = Theme.of(context).colorScheme;
     return Consumer<CartService>(
       builder: (context, cartService, child) {
         return Container(
-          color: Colors.grey[200],
+          color: colorScheme.surface,
           child: Column(
             children: [
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(12.0),
-                color: Colors.grey[300],
+                color: colorScheme.surfaceContainerHighest,
                 child: Text(
                   'COMMANDE EN COURS',
-                  style: TextStyle(
-                    fontSize: AppConstants.subtitleFontSize,
+                  style: textStyles.subtitle.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    color: colorScheme.onSurface,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -60,9 +63,9 @@ class CurrentOrderWidget extends StatelessWidget {
                         Expanded(
                           child: Text(
                             "Total: ${formatPrice(cartService.totalPrice)}",
-                            style: const TextStyle(
-                              fontSize: AppConstants.titleFontSize,
+                            style: textStyles.title.copyWith(
                               fontWeight: FontWeight.bold,
+                              color: colorScheme.onSurface,
                             ),
                           ),
                         ),
@@ -76,13 +79,17 @@ class CurrentOrderWidget extends StatelessWidget {
                             height: 50,
                             child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
-                                foregroundColor: cartService.isEmpty ? Colors.grey : Colors.black,
-                                backgroundColor: cartService.isEmpty ? AppConstants.disabledButtonColor : AppConstants.holdButtonColor,
-                                textStyle: const TextStyle(fontSize: AppConstants.subtitleFontSize),
+                                foregroundColor: cartService.isEmpty
+                                  ? colorScheme.onSurface.withValues(alpha: 0.5)
+                                  : colorScheme.onSurface,
+                                backgroundColor: cartService.isEmpty
+                                  ? colorScheme.surfaceContainerHighest
+                                  : colors.holdButtonColor,
+                                textStyle: textStyles.subtitle,
                               ),
                               onPressed: cartService.isEmpty ? null : onPutOnHold,
                               child: Text(cartService.isEmpty 
-                                ? AppConstants.emptyCartMessage 
+                                ? AppStrings.emptyCartMessage 
                                 : cartService.lastPickupTime != null 
                                   ? "En attente (${cartService.lastPickupTime})"
                                   : "En attente"),
@@ -95,12 +102,16 @@ class CurrentOrderWidget extends StatelessWidget {
                             height: 50,
                             child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
-                                foregroundColor: cartService.isEmpty ? Colors.grey : Colors.black,
-                                backgroundColor: cartService.isEmpty ? AppConstants.disabledButtonColor : AppConstants.checkoutButtonColor,
-                                textStyle: const TextStyle(fontSize: AppConstants.subtitleFontSize),
+                                foregroundColor: cartService.isEmpty
+                                  ? colorScheme.onSurface.withValues(alpha: 0.5)
+                                  : colorScheme.onSurface,
+                                backgroundColor: cartService.isEmpty
+                                  ? colorScheme.surfaceContainerHighest
+                                  : colors.checkoutButtonColor,
+                                textStyle: textStyles.subtitle,
                               ),
                               onPressed: cartService.isEmpty ? null : onCheckoutDirect,
-                              child: Text(cartService.isEmpty ? AppConstants.emptyCartMessage : "Encaisser"),
+                              child: Text(cartService.isEmpty ? AppStrings.emptyCartMessage : "Encaisser"),
                             ),
                           ),
                         ),
@@ -129,19 +140,29 @@ class CartItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textStyles = context.appTextStyles;
     return ListTile(
-      tileColor: AppConstants.cartItemTileColor,
-  title: Text("${pizza.quantity} x ${pizza.name}"),
-      subtitle: Text(formatPrice(pizza.price)),
+      tileColor: colorScheme.surfaceContainerLow,
+      title: Text(
+        "${pizza.quantity} x ${pizza.name}",
+        style: textStyles.body.copyWith(color: colorScheme.onSurface),
+      ),
+      subtitle: Text(
+        formatPrice(pizza.price),
+        style: textStyles.caption.copyWith(
+          color: colorScheme.onSurface.withValues(alpha: 0.7),
+        ),
+      ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
-            icon: const Icon(Icons.remove),
+            icon: Icon(Icons.remove, color: colorScheme.onSurface),
             onPressed: () => onQuantityChanged(-1),
           ),
           IconButton(
-            icon: const Icon(Icons.add),
+            icon: Icon(Icons.add, color: colorScheme.onSurface),
             onPressed: () => onQuantityChanged(1),
           ),
         ],

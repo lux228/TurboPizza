@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../constants/app_constants.dart';
+import '../constants/app_storage_keys.dart';
 import '../services/database_service.dart';
 import '../services/migration_service.dart';
 
@@ -10,9 +10,9 @@ class MigrationUtility {
   static Future<bool> hasLegacyData() async {
     final prefs = await SharedPreferences.getInstance();
     
-    final hasPizzas = prefs.containsKey(AppConstants.spKeyPizzas);
-    final hasPayments = prefs.containsKey(AppConstants.spKeyPayments);
-    final hasPendingOrders = prefs.containsKey(AppConstants.spKeyPendingOrders);
+    final hasPizzas = prefs.containsKey(AppStorageKeys.pizzas);
+    final hasPayments = prefs.containsKey(AppStorageKeys.payments);
+    final hasPendingOrders = prefs.containsKey(AppStorageKeys.pendingOrders);
     
     return hasPizzas || hasPayments || hasPendingOrders;
   }
@@ -26,9 +26,9 @@ class MigrationUtility {
     final isCompleted = await migrationService.isMigrationCompleted();
     final stats = await migrationService.getMigrationStats();
     
-    final legacyPizzasCount = prefs.getStringList(AppConstants.spKeyPizzas)?.length ?? 0;
-    final legacyPaymentsCount = prefs.getStringList(AppConstants.spKeyPayments)?.length ?? 0;
-    final legacyPendingCount = prefs.getStringList(AppConstants.spKeyPendingOrders)?.length ?? 0;
+    final legacyPizzasCount = prefs.getStringList(AppStorageKeys.pizzas)?.length ?? 0;
+    final legacyPaymentsCount = prefs.getStringList(AppStorageKeys.payments)?.length ?? 0;
+    final legacyPendingCount = prefs.getStringList(AppStorageKeys.pendingOrders)?.length ?? 0;
     
     final dbProducts = await DatabaseService.instance.products.fetchProducts(includeInactive: true);
     final dbPayments = await DatabaseService.instance.payments.fetchPayments();
@@ -79,9 +79,9 @@ class MigrationUtility {
   /// Use with caution - this action cannot be undone.
   static Future<void> clearLegacyData() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(AppConstants.spKeyPizzas);
-    await prefs.remove(AppConstants.spKeyPayments);
-    await prefs.remove(AppConstants.spKeyPendingOrders);
+    await prefs.remove(AppStorageKeys.pizzas);
+    await prefs.remove(AppStorageKeys.payments);
+    await prefs.remove(AppStorageKeys.pendingOrders);
   }
 
   /// Exports legacy data from SharedPreferences to a JSON string.
@@ -91,9 +91,9 @@ class MigrationUtility {
     final prefs = await SharedPreferences.getInstance();
     
     final data = {
-      'pizzas': prefs.getStringList(AppConstants.spKeyPizzas) ?? [],
-      'payments': prefs.getStringList(AppConstants.spKeyPayments) ?? [],
-      'pending_orders': prefs.getStringList(AppConstants.spKeyPendingOrders) ?? [],
+      'pizzas': prefs.getStringList(AppStorageKeys.pizzas) ?? [],
+      'payments': prefs.getStringList(AppStorageKeys.payments) ?? [],
+      'pending_orders': prefs.getStringList(AppStorageKeys.pendingOrders) ?? [],
       'export_date': DateTime.now().toIso8601String(),
     };
     

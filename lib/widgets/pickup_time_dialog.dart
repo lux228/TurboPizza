@@ -1,5 +1,6 @@
 // ignore_for_file: library_private_types_in_public_api
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 class PickupTimeDialog extends StatefulWidget {
   final String? initialTime;
@@ -94,6 +95,8 @@ class _PickupTimeDialogState extends State<PickupTimeDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final textStyles = context.appTextStyles;
+    final colorScheme = Theme.of(context).colorScheme;
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
@@ -109,33 +112,28 @@ class _PickupTimeDialogState extends State<PickupTimeDialog> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.blue[50],
+                    color: colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
                     Icons.schedule,
-                    color: Colors.blue[700],
+                    color: colorScheme.onPrimaryContainer,
                     size: 24,
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Heure de récupération',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
+                        style: textStyles.title.copyWith(fontWeight: FontWeight.bold),
                       ),
                       Text(
                         'Heure de récupération de la commande',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey,
+                        style: textStyles.caption.copyWith(
+                          color: colorScheme.onSurface.withValues(alpha: 0.7),
                         ),
                       ),
                     ],
@@ -150,21 +148,17 @@ class _PickupTimeDialogState extends State<PickupTimeDialog> {
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey[300]!),
+                  border: Border.all(color: colorScheme.outline),
                   borderRadius: BorderRadius.circular(16),
-                  color: Colors.grey[50],
+                  color: colorScheme.surfaceContainerHighest,
                 ),
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
                     // Titre du cadran
-                    const Text(
+                    Text(
                       'Sélectionner l\'heure',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
+                      style: textStyles.title.copyWith(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 20),
                     
@@ -176,12 +170,11 @@ class _PickupTimeDialogState extends State<PickupTimeDialog> {
                           Expanded(
                             child: Column(
                               children: [
-                                const Text(
+                                Text(
                                   'Heures',
-                                  style: TextStyle(
-                                    fontSize: 16,
+                                  style: textStyles.subtitle.copyWith(
                                     fontWeight: FontWeight.w600,
-                                    color: Colors.blue,
+                                    color: colorScheme.primary,
                                   ),
                                 ),
                                 const SizedBox(height: 12),
@@ -211,11 +204,11 @@ class _PickupTimeDialogState extends State<PickupTimeDialog> {
                                         return Container(
                                           decoration: BoxDecoration(
                                             color: isSelected 
-                                              ? Colors.blue.withValues(alpha: 0.1)
+                                              ? colorScheme.primary.withValues(alpha: 0.12)
                                               : Colors.transparent,
                                             borderRadius: BorderRadius.circular(12),
                                             border: isSelected 
-                                              ? Border.all(color: Colors.blue, width: 2)
+                                              ? Border.all(color: colorScheme.primary, width: 2)
                                               : null,
                                           ),
                                           child: Center(
@@ -227,10 +220,10 @@ class _PickupTimeDialogState extends State<PickupTimeDialog> {
                                                   ? FontWeight.bold 
                                                   : FontWeight.w500,
                                                 color: isDisabled 
-                                                  ? Colors.grey[400]
+                                                  ? colorScheme.onSurface.withValues(alpha: 0.3)
                                                   : isSelected 
-                                                    ? Colors.blue[700] 
-                                                    : Colors.black87,
+                                                    ? colorScheme.primary 
+                                                    : colorScheme.onSurface,
                                               ),
                                             ),
                                           ),
@@ -248,7 +241,7 @@ class _PickupTimeDialogState extends State<PickupTimeDialog> {
                           Container(
                             width: 2,
                             height: 200,
-                            color: Colors.grey[300],
+                            color: colorScheme.outline,
                             margin: const EdgeInsets.symmetric(horizontal: 20),
                           ),
                           
@@ -256,12 +249,11 @@ class _PickupTimeDialogState extends State<PickupTimeDialog> {
                           Expanded(
                             child: Column(
                               children: [
-                                const Text(
+                                Text(
                                   'Minutes',
-                                  style: TextStyle(
-                                    fontSize: 16,
+                                  style: textStyles.subtitle.copyWith(
                                     fontWeight: FontWeight.w600,
-                                    color: Colors.blue,
+                                    color: colorScheme.primary,
                                   ),
                                 ),
                                 const SizedBox(height: 12),
@@ -291,11 +283,11 @@ class _PickupTimeDialogState extends State<PickupTimeDialog> {
                                         return Container(
                                           decoration: BoxDecoration(
                                             color: isSelected 
-                                              ? Colors.blue.withValues(alpha: 0.1)
+                                              ? colorScheme.primary.withValues(alpha: 0.12)
                                               : Colors.transparent,
                                             borderRadius: BorderRadius.circular(12),
                                             border: isSelected 
-                                              ? Border.all(color: Colors.blue, width: 2)
+                                              ? Border.all(color: colorScheme.primary, width: 2)
                                               : null,
                                           ),
                                           child: Center(
@@ -307,10 +299,10 @@ class _PickupTimeDialogState extends State<PickupTimeDialog> {
                                                   ? FontWeight.bold 
                                                   : FontWeight.w500,
                                                 color: isDisabled 
-                                                  ? Colors.grey[400]
+                                                  ? colorScheme.onSurface.withValues(alpha: 0.3)
                                                   : isSelected 
-                                                    ? Colors.blue[700] 
-                                                    : Colors.black87,
+                                                    ? colorScheme.primary 
+                                                    : colorScheme.onSurface,
                                               ),
                                             ),
                                           ),
@@ -344,10 +336,7 @@ class _PickupTimeDialogState extends State<PickupTimeDialog> {
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    child: const Text(
-                      'Annuler',
-                      style: TextStyle(fontSize: 16),
-                    ),
+                    child: Text('Annuler', style: textStyles.body),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -358,8 +347,12 @@ class _PickupTimeDialogState extends State<PickupTimeDialog> {
                         ? () => Navigator.of(context).pop(selectedTime)
                         : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: selectedTime != null ? Colors.blue : Colors.grey[300],
-                      foregroundColor: selectedTime != null ? Colors.white : Colors.grey[600],
+                      backgroundColor: selectedTime != null
+                          ? colorScheme.primary
+                          : colorScheme.surfaceContainerHighest,
+                      foregroundColor: selectedTime != null
+                          ? colorScheme.onPrimary
+                          : colorScheme.onSurface.withValues(alpha: 0.4),
                       elevation: selectedTime != null ? 2 : 0,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
@@ -368,10 +361,7 @@ class _PickupTimeDialogState extends State<PickupTimeDialog> {
                     ),
                     child: Text(
                       selectedTime != null ? 'Confirmer' : 'Choisir une heure',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: textStyles.body.copyWith(fontWeight: FontWeight.w600),
                     ),
                   ),
                 ),

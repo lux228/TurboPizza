@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import '../services/order_service.dart';
 import '../services/backup_service.dart';
+import '../services/theme_service.dart';
 import '../utils/snack_bar_utils.dart';
 import '../widgets/migration_diagnostic_widget.dart';
 import '../widgets/duplicate_diagnostic_widget.dart';
@@ -138,6 +139,8 @@ class _SettingsPageState extends State<SettingsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            const ThemeModeTile(),
+            const SizedBox(height: 24),
             ElevatedButton.icon(
               icon: const Icon(Icons.save_alt),
               label: const Text('Exporter la base SQLite'),
@@ -163,6 +166,43 @@ class _SettingsPageState extends State<SettingsPage> {
             const Text(
               'Exports enregistrés dans votre dossier Téléchargements (sinon dossier support de l\'app).',
               style: TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ThemeModeTile extends StatelessWidget {
+  const ThemeModeTile({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final themeService = context.watch<ThemeService>();
+    return Card(
+      child: ListTile(
+        title: const Text('Thème'),
+        subtitle: const Text('Choisir clair, sombre ou système'),
+        trailing: DropdownButton<ThemeMode>(
+          value: themeService.themeMode,
+          onChanged: (mode) {
+            if (mode != null) {
+              themeService.setThemeMode(mode);
+            }
+          },
+          items: const [
+            DropdownMenuItem(
+              value: ThemeMode.system,
+              child: Text('Système'),
+            ),
+            DropdownMenuItem(
+              value: ThemeMode.light,
+              child: Text('Clair'),
+            ),
+            DropdownMenuItem(
+              value: ThemeMode.dark,
+              child: Text('Sombre'),
             ),
           ],
         ),

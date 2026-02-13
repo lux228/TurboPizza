@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/pending_order.dart';
 import '../services/order_service.dart';
 import '../utils/format_utils.dart';
-import '../constants/app_constants.dart';
+import '../theme/app_theme.dart';
 
 class OrderStatusCard extends StatelessWidget {
   final PendingOrder order;
@@ -26,17 +26,21 @@ class OrderStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
+    final textStyles = context.appTextStyles;
+    final layout = context.appLayout;
+    final statusPalette = _resolveStatusPalette(statusInfo.status, colors);
     return GestureDetector(
       onTap: onTap,
       child: Card(
         margin: const EdgeInsets.only(bottom: 8.0),
-        elevation: AppConstants.cardElevation,
-        color: statusInfo.backgroundColor,
+        elevation: layout.cardElevation,
+        color: statusPalette.background,
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+            borderRadius: BorderRadius.circular(layout.borderRadius),
             border: Border.all(
-              color: statusInfo.color,
+              color: statusPalette.foreground,
               width: 2,
             ),
           ),
@@ -45,11 +49,11 @@ class OrderStatusCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildOrderHeader(),
+                _buildOrderHeader(textStyles, colors, statusPalette.foreground),
                 const SizedBox(height: 6),
-                _buildOrderItems(),
+                _buildOrderItems(textStyles),
                 const SizedBox(height: 12),
-                _buildActionButtons(),
+                _buildActionButtons(colors, textStyles),
               ],
             ),
           ),
@@ -58,7 +62,33 @@ class OrderStatusCard extends StatelessWidget {
     );
   }
 
-  Widget _buildOrderHeader() {
+  ({Color foreground, Color background}) _resolveStatusPalette(
+    OrderStatus status,
+    AppThemeColors colors,
+  ) {
+    switch (status) {
+      case OrderStatus.late:
+        return (foreground: colors.lateColor, background: colors.lateBackgroundColor);
+      case OrderStatus.slightlyLate:
+        return (
+          foreground: colors.slightlyLateColor,
+          background: colors.slightlyLateBackgroundColor,
+        );
+      case OrderStatus.comingSoon:
+        return (
+          foreground: colors.comingSoonColor,
+          background: colors.comingSoonBackgroundColor,
+        );
+      case OrderStatus.onTime:
+        return (foreground: colors.onTimeColor, background: colors.onTimeBackgroundColor);
+    }
+  }
+
+  Widget _buildOrderHeader(
+    AppTextStyles textStyles,
+    AppThemeColors colors,
+    Color statusColor,
+  ) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -67,23 +97,21 @@ class OrderStatusCard extends StatelessWidget {
             Icon(
               statusInfo.icon,
               size: 16,
-              color: statusInfo.color,
+              color: statusColor,
             ),
             const SizedBox(width: 4),
             Text(
               'Récup: ${order.plannedPickupTime}',
-              style: const TextStyle(
-                fontSize: AppConstants.subtitleFontSize,
+              style: textStyles.subtitle.copyWith(
                 fontWeight: FontWeight.bold,
-                color: Colors.black,
+                color: colors.greyText,
               ),
             ),
             const SizedBox(width: 4),
             Text(
               '(${order.createdAt.hour.toString().padLeft(2, '0')}:${order.createdAt.minute.toString().padLeft(2, '0')})',
-              style: const TextStyle(
-                fontSize: AppConstants.smallFontSize,
-                color: Colors.grey,
+              style: textStyles.small.copyWith(
+                color: colors.greyText,
                 fontStyle: FontStyle.italic,
               ),
             ),
@@ -93,8 +121,7 @@ class OrderStatusCard extends StatelessWidget {
           child: Center(
             child: Text(
               statusInfo.statusText,
-              style: const TextStyle(
-                fontSize: AppConstants.smallFontSize,
+              style: textStyles.small.copyWith(
                 fontWeight: FontWeight.w600,
                 fontStyle: FontStyle.italic,
               ),
@@ -103,28 +130,24 @@ class OrderStatusCard extends StatelessWidget {
         ),
         Text(
           formatPrice(order.amount),
-          style: const TextStyle(
-            fontSize: AppConstants.largeFontSize,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
+          style: textStyles.large.copyWith(fontWeight: FontWeight.bold),
         ),
       ],
     );
   }
 
-  Widget _buildOrderItems() {
+  Widget _buildOrderItems(AppTextStyles textStyles) {
     return Text(
     order.items
       .map((a) => '${a.quantity} x ${a.name}')
           .join(', '),
-      style: const TextStyle(fontSize: AppConstants.captionFontSize),
+      style: textStyles.caption,
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
     );
   }
 
-  Widget _buildActionButtons() {
+  Widget _buildActionButtons(AppThemeColors colors, AppTextStyles textStyles) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
@@ -134,8 +157,9 @@ class OrderStatusCard extends StatelessWidget {
               onPressed: onValidate!,
               icon: Icons.check,
               label: 'Valider',
-              backgroundColor: AppConstants.validateButtonBg,
-              foregroundColor: AppConstants.validateButtonFg,
+              backgroundColor: colors.validateButtonBg,
+              foregroundColor: colors.validateButtonFg,
+              textStyles: textStyles,
             ),
           ),
         if (onValidate != null && (onEdit != null || onChangeTime != null || onCancel != null))
@@ -146,8 +170,9 @@ class OrderStatusCard extends StatelessWidget {
               onPressed: onEdit!,
               icon: Icons.edit,
               label: 'Modifier',
-              backgroundColor: AppConstants.editButtonBg,
-              foregroundColor: AppConstants.editButtonFg,
+              backgroundColor: colors.editButtonBg,
+              foregroundColor: colors.editButtonFg,
+              textStyles: textStyles,
             ),
           ),
         if (onEdit != null && (onChangeTime != null || onCancel != null))
@@ -158,8 +183,9 @@ class OrderStatusCard extends StatelessWidget {
               onPressed: onChangeTime!,
               icon: Icons.schedule,
               label: 'Horaire',
-              backgroundColor: Colors.blue[100]!,
-              foregroundColor: Colors.blue[800]!,
+              backgroundColor: colors.lightBlueAccent,
+              foregroundColor: colors.primaryBlue,
+              textStyles: textStyles,
             ),
           ),
         if (onChangeTime != null && onCancel != null)
@@ -170,8 +196,9 @@ class OrderStatusCard extends StatelessWidget {
               onPressed: onCancel!,
               icon: Icons.delete,
               label: 'Annuler',
-              backgroundColor: AppConstants.cancelButtonBg,
-              foregroundColor: AppConstants.cancelButtonFg,
+              backgroundColor: colors.cancelButtonBg,
+              foregroundColor: colors.cancelButtonFg,
+              textStyles: textStyles,
             ),
           ),
       ],
@@ -184,11 +211,12 @@ class OrderStatusCard extends StatelessWidget {
     required String label,
     required Color backgroundColor,
     required Color foregroundColor,
+    required AppTextStyles textStyles,
   }) {
     return ElevatedButton.icon(
       onPressed: onPressed,
       icon: Icon(icon, size: 20),
-      label: Text(label, style: const TextStyle(fontSize: AppConstants.bodyFontSize)),
+      label: Text(label, style: textStyles.body),
       style: ElevatedButton.styleFrom(
         backgroundColor: backgroundColor,
         foregroundColor: foregroundColor,

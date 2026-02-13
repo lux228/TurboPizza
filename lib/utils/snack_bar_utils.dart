@@ -1,18 +1,19 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import '../constants/app_constants.dart';
+import '../constants/app_durations.dart';
+import '../theme/app_theme.dart';
 
 enum AppSnackBarType { info, success, warning, error }
 
 OverlayEntry? _activeEntry;
 
-Color _resolveAccent(AppSnackBarType type) {
+Color _resolveAccent(AppThemeColors colors, AppSnackBarType type) {
   return switch (type) {
-    AppSnackBarType.success => AppConstants.successGreen,
-    AppSnackBarType.warning => AppConstants.warningOrange,
-    AppSnackBarType.error => AppConstants.errorRed,
-    AppSnackBarType.info => AppConstants.primaryBlue,
+    AppSnackBarType.success => colors.successGreen,
+    AppSnackBarType.warning => colors.warningOrange,
+    AppSnackBarType.error => colors.errorRed,
+    AppSnackBarType.info => colors.primaryBlue,
   };
 }
 
@@ -26,7 +27,8 @@ void showAppSnackBar(
   final overlay = Overlay.maybeOf(context, rootOverlay: true);
   if (overlay == null) return;
 
-  final accent = _resolveAccent(type);
+  final colors = context.appColors;
+  final accent = _resolveAccent(colors, type);
   final topInset = MediaQuery.maybeOf(context)?.padding.top ?? 0.0;
 
   _activeEntry = OverlayEntry(
@@ -41,7 +43,7 @@ void showAppSnackBar(
           child: _ToastContainer(
             message: message,
             accent: accent,
-            duration: AppConstants.snackBarDuration,
+            duration: AppDurations.snackBarDuration,
             onDismiss: () {
               _activeEntry?.remove();
               _activeEntry = null;
@@ -129,6 +131,8 @@ class _ToastContainerState extends State<_ToastContainer>
 
   @override
   Widget build(BuildContext context) {
+    final textStyles = context.appTextStyles;
+    final colorScheme = Theme.of(context).colorScheme;
     return SlideTransition(
       position: _slide,
       child: FadeTransition(
@@ -138,12 +142,12 @@ class _ToastContainerState extends State<_ToastContainer>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.95),
+              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.95),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: widget.accent.withOpacity(0.6), width: 1),
+              border: Border.all(color: widget.accent.withValues(alpha: 0.6), width: 1),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
+                  color: colorScheme.onSurface.withValues(alpha: 0.15),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -151,10 +155,7 @@ class _ToastContainerState extends State<_ToastContainer>
             ),
             child: Text(
               widget.message,
-              style: TextStyle(
-                fontSize: AppConstants.bodyFontSize,
-                color: widget.accent,
-              ),
+              style: textStyles.body.copyWith(color: colorScheme.onSurface),
               textAlign: TextAlign.center,
             ),
           ),

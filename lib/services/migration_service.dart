@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import '../constants/app_constants.dart';
+import '../constants/app_storage_keys.dart';
 import '../models/payment.dart';
 import '../models/pending_order.dart';
 import '../models/pizza.dart';
@@ -291,7 +291,7 @@ class MigrationService {
   }
 
   Future<List<Pizza>> _loadLegacyPizzas(SharedPreferences prefs) async {
-    final pizzaJson = prefs.getStringList(AppConstants.spKeyPizzas);
+    final pizzaJson = prefs.getStringList(AppStorageKeys.pizzas);
     try {
       return pizzaJson
               ?.map((s) {
@@ -308,7 +308,7 @@ class MigrationService {
   }
 
   Future<List<Payment>> _loadLegacyPayments(SharedPreferences prefs) async {
-    final paymentsJson = prefs.getStringList(AppConstants.spKeyPayments);
+    final paymentsJson = prefs.getStringList(AppStorageKeys.payments);
     try {
       return paymentsJson
               ?.map((s) {
@@ -326,7 +326,7 @@ class MigrationService {
 
   Future<List<PendingOrder>> _loadLegacyPendingOrders(
       SharedPreferences prefs) async {
-    final pendingJson = prefs.getStringList(AppConstants.spKeyPendingOrders);
+    final pendingJson = prefs.getStringList(AppStorageKeys.pendingOrders);
     try {
       return pendingJson
               ?.map((s) {
