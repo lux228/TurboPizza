@@ -114,7 +114,7 @@ class AppConstants {
 
   // Modes de paiement par défaut
   static const String defaultPaymentMethod = "Espèces";
-  static const List<String> paymentMethods = ["Espèces", "Chèque", "Groupe"];
+  static const List<String> paymentMethods = ["Espèces", "Chèque"];
 
   // Configuration de l'historique
   static const String frenchLocale = 'fr_FR';

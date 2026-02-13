@@ -1,5 +1,6 @@
 // ignore_for_file: library_private_types_in_public_api
 import 'package:flutter/material.dart';
+import '../constants/app_constants.dart';
 
 class PaymentMethodDialog extends StatefulWidget {
   final String currentSelection;
@@ -11,12 +12,18 @@ class PaymentMethodDialog extends StatefulWidget {
 }
 
 class _PaymentMethodDialogState extends State<PaymentMethodDialog> {
-  ElevatedButton _createLargeButton(String text, VoidCallback onPressed) {
+  ElevatedButton _createLargeButton(
+    String text,
+    VoidCallback onPressed, {
+    required bool isSelected,
+  }) {
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         minimumSize: const Size(200, 50), // Agrandit le bouton
         textStyle: const TextStyle(fontSize: 18), // Agrandit le texte
+        backgroundColor: isSelected ? AppConstants.successGreen : null,
+        foregroundColor: isSelected ? Colors.white : null,
       ),
       child: Text(text),
     );
@@ -33,11 +40,15 @@ class _PaymentMethodDialogState extends State<PaymentMethodDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _createLargeButton(
-              "Espèces", () => _handlePaymentMethodSelection("Espèces")),
-          const SizedBox(height: 20), // Ajoute un espace entre les boutons
-          _createLargeButton(
-              "Chèque", () => _handlePaymentMethodSelection("Chèque")),
+          for (int i = 0; i < AppConstants.paymentMethods.length; i++) ...[
+            _createLargeButton(
+              AppConstants.paymentMethods[i],
+              () => _handlePaymentMethodSelection(AppConstants.paymentMethods[i]),
+              isSelected: AppConstants.paymentMethods[i] == widget.currentSelection,
+            ),
+            if (i < AppConstants.paymentMethods.length - 1)
+              const SizedBox(height: 20),
+          ],
         ],
       ),
     );

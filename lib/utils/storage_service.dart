@@ -76,6 +76,17 @@ class StorageService {
     await DatabaseService.instance.payments.deletePayment(paymentId);
   }
 
+  static Future<void> updatePaymentMethod({
+    required Payment payment,
+    required String newMethod,
+  }) async {
+    await _ensureDb();
+    await DatabaseService.instance.payments.updatePaymentMethod(
+      payment: payment,
+      newMethod: newMethod,
+    );
+  }
+
   // Pending orders
   static Future<void> savePendingOrder(PendingOrder order) async {
     await _ensureDb();

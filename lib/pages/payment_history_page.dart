@@ -6,6 +6,7 @@ import '../models/payment.dart';
 import '../utils/format_utils.dart';
 import '../utils/storage_service.dart';
 import '../constants/app_constants.dart';
+import '../widgets/payment_method_dialog.dart';
 
 enum ViewMode { daily, weekly, monthly }
 
@@ -276,6 +277,54 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
         ),
       );
     }
+  }
+
+  Future<void> _changePaymentMethod(Payment payment) async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (BuildContext context) =>
+          PaymentMethodDialog(currentSelection: payment.paymentMethod),
+    );
+
+    if (!mounted || result == null) return;
+    final String newMethod = result['method'];
+    if (newMethod == payment.paymentMethod) return;
+
+    if (payment.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Modification impossible: identifiant manquant.')),
+      );
+      return;
+    }
+
+    await StorageService.updatePaymentMethod(
+      payment: payment,
+      newMethod: newMethod,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      payment.paymentMethod = newMethod;
+    });
+    calculateSelectedTotals();
+    await _loadTotalsForCurrentPeriod();
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.check_circle, color: Colors.white, size: 20),
+            SizedBox(width: 8),
+            Text('Mode de règlement mis à jour'),
+          ],
+        ),
+        duration: Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.green[600],
+      ),
+    );
   }
 
   void calculateSelectedTotals() {
@@ -825,6 +874,11 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            IconButton(
+                              icon: Icon(Icons.edit, color: Colors.orange),
+                              onPressed: () => _changePaymentMethod(payment),
+                              tooltip: 'Modifier le mode de règlement',
+                            ),
                             // Icône pour voir le détail de la commande
                             IconButton(
                               icon: Icon(Icons.visibility, color: Colors.blue),

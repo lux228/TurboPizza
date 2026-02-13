@@ -241,6 +241,29 @@ class PaymentRepository {
     });
   }
 
+  /// Updates the payment method for a specific payment and refreshes its fingerprint.
+  Future<void> updatePaymentMethod({
+    required Payment payment,
+    required String newMethod,
+  }) async {
+    if (payment.id == null) {
+      throw ArgumentError('Payment id is required to update the method.');
+    }
+
+    final updatedPayment = payment.copyWith(paymentMethod: newMethod);
+    final fingerprint = buildPaymentFingerprint(updatedPayment);
+
+    await db.update(
+      'payments',
+      {
+        'payment_method': newMethod,
+        'fingerprint': fingerprint,
+      },
+      where: 'id = ?',
+      whereArgs: [payment.id],
+    );
+  }
+
   /// Returns top products by quantity sold within a date range.
   /// 
   /// [limit] specifies the maximum number of products to return (default: 10).
