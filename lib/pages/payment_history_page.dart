@@ -22,6 +22,14 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
   List<Payment> payments = [];
   List<Payment> filteredPayments = [];
 
+  final ScrollController _scrollController = ScrollController();
+  static const int _pageSize = 50;
+  bool _isLoading = false;
+  bool _hasMore = true;
+  int _currentOffset = 0;
+  DateTime? _currentStart;
+  DateTime? _currentEndExclusive;
+
   double totalChecks = 0.0;
   double totalCash = 0.0;
   double totalSum = 0.0;
@@ -35,65 +43,117 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     // Initialiser les données de localisation pour le français
     initializeDateFormatting(AppConstants.frenchLocale, null).then((_) {
-      StorageService.loadPayments().then((loadedPayments) {
-        setState(() {
-          payments = loadedPayments;
-          filterPayments();
-        });
-      });
+      _reloadForCurrentPeriod();
     });
   }
 
-  void filterPayments() {
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _reloadForCurrentPeriod() async {
+    final range = _getPeriodRange(selectedDate, currentViewMode);
+    _currentStart = range.$1;
+    _currentEndExclusive = range.$2;
+
     setState(() {
-      switch (currentViewMode) {
-        case ViewMode.daily:
-          filteredPayments = payments
-              .where((payment) =>
-                  payment.date.year == selectedDate.year &&
-                  payment.date.month == selectedDate.month &&
-                  payment.date.day == selectedDate.day)
-              .toList();
-          break;
-        case ViewMode.weekly:
-          final weekStart = _getWeekStart(selectedDate);
-            final weekEnd = weekStart.add(const Duration(days: 7));
-            filteredPayments = payments
-              .where((payment) =>
-                !payment.date.isBefore(weekStart) &&
-                payment.date.isBefore(weekEnd))
-              .toList();
-          break;
-        case ViewMode.monthly:
-          filteredPayments = payments
-              .where((payment) =>
-                  payment.date.year == selectedDate.year &&
-                  payment.date.month == selectedDate.month)
-              .toList();
-          break;
-      }
+      _isLoading = false;
+      _hasMore = true;
+      _currentOffset = 0;
+      payments = [];
+      filteredPayments = [];
     });
 
-  // Réinitialiser les totaux
-  totalChecks = 0.0;
-  totalCash = 0.0;
+    await _loadTotalsForCurrentPeriod();
+    await _loadNextPage();
+  }
 
-    // Calculer les totaux
-    for (var payment in filteredPayments) {
-      if (payment.paymentMethod == AppConstants.paymentMethods[1]) {
-        // "Chèque"
-        totalChecks += payment.amount;
-      } else if (payment.paymentMethod == AppConstants.paymentMethods[0]) {
-        // "Espèces"
-        totalCash += payment.amount;
-      }
+  Future<void> _loadTotalsForCurrentPeriod() async {
+    final start = _currentStart ?? _getPeriodRange(selectedDate, currentViewMode).$1;
+    final endExclusive =
+        _currentEndExclusive ?? _getPeriodRange(selectedDate, currentViewMode).$2;
+
+    final totals = await StorageService.loadPaymentTotalsByMethodBetween(
+      start: start,
+      endExclusive: endExclusive,
+    );
+
+    final cashTotal = totals[AppConstants.paymentMethods[0]] ?? 0.0;
+    final checkTotal = totals[AppConstants.paymentMethods[1]] ?? 0.0;
+
+    final previousRange = _getPeriodRange(
+      DateTime(selectedDate.year - 1, selectedDate.month, selectedDate.day),
+      currentViewMode,
+    );
+    final previousTotal = await StorageService.loadPaymentTotalAmountBetween(
+      start: previousRange.$1,
+      endExclusive: previousRange.$2,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      totalCash = cashTotal;
+      totalChecks = checkTotal;
+      totalSum = cashTotal + checkTotal;
+      previousYearTotal = previousTotal;
+    });
+  }
+
+  Future<void> _loadNextPage() async {
+    if (_isLoading || !_hasMore) return;
+    final start = _currentStart ?? _getPeriodRange(selectedDate, currentViewMode).$1;
+    final endExclusive =
+        _currentEndExclusive ?? _getPeriodRange(selectedDate, currentViewMode).$2;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final page = await StorageService.loadPaymentsPage(
+      start: start,
+      endExclusive: endExclusive,
+      limit: _pageSize,
+      offset: _currentOffset,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _currentOffset += page.length;
+      payments.addAll(page);
+      filteredPayments = List.from(payments);
+      _hasMore = page.length == _pageSize;
+      _isLoading = false;
+    });
+    calculateSelectedTotals();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients || _isLoading || !_hasMore) return;
+    final position = _scrollController.position;
+    if (position.pixels >= position.maxScrollExtent - 200) {
+      _loadNextPage();
     }
-    totalSum = totalCash + totalChecks;
+  }
 
-  // Calculer le total de l'année précédente pour la même période
-  calculatePreviousYearTotal();
+  (DateTime, DateTime) _getPeriodRange(DateTime date, ViewMode viewMode) {
+    switch (viewMode) {
+      case ViewMode.daily:
+        final start = DateTime(date.year, date.month, date.day);
+        return (start, start.add(const Duration(days: 1)));
+      case ViewMode.weekly:
+        final start = _getWeekStart(date);
+        return (start, start.add(const Duration(days: 7)));
+      case ViewMode.monthly:
+        final start = DateTime(date.year, date.month, 1);
+        final end = DateTime(date.year, date.month + 1, 1);
+        return (start, end);
+    }
   }
 
   // Obtenir le début de la semaine (dimanche soir 20h)
@@ -102,44 +162,6 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
     final daysSinceSunday = date.weekday % 7; // Sunday -> 0, Monday -> 1, ...
     final normalizedDate = DateTime(date.year, date.month, date.day);
     return normalizedDate.subtract(Duration(days: daysSinceSunday));
-  }
-
-  void calculatePreviousYearTotal() {
-    previousYearTotal = 0.0;
-
-    switch (currentViewMode) {
-      case ViewMode.daily:
-        DateTime anneePrecedente = DateTime(
-            selectedDate.year - 1, selectedDate.month, selectedDate.day);
-        for (var payment in payments) {
-          if (payment.date.year == anneePrecedente.year &&
-              payment.date.month == anneePrecedente.month &&
-              payment.date.day == anneePrecedente.day) {
-            previousYearTotal += payment.amount;
-          }
-        }
-        break;
-      case ViewMode.weekly:
-        final weekStartPreviousYear = _getWeekStart(DateTime(
-            selectedDate.year - 1, selectedDate.month, selectedDate.day));
-        final weekEndPreviousYear =
-            weekStartPreviousYear.add(const Duration(days: 7));
-        for (var payment in payments) {
-          if (!payment.date.isBefore(weekStartPreviousYear) &&
-              payment.date.isBefore(weekEndPreviousYear)) {
-            previousYearTotal += payment.amount;
-          }
-        }
-        break;
-      case ViewMode.monthly:
-        for (var payment in payments) {
-          if (payment.date.year == selectedDate.year - 1 &&
-              payment.date.month == selectedDate.month) {
-            previousYearTotal += payment.amount;
-          }
-        }
-        break;
-    }
   }
 
   void _deletePayment(Payment payment) async {
@@ -217,16 +239,24 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
 
     // Si l'utilisateur a confirmé la suppression
     if (confirmDelete == true) {
+      if (payment.id == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Suppression impossible: identifiant manquant.')),
+        );
+        return;
+      }
+
+      await StorageService.deletePayment(payment.id!);
+
       // Supprimer le paiement de la liste
       setState(() {
         payments.remove(payment);
+        filteredPayments.remove(payment);
+        calculateSelectedTotals();
       });
 
-      // Enregistrer les modifications dans SharedPreferences
-      StorageService.savePayments(payments);
-
-      // Mettre à jour la liste filtrée après la suppression
-      filterPayments();
+      await _loadTotalsForCurrentPeriod();
 
   // Afficher un message de confirmation
   if (!mounted) return;
@@ -275,8 +305,8 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
   if (picked != null && picked != selectedDate) {
       setState(() {
         selectedDate = picked;
-        filterPayments();
       });
+      _reloadForCurrentPeriod();
     }
   }
 
@@ -302,8 +332,8 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
       onPressed: () {
         setState(() {
           selectedDate = date;
-          filterPayments();
         });
+        _reloadForCurrentPeriod();
       },
       child: Text(
         label,
@@ -325,8 +355,8 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
           selectedDate = DateTime(selectedDate.year, selectedDate.month - 1, 1);
           break;
       }
-      filterPayments();
     });
+    _reloadForCurrentPeriod();
   }
 
   void _goToNextPeriod() {
@@ -342,8 +372,8 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
           selectedDate = DateTime(selectedDate.year, selectedDate.month + 1, 1);
           break;
       }
-      filterPayments();
     });
+    _reloadForCurrentPeriod();
   }
 
   String _getPeriodTitle() {
@@ -611,8 +641,8 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                       onSelectionChanged: (Set<ViewMode> newSelection) {
                         setState(() {
                           currentViewMode = newSelection.first;
-                          filterPayments();
                         });
+                        _reloadForCurrentPeriod();
                       },
                     ),
                   ],
@@ -698,8 +728,35 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
           ),
           Expanded(
               child: ListView.builder(
-                  itemCount: filteredPayments.length,
+                  controller: _scrollController,
+                  itemCount: filteredPayments.isNotEmpty
+                      ? filteredPayments.length + (_hasMore ? 1 : 0)
+                      : 1,
                   itemBuilder: (context, index) {
+                    if (filteredPayments.isEmpty) {
+                      if (_isLoading) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24.0),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(24.0),
+                          child: Text('Aucun encaissement pour cette periode.'),
+                        ),
+                      );
+                    }
+
+                    if (index >= filteredPayments.length) {
+                      return _isLoading
+                          ? const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16.0),
+                              child: Center(child: CircularProgressIndicator()),
+                            )
+                          : const SizedBox(height: 16);
+                    }
+
                     var payment = filteredPayments[index];
                     // ignore: unused_local_variable
                     String formattedDate =

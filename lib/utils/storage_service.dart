@@ -29,9 +29,51 @@ class StorageService {
     return DatabaseService.instance.fetchPayments();
   }
 
+  static Future<List<Payment>> loadPaymentsPage({
+    required DateTime start,
+    required DateTime endExclusive,
+    required int limit,
+    required int offset,
+  }) async {
+    await _ensureDb();
+    return DatabaseService.instance.fetchPaymentsPage(
+      start: start,
+      endExclusive: endExclusive,
+      limit: limit,
+      offset: offset,
+    );
+  }
+
+  static Future<Map<String, double>> loadPaymentTotalsByMethodBetween({
+    required DateTime start,
+    required DateTime endExclusive,
+  }) async {
+    await _ensureDb();
+    return DatabaseService.instance.fetchPaymentTotalsByMethodBetween(
+      start: start,
+      endExclusive: endExclusive,
+    );
+  }
+
+  static Future<double> loadPaymentTotalAmountBetween({
+    required DateTime start,
+    required DateTime endExclusive,
+  }) async {
+    await _ensureDb();
+    return DatabaseService.instance.fetchPaymentTotalAmountBetween(
+      start: start,
+      endExclusive: endExclusive,
+    );
+  }
+
   static Future<void> savePayments(List<Payment> payments) async {
     await _ensureDb();
     await DatabaseService.instance.replacePayments(payments);
+  }
+
+  static Future<void> deletePayment(int paymentId) async {
+    await _ensureDb();
+    await DatabaseService.instance.payments.deletePayment(paymentId);
   }
 
   // Pending orders

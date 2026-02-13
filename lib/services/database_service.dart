@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
@@ -9,6 +10,7 @@ import '../models/pizza.dart';
 import '../repositories/product_repository.dart';
 import '../repositories/payment_repository.dart';
 import '../repositories/pending_order_repository.dart';
+import '../utils/payment_fingerprint.dart';
 import 'migration_service.dart';
 
 /// Central database service managing SQLite database and repositories.
@@ -68,12 +70,17 @@ class DatabaseService {
     return dbFactory.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 1,
+        version: 2,
         onConfigure: (db) async {
           await db.execute('PRAGMA foreign_keys = ON');
         },
         onCreate: (db, version) async {
           await _createSchema(db);
+        },
+        onUpgrade: (db, oldVersion, newVersion) async {
+          if (oldVersion < 2) {
+            await _migrateToV2(db);
+          }
         },
       ),
     );
@@ -175,6 +182,43 @@ class DatabaseService {
     );
   }
 
+  /// @deprecated Use `DatabaseService.instance.payments.fetchPaymentsPage()` instead.
+  Future<List<Payment>> fetchPaymentsPage({
+    required DateTime start,
+    required DateTime endExclusive,
+    required int limit,
+    required int offset,
+  }) async {
+    return payments.fetchPaymentsPage(
+      start: start,
+      endExclusive: endExclusive,
+      limit: limit,
+      offset: offset,
+    );
+  }
+
+  /// @deprecated Use `DatabaseService.instance.payments.fetchTotalsByMethodBetween()` instead.
+  Future<Map<String, double>> fetchPaymentTotalsByMethodBetween({
+    required DateTime start,
+    required DateTime endExclusive,
+  }) async {
+    return payments.fetchTotalsByMethodBetween(
+      start: start,
+      endExclusive: endExclusive,
+    );
+  }
+
+  /// @deprecated Use `DatabaseService.instance.payments.fetchTotalAmountBetween()` instead.
+  Future<double> fetchPaymentTotalAmountBetween({
+    required DateTime start,
+    required DateTime endExclusive,
+  }) async {
+    return payments.fetchTotalAmountBetween(
+      start: start,
+      endExclusive: endExclusive,
+    );
+  }
+
   /// @deprecated Use `DatabaseService.instance.pendingOrders.savePendingOrder()` instead.
   Future<void> savePendingOrder(PendingOrder order) async {
     return pendingOrders.savePendingOrder(order);
@@ -222,11 +266,13 @@ class DatabaseService {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         date TEXT NOT NULL,
         amount REAL NOT NULL,
-        payment_method TEXT NOT NULL
+        payment_method TEXT NOT NULL,
+        fingerprint TEXT NOT NULL
       );
     ''');
     await db.execute('CREATE INDEX idx_payments_date ON payments(date);');
     await db.execute('CREATE INDEX idx_payments_method ON payments(payment_method);');
+    await db.execute('CREATE UNIQUE INDEX idx_payments_fingerprint ON payments(fingerprint);');
 
     await db.execute('''
       CREATE TABLE payment_items (
@@ -239,6 +285,7 @@ class DatabaseService {
         FOREIGN KEY(payment_id) REFERENCES payments(id) ON DELETE CASCADE
       );
     ''');
+    await db.execute('CREATE INDEX idx_payment_items_payment_id ON payment_items(payment_id);');
 
     await db.execute('''
       CREATE TABLE pending_orders (
@@ -260,6 +307,108 @@ class DatabaseService {
         FOREIGN KEY(order_id) REFERENCES pending_orders(id) ON DELETE CASCADE
       );
     ''');
+  }
+
+  Future<void> _migrateToV2(Database db) async {
+    final columns = await db.rawQuery('PRAGMA table_info(payments);');
+    final hasFingerprint =
+        columns.any((row) => row['name'] == 'fingerprint');
+    if (!hasFingerprint) {
+      await db.execute('ALTER TABLE payments ADD COLUMN fingerprint TEXT;');
+    }
+
+    final rows = await db.rawQuery('''
+      SELECT
+        p.id AS payment_id,
+        p.date,
+        p.amount,
+        p.payment_method,
+        i.id AS item_id,
+        i.name,
+        i.type,
+        i.unit_price,
+        i.quantity
+      FROM payments p
+      LEFT JOIN payment_items i ON i.payment_id = p.id
+      ORDER BY p.date DESC, p.id DESC, i.id ASC
+    ''');
+
+    final paymentsById = <int, Payment>{};
+    final ordered = <Payment>[];
+
+    for (final row in rows) {
+      final paymentId = row['payment_id'] as int;
+      var payment = paymentsById[paymentId];
+      if (payment == null) {
+        payment = Payment(
+          id: paymentId,
+          date: DateTime.parse(row['date'] as String),
+          amount: (row['amount'] as num).toDouble(),
+          paymentMethod: row['payment_method'] as String,
+          items: [],
+          isSelected: false,
+        );
+        paymentsById[paymentId] = payment;
+        ordered.add(payment);
+      }
+
+      final itemId = row['item_id'] as int?;
+      if (itemId != null) {
+        payment.items.add(
+          Pizza(
+            name: row['name'] as String,
+            price: (row['unit_price'] as num).toDouble(),
+            quantity: row['quantity'] as int,
+            type: row['type'] as String,
+          ),
+        );
+      }
+    }
+
+    final seen = <String, int>{};
+    final duplicates = <int>[];
+
+    for (final payment in ordered) {
+      final fingerprint = buildPaymentFingerprint(payment);
+      final id = payment.id!;
+      if (seen.containsKey(fingerprint)) {
+        duplicates.add(id);
+        continue;
+      }
+      seen[fingerprint] = id;
+      await db.update(
+        'payments',
+        {'fingerprint': fingerprint},
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+    }
+
+    for (final id in duplicates) {
+      await db.delete('payment_items', where: 'payment_id = ?', whereArgs: [id]);
+      await db.delete('payments', where: 'id = ?', whereArgs: [id]);
+    }
+
+    if (duplicates.isNotEmpty) {
+      await db.insert(
+        'meta',
+        {
+          'key': 'db_payment_duplicates_removed',
+          'value': json.encode({
+            'count': duplicates.length,
+            'date': DateTime.now().toIso8601String(),
+          }),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+
+    await db.execute(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_fingerprint ON payments(fingerprint);',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_payment_items_payment_id ON payment_items(payment_id);',
+    );
   }
 
   // ============================================================

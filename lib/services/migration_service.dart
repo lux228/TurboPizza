@@ -6,6 +6,7 @@ import '../constants/app_constants.dart';
 import '../models/payment.dart';
 import '../models/pending_order.dart';
 import '../models/pizza.dart';
+import '../utils/payment_fingerprint.dart';
 
 /// Statistics about migration from SharedPreferences to SQLite.
 class MigrationStats {
@@ -32,6 +33,7 @@ class MigrationStats {
 class MigrationService {
   static const _migrationMetaKey = 'migrated_from_prefs';
   static const _migrationStatsKey = 'migration_stats';
+  static const _migrationDuplicatesKey = 'migration_payment_duplicates';
 
   final Database db;
 
@@ -88,6 +90,7 @@ class MigrationService {
     int migratedProducts = 0;
     int migratedPayments = 0;
     int migratedPendingOrders = 0;
+    int duplicatePaymentsSkipped = 0;
 
     // Migrate all data in a single transaction
     await db.transaction((txn) async {
@@ -129,20 +132,21 @@ class MigrationService {
 
       // Migrate payments (avoid exact duplicates)
       for (final payment in legacyPayments) {
-        // Check if a payment with same date, amount and method already exists
-        final dateIso = payment.date.toIso8601String();
+        final fingerprint = buildPaymentFingerprint(payment);
+        // Check if a payment with same fingerprint already exists
         final duplicates = await txn.query(
           'payments',
-          where: 'date = ? AND amount = ? AND payment_method = ?',
-          whereArgs: [dateIso, payment.amount, payment.paymentMethod],
+          where: 'fingerprint = ?',
+          whereArgs: [fingerprint],
           limit: 1,
         );
 
         if (duplicates.isEmpty) {
           final paymentId = await txn.insert('payments', {
-            'date': dateIso,
+            'date': payment.date.toIso8601String(),
             'amount': payment.amount,
             'payment_method': payment.paymentMethod,
+            'fingerprint': fingerprint,
           });
           
           for (final item in payment.items) {
@@ -156,6 +160,7 @@ class MigrationService {
           }
           migratedPayments++;
         } else {
+          duplicatePaymentsSkipped++;
           debugPrint('[Migration] Paiement doublé ignoré: ${payment.date} - ${payment.amount}€');
         }
       }
@@ -203,6 +208,8 @@ class MigrationService {
       migratedPendingOrders,
     );
 
+    await _recordDuplicateStats(duplicatePaymentsSkipped);
+
     return MigrationStats(
       productsCount: migratedProducts,
       paymentsCount: migratedPayments,
@@ -238,6 +245,21 @@ class MigrationService {
       {
         'key': _migrationMetaKey,
         'value': '1',
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<void> _recordDuplicateStats(int duplicatePaymentsSkipped) async {
+    if (duplicatePaymentsSkipped == 0) return;
+    await db.insert(
+      'meta',
+      {
+        'key': _migrationDuplicatesKey,
+        'value': json.encode({
+          'count': duplicatePaymentsSkipped,
+          'date': DateTime.now().toIso8601String(),
+        }),
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );

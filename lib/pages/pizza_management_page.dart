@@ -80,7 +80,7 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
                     const TextInputType.numberWithOptions(decimal: true),
               ),
               DropdownButtonFormField<String>(
-                value: selectedType, // Initialiser avec le type actuel
+                initialValue: selectedType, // Initialiser avec le type actuel
                 decoration: const InputDecoration(labelText: 'Type'),
                 onChanged: (String? newValue) {
                   setState(() {

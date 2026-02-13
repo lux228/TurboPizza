@@ -19,6 +19,7 @@ import '../services/order_service.dart';
 import '../constants/app_constants.dart';
 import 'pizza_management_page.dart';
 import 'payment_history_page.dart';
+import 'sales_statistics_page.dart';
 import 'settings_page.dart';
 
 class PizzaHomePage extends StatefulWidget {
@@ -553,6 +554,18 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                   context,
                   MaterialPageRoute(
                       builder: (context) => const PaymentHistoryPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.bar_chart),
+              title: const Text('Statistiques de vente'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const SalesStatisticsPage()),
                 );
               },
             ),

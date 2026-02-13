@@ -1,6 +1,7 @@
 import 'pizza.dart';
 
 class Payment {
+  int? id;
   DateTime date;
   double amount;
   String paymentMethod;
@@ -8,6 +9,7 @@ class Payment {
   bool isSelected;
 
   Payment({
+    this.id,
     required this.date,
     required this.amount,
     required this.paymentMethod,
@@ -23,18 +25,19 @@ class Payment {
         'articles': items.map((pizza) => pizza.toJson()).toList(),
       };
 
-  static Payment fromJson(Map<String, dynamic> json) => Payment(
-        date: DateTime.parse(json['date']),
-        amount: (json['montant'] as num).toDouble(),
-        paymentMethod: json['modeReglement'],
-        items: json['articles'] != null
-            ? (json['articles'] as List)
-                .map((item) => Pizza.fromJson(item))
-                .toList()
-            : [],
+    static Payment fromJson(Map<String, dynamic> json) => Payment(
+      date: DateTime.parse(json['date']),
+      amount: (json['montant'] as num).toDouble(),
+      paymentMethod: json['modeReglement'],
+      items: json['articles'] != null
+        ? (json['articles'] as List)
+          .map((item) => Pizza.fromJson(item))
+          .toList()
+        : [],
       );
 
   Payment copyWith({
+    int? id,
     DateTime? date,
     double? amount,
     String? paymentMethod,
@@ -42,6 +45,7 @@ class Payment {
     bool? isSelected,
   }) {
     return Payment(
+      id: id ?? this.id,
       date: date ?? this.date,
       amount: amount ?? this.amount,
       paymentMethod: paymentMethod ?? this.paymentMethod,

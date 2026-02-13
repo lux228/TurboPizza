@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../services/order_service.dart';
 import '../services/backup_service.dart';
 import '../widgets/migration_diagnostic_widget.dart';
+import '../widgets/duplicate_diagnostic_widget.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -143,6 +144,8 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             const SizedBox(height: 24),
             const MigrationDiagnosticWidget(),
+            const SizedBox(height: 24),
+            const DuplicateDiagnosticWidget(),
             const SizedBox(height: 24),
             const Text(
               'Exports enregistrés dans votre dossier Téléchargements (sinon dossier support de l\'app).',
