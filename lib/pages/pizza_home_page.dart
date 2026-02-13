@@ -7,6 +7,7 @@ import '../models/payment.dart';
 import '../models/pending_order.dart';
 import '../utils/format_utils.dart';
 import '../utils/storage_service.dart';
+import '../utils/snack_bar_utils.dart';
 import '../utils/cache_service.dart';
 import '../widgets/lazy_order_list.dart';
 import '../widgets/payment_method_dialog.dart';
@@ -16,9 +17,13 @@ import '../widgets/product_grid.dart';
 import '../widgets/current_order_widget.dart';
 import '../services/cart_service.dart';
 import '../services/order_service.dart';
-import '../constants/app_constants.dart';
+import '../constants/app_durations.dart';
+import '../constants/app_payments.dart';
+import '../constants/app_strings.dart';
+import '../theme/app_theme.dart';
 import 'pizza_management_page.dart';
 import 'payment_history_page.dart';
+import 'sales_statistics_page.dart';
 import 'settings_page.dart';
 
 class PizzaHomePage extends StatefulWidget {
@@ -49,7 +54,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
 
   void _initializeAnimation() {
     _animationController = AnimationController(
-      duration: AppConstants.animationDuration,
+      duration: AppDurations.animationDuration,
       vsync: this,
     );
     _slideAnimation = Tween<double>(
@@ -62,7 +67,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
   }
 
   void _startStatusUpdateTimer() {
-    _statusUpdateTimer = Timer.periodic(AppConstants.statusUpdateInterval, (timer) {
+    _statusUpdateTimer = Timer.periodic(AppDurations.statusUpdateInterval, (timer) {
       if (mounted && context.read<OrderService>().hasOrders) {
         setState(() {
           // Force la reconstruction pour mettre à jour les couleurs des statuts
@@ -111,7 +116,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (BuildContext context) =>
-          PaymentMethodDialog(currentSelection: AppConstants.defaultPaymentMethod),
+          PaymentMethodDialog(currentSelection: AppPayments.defaultPaymentMethod),
     );
 
   if (!mounted) return;
@@ -140,20 +145,10 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
 
       // Affichage d'un message de confirmation
   if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.check_circle, color: Colors.white, size: 20),
-                SizedBox(width: 8),
-                Text(AppConstants.paymentSuccessMessage),
-              ],
-            ),
-            duration: AppConstants.snackBarDuration,
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: AppConstants.successGreen,
-          ),
+        showAppSnackBar(
+          context,
+          AppStrings.paymentSuccessMessage,
+          type: AppSnackBarType.success,
         );
       
     }
@@ -192,20 +187,10 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
       }
 
   if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.access_time, color: Colors.white, size: 20),
-                SizedBox(width: 8),
-                Text(AppConstants.orderOnHoldMessage),
-              ],
-            ),
-            duration: AppConstants.snackBarDuration,
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: AppConstants.warningOrange,
-          ),
+        showAppSnackBar(
+          context,
+          AppStrings.orderOnHoldMessage,
+          type: AppSnackBarType.info,
         );
       
     }
@@ -216,7 +201,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (BuildContext context) =>
-          PaymentMethodDialog(currentSelection: AppConstants.defaultPaymentMethod),
+          PaymentMethodDialog(currentSelection: AppPayments.defaultPaymentMethod),
     );
 
   if (!mounted) return;
@@ -236,20 +221,10 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
   await context.read<OrderService>().removeOrder(order.id);
 
   if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-    content: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-        Icon(Icons.check_circle, color: Colors.white, size: 20),
-        SizedBox(width: 8),
-        Text(AppConstants.orderValidatedMessage),
-              ],
-            ),
-            duration: AppConstants.snackBarDuration,
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: AppConstants.successGreen,
-          ),
+        showAppSnackBar(
+          context,
+          AppStrings.orderValidatedMessage,
+          type: AppSnackBarType.success,
         );
       }
     }
@@ -276,11 +251,10 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
     await context.read<OrderService>().removeOrder(order.id);
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(AppConstants.orderBackToCompositionMessage),
-          duration: AppConstants.snackBarDuration,
-        ),
+      showAppSnackBar(
+        context,
+        AppStrings.orderBackToCompositionMessage,
+        type: AppSnackBarType.info,
       );
     }
   }
@@ -307,20 +281,10 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
       await orderService.addOrder(updatedOrder);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.schedule, color: Colors.white, size: 20),
-                SizedBox(width: 8),
-                Text('Horaire modifié : $selectedTime'),
-              ],
-            ),
-            duration: AppConstants.snackBarDuration,
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: AppConstants.primaryBlue,
-          ),
+        showAppSnackBar(
+          context,
+          'Horaire modifié : $selectedTime',
+          type: AppSnackBarType.info,
         );
       }
     }
@@ -333,35 +297,60 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
     showDialog(
       context: context,
       builder: (BuildContext context) {
+        final textStyles = context.appTextStyles;
+        final colors = context.appColors;
+        final colorScheme = Theme.of(context).colorScheme;
+        final size = MediaQuery.of(context).size;
+        final dialogWidth = size.width < 600 ? size.width * 0.9 : 520.0;
+        final dialogHeight = size.height < 700 ? size.height * 0.85 : size.height * 0.7;
         return AlertDialog(
-          title: Text('Aperçu de la commande', style: TextStyle(fontSize: AppConstants.titleFontSize, fontWeight: FontWeight.bold)),
+          title: Text(
+            'Aperçu de la commande',
+            style: textStyles.title.copyWith(fontWeight: FontWeight.bold),
+          ),
           content: SizedBox(
-            width: 500,
-            height: MediaQuery.of(context).size.height * 0.7,
+            width: dialogWidth,
+            height: dialogHeight,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Heure de composition : $formattedCompositionTime', style: TextStyle(fontSize: AppConstants.subtitleFontSize, fontWeight: FontWeight.w600)),
-                SizedBox(height: 8),
-                Text('Heure de récupération prévue : ${order.plannedPickupTime}', style: TextStyle(fontSize: AppConstants.subtitleFontSize, fontWeight: FontWeight.w600)),
-                SizedBox(height: 16),
-                Text('Articles commandés :', style: TextStyle(fontSize: AppConstants.subtitleFontSize, fontWeight: FontWeight.bold)),
-                SizedBox(height: 8),
+                Text(
+                  'Heure de composition : $formattedCompositionTime',
+                  style: textStyles.subtitle.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Heure de récupération prévue : ${order.plannedPickupTime}',
+                  style: textStyles.subtitle.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Articles commandés :',
+                  style: textStyles.subtitle.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
                 if (order.items.isEmpty)
                   Container(
                     padding: EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.grey[100],
+                      color: colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey[300]!),
+                      border: Border.all(color: colorScheme.outline),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.info_outline, color: Colors.grey[600], size: 20),
+                        Icon(
+                          Icons.info_outline,
+                          color: colorScheme.onSurface.withValues(alpha: 0.7),
+                          size: 20,
+                        ),
                         SizedBox(width: 8),
                         Text('Aucun article enregistré pour cette commande', 
-                          style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: Colors.grey[600])),
+                          style: textStyles.caption.copyWith(
+                            fontStyle: FontStyle.italic,
+                            color: colorScheme.onSurface.withValues(alpha: 0.7),
+                          )),
                       ],
                     ),
                   )
@@ -379,32 +368,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                     var item = sortedItems[index];
                         
                             // Déterminer la couleur selon le type
-                            Color borderColor;
-                    switch (item.type) {
-                              case 'Tomate':
-                                borderColor = Colors.red;
-                                break;
-                              case 'Crème':
-                                borderColor = Colors.blue;
-                                break;
-                              case 'Softs':
-                                borderColor = Colors.amber;
-                                break;
-                              case 'Vins':
-                                borderColor = Colors.orange;
-                                break;
-                              case 'Spécialités':
-                                borderColor = Colors.green;
-                                break;
-                              case 'Glaces':
-                                borderColor = Colors.purple;
-                                break;
-                              case 'Desserts':
-                                borderColor = Colors.pink;
-                                break;
-                              default:
-                                borderColor = Colors.grey;
-                            }
+                            final borderColor = colors.productTypeColor(item.type);
                             
                             return Container(
                               margin: EdgeInsets.symmetric(vertical: 2),
@@ -426,7 +390,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                                       SizedBox(
                                         width: 48,
                                         child: Text('${item.quantity} x',
-                                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                          style: textStyles.body.copyWith(fontWeight: FontWeight.bold),
                                           textAlign: TextAlign.center,
                                         ),
                                       ),
@@ -435,23 +399,34 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            Text(item.name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-                                            Text(item.type, style: TextStyle(fontSize: 14, color: borderColor.withValues(alpha: 0.8))),
+                                            Text(
+                                              item.name,
+                                              style: textStyles.body.copyWith(fontWeight: FontWeight.w500),
+                                            ),
+                                            Text(
+                                              item.type,
+                                              style: textStyles.caption.copyWith(
+                                                color: borderColor.withValues(alpha: 0.8),
+                                              ),
+                                            ),
                                           ],
                                         ),
                                       ),
                                       SizedBox(
-                                        width: 60,
+                                        width: 80,
                           child: Text(formatPrice(item.price), 
-                                          style: TextStyle(fontSize: 16),
+                                          style: textStyles.body,
                                           textAlign: TextAlign.right,
                                         ),
                                       ),
-                                      SizedBox(width: 8),
+                                      SizedBox(width: 12),
                                       SizedBox(
-                                        width: 70,
+                                        width: 95,
                           child: Text(formatPrice(item.totalPrice), 
-                                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green[700]),
+                                          style: textStyles.body.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: colors.successGreenDark,
+                                          ),
                                           textAlign: TextAlign.right,
                                         ),
                                       ),
@@ -466,14 +441,17 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                     ),
                   ),
                 SizedBox(height: 16),
-                Text('Montant total : ${formatPrice(order.amount)}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                Text(
+                  'Montant total : ${formatPrice(order.amount)}',
+                  style: textStyles.body.copyWith(fontWeight: FontWeight.w600),
+                ),
               ],
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text('Fermer', style: TextStyle(fontSize: 16)),
+              child: Text('Fermer', style: textStyles.body),
             ),
           ],
         );
@@ -486,6 +464,8 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
+        final textStyles = context.appTextStyles;
+        final colorScheme = Theme.of(context).colorScheme;
         return AlertDialog(
           title: const Text('Confirmer l\'annulation'),
           content: Text(
@@ -494,12 +474,12 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Non'),
+              child: Text('Non', style: textStyles.body),
             ),
             TextButton(
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              style: TextButton.styleFrom(foregroundColor: colorScheme.error),
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Oui, annuler'),
+              child: Text('Oui, annuler', style: textStyles.body),
             ),
           ],
         );
@@ -511,12 +491,10 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
   await context.read<OrderService>().removeOrder(order.id);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(AppConstants.orderCancelledMessage),
-            duration: AppConstants.snackBarDuration,
-            backgroundColor: Colors.red,
-          ),
+        showAppSnackBar(
+          context,
+          AppStrings.orderCancelledMessage,
+          type: AppSnackBarType.warning,
         );
       }
     }
@@ -524,6 +502,9 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
+    final textStyles = context.appTextStyles;
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
         title: const Text('TurboPizza'),
@@ -531,10 +512,12 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
       drawer: Drawer(
         child: ListView(
           children: <Widget>[
-            const DrawerHeader(
-              decoration: BoxDecoration(color: Colors.blue),
-              child: Text('Menu',
-                  style: TextStyle(fontSize: AppConstants.headerFontSize, color: Colors.white)),
+            DrawerHeader(
+              decoration: BoxDecoration(color: colors.primaryBlue),
+              child: Text(
+                'Menu',
+                style: textStyles.header.copyWith(color: colorScheme.onPrimary),
+              ),
             ),
             ListTile(
               leading: const Icon(Icons.manage_accounts),
@@ -557,6 +540,18 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
               },
             ),
             ListTile(
+              leading: const Icon(Icons.bar_chart),
+              title: const Text('Statistiques de vente'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const SalesStatisticsPage()),
+                );
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.backup),
               title: const Text('Sauvegarde & export'),
               onTap: () {
@@ -571,210 +566,253 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
           ],
         ),
       ),
-      body: Row(
-        children: [
-          // 2/3 gauche : liste des produits
-          Expanded(
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          const minWidth = 900.0;
+          const minHeight = 600.0;
+          final isWide = constraints.maxWidth >= 1100;
+
+          if (constraints.maxWidth < minWidth || constraints.maxHeight < minHeight) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Text(
+                  'Fenetre trop petite. Agrandissez la fenetre pour un affichage correct.',
+                  textAlign: TextAlign.center,
+                  style: textStyles.subtitle.copyWith(
+                    color: colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
+              ),
+            );
+          }
+
+          final leftPanel = Expanded(
             flex: 2,
             child: ProductGrid(
               products: availablePizzas,
               onProductTap: addToCart,
             ),
-          ),
-          const VerticalDivider(
-            width: 1,
-            thickness: 1,
-            color: Colors.grey,
-          ),
-          // 1/3 droite : file d'attente + composition
-          Expanded(
+          );
+          final rightPanel = Expanded(
             flex: 1,
+            child: _buildQueuePanel(colors, textStyles, colorScheme),
+          );
+
+          if (isWide) {
+            return Row(
+              children: [
+                leftPanel,
+                VerticalDivider(
+                  width: 1,
+                  thickness: 1,
+                  color: colorScheme.outline,
+                ),
+                rightPanel,
+              ],
+            );
+          }
+
+          return Column(
+            children: [
+              leftPanel,
+              Divider(height: 1, thickness: 1, color: colorScheme.outline),
+              rightPanel,
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildQueuePanel(
+    AppThemeColors colors,
+    AppTextStyles textStyles,
+    ColorScheme colorScheme,
+  ) {
+    return Column(
+      children: [
+        // Partie haute : File d'attente des commandes
+        Expanded(
+          flex: 1,
+          child: Container(
+            color: colors.lightBlueAccent,
             child: Column(
               children: [
-                // Partie haute : File d'attente des commandes
-                Expanded(
-                  flex: 1,
-                  child: Container(
-                    color: AppConstants.lightBlueAccent,
-                    child: Column(
-                      children: [
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12.0),
-                          color: AppConstants.lightBlue,
-                          child: Column(
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Expanded(
-                                    child: Column(
-                                      children: [
-                                        Text(
-                                          'COMMANDES EN ATTENTE',
-                                          style: TextStyle(
-                                            fontSize: AppConstants.subtitleFontSize,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.black87,
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                        SizedBox(height: 4),
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Icon(
-                                              Icons.touch_app,
-                                              size: 14,
-                                              color: Colors.grey,
-                                            ),
-                                            SizedBox(width: 4),
-                                            Text(
-                                              AppConstants.touchForDetailsMessage,
-                                              style: TextStyle(
-                                                fontSize: AppConstants.smallFontSize,
-                                                color: Colors.grey,
-                                                fontStyle: FontStyle.italic,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12.0),
+                  color: colors.lightBlue,
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              children: [
+                                Text(
+                                  'COMMANDES EN ATTENTE',
+                                  style: textStyles.subtitle.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: colorScheme.onSurface,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.touch_app,
+                                      size: 14,
+                                      color: colorScheme.onSurface
+                                          .withValues(alpha: 0.6),
                                     ),
-                                  ),
-                                  Consumer<CartService>(
-                                    builder: (context, cartService, child) {
-                                      return IconButton(
-                                        icon: const Icon(Icons.calculate),
-                                        onPressed: () {
-                                          showDialog(
-                                            context: context,
-                                            builder: (BuildContext context) => CalculatorDialog(
-                                              currentOrderTotal: cartService.totalPrice,
-                                            ),
-                                          );
-                                        },
-                                        tooltip: 'Calculatrice',
-                                        iconSize: 24,
-                                        color: AppConstants.primaryBlue,
-                                      );
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ],
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      AppStrings.touchForDetailsMessage,
+                                      style: textStyles.small.copyWith(
+                                        color: colorScheme.onSurface
+                                            .withValues(alpha: 0.6),
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        Expanded(
-                          child: Consumer<OrderService>(
-                            builder: (context, orderService, child) {
-                              if (!orderService.hasOrders) {
-                                return const Center(
-                                  child: Text(
-                                    AppConstants.noOrdersMessage,
-                                    style: TextStyle(
-                                      fontSize: AppConstants.bodyFontSize,
-                                      color: Colors.grey,
-                                      fontStyle: FontStyle.italic,
+                          Consumer<CartService>(
+                            builder: (context, cartService, child) {
+                              return IconButton(
+                                icon: const Icon(Icons.calculate),
+                                onPressed: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (BuildContext context) => CalculatorDialog(
+                                      currentOrderTotal: cartService.totalPrice,
                                     ),
-                                  ),
-                                );
-                              }
-
-                              return LazyOrderList(
-                                orders: orderService.orders,
-                                orderService: orderService,
-                                onTap: showOrderPreview,
-                                onValidate: validatePickup,
-                                onEdit: editOrderOnHold,
-                                onChangeTime: changeOrderTime,
-                                onCancel: cancelOrderOnHold,
+                                  );
+                                },
+                                tooltip: 'Calculatrice',
+                                iconSize: 24,
+                                color: colors.primaryBlue,
                               );
                             },
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                const Divider(height: 1, thickness: 1),
-                // Partie basse : Composition actuelle avec animation depuis le bas
-                Consumer<CartService>(
-                  builder: (context, cartService, child) {
-                    // Calcul dynamique de la hauteur de la commande en cours
-                    final screenHeight = MediaQuery.of(context).size.height;
-                    const double headerHeight = 56; // bandeau "COMMANDE EN COURS"
-                    const double footerHeight = 140; // total + boutons
-                    const double perItemHeight = 64; // hauteur approximative par ligne du panier
-                    final int itemCount = cartService.items.length;
-
-                    // Gestion du debounce: 
-                    // - si le nombre d'items augmente, on applique immédiatement la nouvelle hauteur
-                    // - s'il diminue, on attend un court délai avant de réduire la hauteur
-                    if (itemCount > _appliedItemCountForHeight) {
-                      _currentOrderShrinkTimer?.cancel();
-                      if (mounted) {
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (!mounted) return;
-                          setState(() {
-                            _appliedItemCountForHeight = itemCount;
-                          });
-                        });
-                      }
-                    } else if (itemCount < _appliedItemCountForHeight) {
-                      // Redémarrer le timer de réduction
-                      _currentOrderShrinkTimer?.cancel();
-                      _currentOrderShrinkTimer = Timer(AppConstants.currentOrderShrinkDelay, () {
-                        if (!mounted) return;
-                        final int latestCount = context.read<CartService>().items.length;
-                        setState(() {
-                          _appliedItemCountForHeight = latestCount;
-                        });
-                        // Si après délai le panier est vide, refermer la fenêtre en douceur
-                        if (latestCount == 0 && showCurrentOrder) {
-                          if (_animationController.status == AnimationStatus.dismissed) {
-                            setState(() => showCurrentOrder = false);
-                          } else if (_animationController.status != AnimationStatus.reverse) {
-                            _animationController.reverse().then((_) {
-                              if (mounted) setState(() => showCurrentOrder = false);
-                            });
-                          }
-                        }
-                      });
-                    }
-
-                    final double desiredHeight = headerHeight + footerHeight + (_appliedItemCountForHeight * perItemHeight);
-                    final double minHeight = screenHeight * 0.25; // min 25% écran
-                    final double maxHeight = screenHeight * 0.70; // max 70% écran pour laisser de la place à la file d'attente
-                    final double currentOrderHeight = desiredHeight.clamp(minHeight, maxHeight).toDouble();
-
-                    return AnimatedBuilder(
-                      animation: _slideAnimation,
-                      builder: (context, child) {
-                        return ClipRect(
-                          child: Align(
-                            alignment: Alignment.bottomCenter,
-                            heightFactor: showCurrentOrder ? _slideAnimation.value : 0.0,
-                            child: AnimatedContainer(
-                              duration: AppConstants.animationDuration,
-                              curve: Curves.easeInOut,
-                              height: currentOrderHeight,
-                              child: CurrentOrderWidget(
-                                onPutOnHold: putOrderOnHold,
-                                onCheckoutDirect: checkoutDirect,
-                              ),
+                Expanded(
+                  child: Consumer<OrderService>(
+                    builder: (context, orderService, child) {
+                      if (!orderService.hasOrders) {
+                        return Center(
+                          child: Text(
+                            AppStrings.noOrdersMessage,
+                            style: textStyles.body.copyWith(
+                              color: colorScheme.onSurface
+                                  .withValues(alpha: 0.6),
+                              fontStyle: FontStyle.italic,
                             ),
                           ),
                         );
-                      },
-                    );
-                  },
+                      }
+
+                      return LazyOrderList(
+                        orders: orderService.orders,
+                        orderService: orderService,
+                        onTap: showOrderPreview,
+                        onValidate: validatePickup,
+                        onEdit: editOrderOnHold,
+                        onChangeTime: changeOrderTime,
+                        onCancel: cancelOrderOnHold,
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+        const Divider(height: 1, thickness: 1),
+        // Partie basse : Composition actuelle avec animation depuis le bas
+        Consumer<CartService>(
+          builder: (context, cartService, child) {
+            // Calcul dynamique de la hauteur de la commande en cours
+            final screenHeight = MediaQuery.of(context).size.height;
+            const double headerHeight = 56; // bandeau "COMMANDE EN COURS"
+            const double footerHeight = 140; // total + boutons
+            const double perItemHeight = 64; // hauteur approximative par ligne du panier
+            final int itemCount = cartService.items.length;
+
+            // Gestion du debounce: 
+            // - si le nombre d'items augmente, on applique immédiatement la nouvelle hauteur
+            // - s'il diminue, on attend un court délai avant de réduire la hauteur
+            if (itemCount > _appliedItemCountForHeight) {
+              _currentOrderShrinkTimer?.cancel();
+              if (mounted) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted) return;
+                  setState(() {
+                    _appliedItemCountForHeight = itemCount;
+                  });
+                });
+              }
+            } else if (itemCount < _appliedItemCountForHeight) {
+              // Redémarrer le timer de réduction
+              _currentOrderShrinkTimer?.cancel();
+              _currentOrderShrinkTimer = Timer(AppDurations.currentOrderShrinkDelay, () {
+                if (!mounted) return;
+                final int latestCount = context.read<CartService>().items.length;
+                setState(() {
+                  _appliedItemCountForHeight = latestCount;
+                });
+                // Si après délai le panier est vide, refermer la fenêtre en douceur
+                if (latestCount == 0 && showCurrentOrder) {
+                  if (_animationController.status == AnimationStatus.dismissed) {
+                    setState(() => showCurrentOrder = false);
+                  } else if (_animationController.status != AnimationStatus.reverse) {
+                    _animationController.reverse().then((_) {
+                      if (mounted) setState(() => showCurrentOrder = false);
+                    });
+                  }
+                }
+              });
+            }
+
+            final double desiredHeight =
+                headerHeight + footerHeight + (_appliedItemCountForHeight * perItemHeight);
+            final double minHeight = screenHeight * 0.25; // min 25% écran
+            final double maxHeight = screenHeight * 0.70; // max 70% écran
+            final double currentOrderHeight = desiredHeight.clamp(minHeight, maxHeight).toDouble();
+
+            return AnimatedBuilder(
+              animation: _slideAnimation,
+              builder: (context, child) {
+                return ClipRect(
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
+                    heightFactor: showCurrentOrder ? _slideAnimation.value : 0.0,
+                    child: AnimatedContainer(
+                      duration: AppDurations.animationDuration,
+                      curve: Curves.easeInOut,
+                      height: currentOrderHeight,
+                      child: CurrentOrderWidget(
+                        onPutOnHold: putOrderOnHold,
+                        onCheckoutDirect: checkoutDirect,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ],
     );
   }
 

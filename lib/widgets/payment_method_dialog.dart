@@ -1,5 +1,7 @@
 // ignore_for_file: library_private_types_in_public_api
 import 'package:flutter/material.dart';
+import '../constants/app_payments.dart';
+import '../theme/app_theme.dart';
 
 class PaymentMethodDialog extends StatefulWidget {
   final String currentSelection;
@@ -11,12 +13,19 @@ class PaymentMethodDialog extends StatefulWidget {
 }
 
 class _PaymentMethodDialogState extends State<PaymentMethodDialog> {
-  ElevatedButton _createLargeButton(String text, VoidCallback onPressed) {
+  ElevatedButton _createLargeButton(
+    String text,
+    VoidCallback onPressed,
+    AppThemeColors colors, {
+    required bool isSelected,
+  }) {
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         minimumSize: const Size(200, 50), // Agrandit le bouton
         textStyle: const TextStyle(fontSize: 18), // Agrandit le texte
+        backgroundColor: isSelected ? colors.successGreen : null,
+        foregroundColor: isSelected ? Colors.white : null,
       ),
       child: Text(text),
     );
@@ -28,16 +37,22 @@ class _PaymentMethodDialogState extends State<PaymentMethodDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return AlertDialog(
       title: const Text("Choisir le mode de règlement"),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _createLargeButton(
-              "Espèces", () => _handlePaymentMethodSelection("Espèces")),
-          const SizedBox(height: 20), // Ajoute un espace entre les boutons
-          _createLargeButton(
-              "Chèque", () => _handlePaymentMethodSelection("Chèque")),
+          for (int i = 0; i < AppPayments.methods.length; i++) ...[
+            _createLargeButton(
+              AppPayments.methods[i],
+              () => _handlePaymentMethodSelection(AppPayments.methods[i]),
+              colors,
+              isSelected: AppPayments.methods[i] == widget.currentSelection,
+            ),
+            if (i < AppPayments.methods.length - 1)
+              const SizedBox(height: 20),
+          ],
         ],
       ),
     );

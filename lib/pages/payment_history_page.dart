@@ -5,7 +5,12 @@ import 'package:intl/date_symbol_data_local.dart';
 import '../models/payment.dart';
 import '../utils/format_utils.dart';
 import '../utils/storage_service.dart';
-import '../constants/app_constants.dart';
+import '../utils/snack_bar_utils.dart';
+import '../constants/app_locales.dart';
+import '../constants/app_payments.dart';
+import '../constants/app_strings.dart';
+import '../widgets/payment_method_dialog.dart';
+import '../theme/app_theme.dart';
 
 enum ViewMode { daily, weekly, monthly }
 
@@ -22,12 +27,22 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
   List<Payment> payments = [];
   List<Payment> filteredPayments = [];
 
+  final ScrollController _scrollController = ScrollController();
+  static const int _pageSize = 50;
+  bool _isLoading = false;
+  bool _hasMore = true;
+  int _currentOffset = 0;
+  DateTime? _currentStart;
+  DateTime? _currentEndExclusive;
+
   double totalChecks = 0.0;
   double totalCash = 0.0;
+  double totalTransfers = 0.0;
   double totalSum = 0.0;
 
   double totalSelectedChecks = 0.0;
   double totalSelectedCash = 0.0;
+  double totalSelectedTransfers = 0.0;
   double totalSelectedSum = 0.0;
 
   double previousYearTotal = 0.0;
@@ -35,65 +50,119 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     // Initialiser les données de localisation pour le français
-    initializeDateFormatting(AppConstants.frenchLocale, null).then((_) {
-      StorageService.loadPayments().then((loadedPayments) {
-        setState(() {
-          payments = loadedPayments;
-          filterPayments();
-        });
-      });
+    initializeDateFormatting(AppLocales.french, null).then((_) {
+      _reloadForCurrentPeriod();
     });
   }
 
-  void filterPayments() {
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _reloadForCurrentPeriod() async {
+    final range = _getPeriodRange(selectedDate, currentViewMode);
+    _currentStart = range.$1;
+    _currentEndExclusive = range.$2;
+
     setState(() {
-      switch (currentViewMode) {
-        case ViewMode.daily:
-          filteredPayments = payments
-              .where((payment) =>
-                  payment.date.year == selectedDate.year &&
-                  payment.date.month == selectedDate.month &&
-                  payment.date.day == selectedDate.day)
-              .toList();
-          break;
-        case ViewMode.weekly:
-          final weekStart = _getWeekStart(selectedDate);
-            final weekEnd = weekStart.add(const Duration(days: 7));
-            filteredPayments = payments
-              .where((payment) =>
-                !payment.date.isBefore(weekStart) &&
-                payment.date.isBefore(weekEnd))
-              .toList();
-          break;
-        case ViewMode.monthly:
-          filteredPayments = payments
-              .where((payment) =>
-                  payment.date.year == selectedDate.year &&
-                  payment.date.month == selectedDate.month)
-              .toList();
-          break;
-      }
+      _isLoading = false;
+      _hasMore = true;
+      _currentOffset = 0;
+      payments = [];
+      filteredPayments = [];
     });
 
-  // Réinitialiser les totaux
-  totalChecks = 0.0;
-  totalCash = 0.0;
+    await _loadTotalsForCurrentPeriod();
+    await _loadNextPage();
+  }
 
-    // Calculer les totaux
-    for (var payment in filteredPayments) {
-      if (payment.paymentMethod == AppConstants.paymentMethods[1]) {
-        // "Chèque"
-        totalChecks += payment.amount;
-      } else if (payment.paymentMethod == AppConstants.paymentMethods[0]) {
-        // "Espèces"
-        totalCash += payment.amount;
-      }
+  Future<void> _loadTotalsForCurrentPeriod() async {
+    final start = _currentStart ?? _getPeriodRange(selectedDate, currentViewMode).$1;
+    final endExclusive =
+        _currentEndExclusive ?? _getPeriodRange(selectedDate, currentViewMode).$2;
+
+    final totals = await StorageService.loadPaymentTotalsByMethodBetween(
+      start: start,
+      endExclusive: endExclusive,
+    );
+
+    final cashTotal = totals[AppPayments.methods[0]] ?? 0.0;
+    final checkTotal = totals[AppPayments.methods[1]] ?? 0.0;
+    final transferTotal = totals[AppPayments.methods[2]] ?? 0.0;
+
+    final previousRange = _getPeriodRange(
+      DateTime(selectedDate.year - 1, selectedDate.month, selectedDate.day),
+      currentViewMode,
+    );
+    final previousTotal = await StorageService.loadPaymentTotalAmountBetween(
+      start: previousRange.$1,
+      endExclusive: previousRange.$2,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      totalCash = cashTotal;
+      totalChecks = checkTotal;
+      totalTransfers = transferTotal;
+      totalSum = cashTotal + checkTotal + transferTotal;
+      previousYearTotal = previousTotal;
+    });
+  }
+
+  Future<void> _loadNextPage() async {
+    if (_isLoading || !_hasMore) return;
+    final start = _currentStart ?? _getPeriodRange(selectedDate, currentViewMode).$1;
+    final endExclusive =
+        _currentEndExclusive ?? _getPeriodRange(selectedDate, currentViewMode).$2;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final page = await StorageService.loadPaymentsPage(
+      start: start,
+      endExclusive: endExclusive,
+      limit: _pageSize,
+      offset: _currentOffset,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _currentOffset += page.length;
+      payments.addAll(page);
+      filteredPayments = List.from(payments);
+      _hasMore = page.length == _pageSize;
+      _isLoading = false;
+    });
+    calculateSelectedTotals();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients || _isLoading || !_hasMore) return;
+    final position = _scrollController.position;
+    if (position.pixels >= position.maxScrollExtent - 200) {
+      _loadNextPage();
     }
-    totalSum = totalCash + totalChecks;
+  }
 
-  // Calculer le total de l'année précédente pour la même période
-  calculatePreviousYearTotal();
+  (DateTime, DateTime) _getPeriodRange(DateTime date, ViewMode viewMode) {
+    switch (viewMode) {
+      case ViewMode.daily:
+        final start = DateTime(date.year, date.month, date.day);
+        return (start, start.add(const Duration(days: 1)));
+      case ViewMode.weekly:
+        final start = _getWeekStart(date);
+        return (start, start.add(const Duration(days: 7)));
+      case ViewMode.monthly:
+        final start = DateTime(date.year, date.month, 1);
+        final end = DateTime(date.year, date.month + 1, 1);
+        return (start, end);
+    }
   }
 
   // Obtenir le début de la semaine (dimanche soir 20h)
@@ -104,111 +173,69 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
     return normalizedDate.subtract(Duration(days: daysSinceSunday));
   }
 
-  void calculatePreviousYearTotal() {
-    previousYearTotal = 0.0;
-
-    switch (currentViewMode) {
-      case ViewMode.daily:
-        DateTime anneePrecedente = DateTime(
-            selectedDate.year - 1, selectedDate.month, selectedDate.day);
-        for (var payment in payments) {
-          if (payment.date.year == anneePrecedente.year &&
-              payment.date.month == anneePrecedente.month &&
-              payment.date.day == anneePrecedente.day) {
-            previousYearTotal += payment.amount;
-          }
-        }
-        break;
-      case ViewMode.weekly:
-        final weekStartPreviousYear = _getWeekStart(DateTime(
-            selectedDate.year - 1, selectedDate.month, selectedDate.day));
-        final weekEndPreviousYear =
-            weekStartPreviousYear.add(const Duration(days: 7));
-        for (var payment in payments) {
-          if (!payment.date.isBefore(weekStartPreviousYear) &&
-              payment.date.isBefore(weekEndPreviousYear)) {
-            previousYearTotal += payment.amount;
-          }
-        }
-        break;
-      case ViewMode.monthly:
-        for (var payment in payments) {
-          if (payment.date.year == selectedDate.year - 1 &&
-              payment.date.month == selectedDate.month) {
-            previousYearTotal += payment.amount;
-          }
-        }
-        break;
-    }
-  }
-
   void _deletePayment(Payment payment) async {
     // Afficher une boîte de dialogue de confirmation
     bool? confirmDelete = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
+        final textStyles = context.appTextStyles;
+        final layout = context.appLayout;
+        final colors = context.appColors;
+        final colorScheme = Theme.of(context).colorScheme;
         return AlertDialog(
           title: Text('Confirmer la suppression',
-              style: TextStyle(
-                  fontSize: AppConstants.largeFontSize,
-                  fontWeight: FontWeight.bold)),
+              style: textStyles.large.copyWith(fontWeight: FontWeight.bold)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Êtes-vous sûr de vouloir supprimer cette commande ?',
-                  style: TextStyle(fontSize: AppConstants.subtitleFontSize)),
-              SizedBox(height: 12),
+                  style: textStyles.subtitle),
+              const SizedBox(height: 12),
               Container(
-                padding: EdgeInsets.all(12),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(AppConstants.borderRadius),
-                  border: Border.all(color: Colors.grey[300]!),
+                  color: colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(layout.borderRadius),
+                  border: Border.all(color: colorScheme.outline),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                         'Date : ${DateFormat('dd/MM/yyyy à HH:mm').format(payment.date)}',
-                        style: TextStyle(
-                            fontSize: AppConstants.bodyFontSize,
-                            fontWeight: FontWeight.w500)),
-                    SizedBox(height: 4),
+                        style: textStyles.body.copyWith(fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 4),
                     Text('Montant : ${formatPrice(payment.amount)}',
-                        style: TextStyle(
-                            fontSize: AppConstants.bodyFontSize,
-                            fontWeight: FontWeight.w500)),
-                    SizedBox(height: 4),
+                        style: textStyles.body.copyWith(fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 4),
                     Text('Mode : ${payment.paymentMethod}',
-                        style: TextStyle(
-                            fontSize: AppConstants.bodyFontSize,
-                            fontWeight: FontWeight.w500)),
+                        style: textStyles.body.copyWith(fontWeight: FontWeight.w500)),
                   ],
                 ),
               ),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
               Text('Cette action est irréversible.',
-                  style: TextStyle(
-                      fontSize: AppConstants.bodyFontSize,
-                      fontStyle: FontStyle.italic,
-                      color: Colors.red[600])),
+                  style: textStyles.body.copyWith(
+                    fontStyle: FontStyle.italic,
+                    color: colors.errorRed,
+                  )),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
               child: Text('Annuler',
-                  style: TextStyle(fontSize: AppConstants.subtitleFontSize)),
+                  style: textStyles.subtitle),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
+                backgroundColor: colorScheme.error,
+                foregroundColor: colorScheme.onError,
               ),
               onPressed: () => Navigator.of(context).pop(true),
               child: Text('Supprimer',
-                  style: TextStyle(fontSize: AppConstants.subtitleFontSize)),
+                  style: textStyles.subtitle),
             ),
           ],
         );
@@ -217,40 +244,81 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
 
     // Si l'utilisateur a confirmé la suppression
     if (confirmDelete == true) {
+      if (payment.id == null) {
+        if (!mounted) return;
+        showAppSnackBar(
+          context,
+          'Suppression impossible: identifiant manquant.',
+          type: AppSnackBarType.error,
+        );
+        return;
+      }
+
+      await StorageService.deletePayment(payment.id!);
+
       // Supprimer le paiement de la liste
       setState(() {
         payments.remove(payment);
+        filteredPayments.remove(payment);
+        calculateSelectedTotals();
       });
 
-      // Enregistrer les modifications dans SharedPreferences
-      StorageService.savePayments(payments);
-
-      // Mettre à jour la liste filtrée après la suppression
-      filterPayments();
+      await _loadTotalsForCurrentPeriod();
 
   // Afficher un message de confirmation
   if (!mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.check_circle, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Text('Commande supprimée avec succès'),
-            ],
-          ),
-          duration: Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.green[600],
-        ),
+  showAppSnackBar(
+        context,
+        'Commande supprimée avec succès',
+        type: AppSnackBarType.success,
       );
     }
+  }
+
+  Future<void> _changePaymentMethod(Payment payment) async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (BuildContext context) =>
+          PaymentMethodDialog(currentSelection: payment.paymentMethod),
+    );
+
+    if (!mounted || result == null) return;
+    final String newMethod = result['method'];
+    if (newMethod == payment.paymentMethod) return;
+
+    if (payment.id == null) {
+      showAppSnackBar(
+        context,
+        'Modification impossible: identifiant manquant.',
+        type: AppSnackBarType.error,
+      );
+      return;
+    }
+
+    await StorageService.updatePaymentMethod(
+      payment: payment,
+      newMethod: newMethod,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      payment.paymentMethod = newMethod;
+    });
+    calculateSelectedTotals();
+    await _loadTotalsForCurrentPeriod();
+
+    if (!mounted) return;
+    showAppSnackBar(
+      context,
+      'Mode de règlement mis à jour',
+      type: AppSnackBarType.success,
+    );
   }
 
   void calculateSelectedTotals() {
     totalSelectedChecks = 0.0;
     totalSelectedCash = 0.0;
+    totalSelectedTransfers = 0.0;
     totalSelectedSum = 0.0;
 
     for (var payment in filteredPayments) {
@@ -259,11 +327,14 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
           totalSelectedChecks += payment.amount;
         } else if (payment.paymentMethod == "Espèces") {
           totalSelectedCash += payment.amount;
+        } else if (payment.paymentMethod == "Virement") {
+          totalSelectedTransfers += payment.amount;
         }
       }
     }
-    totalSelectedSum = totalSelectedCash + totalSelectedChecks;
+    totalSelectedSum = totalSelectedCash + totalSelectedChecks + totalSelectedTransfers;
   }
+
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -275,8 +346,8 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
   if (picked != null && picked != selectedDate) {
       setState(() {
         selectedDate = picked;
-        filterPayments();
       });
+      _reloadForCurrentPeriod();
     }
   }
 
@@ -288,26 +359,29 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
   }
 
   Widget _buildDateShortcut(String label, DateTime date) {
+    final colors = context.appColors;
+    final textStyles = context.appTextStyles;
+    final colorScheme = Theme.of(context).colorScheme;
     bool isSelected = selectedDate.year == date.year &&
         selectedDate.month == date.month &&
         selectedDate.day == date.day;
 
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
-        backgroundColor: isSelected ? Colors.blue : Colors.white,
-        foregroundColor: isSelected ? Colors.white : Colors.black,
+        backgroundColor: isSelected ? colors.primaryBlue : colorScheme.surface,
+        foregroundColor: isSelected ? colorScheme.onPrimary : colorScheme.onSurface,
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         minimumSize: Size(104, 42),
       ),
       onPressed: () {
         setState(() {
           selectedDate = date;
-          filterPayments();
         });
+        _reloadForCurrentPeriod();
       },
       child: Text(
         label,
-        style: TextStyle(fontSize: AppConstants.subtitleFontSize),
+        style: textStyles.subtitle,
       ),
     );
   }
@@ -325,8 +399,8 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
           selectedDate = DateTime(selectedDate.year, selectedDate.month - 1, 1);
           break;
       }
-      filterPayments();
     });
+    _reloadForCurrentPeriod();
   }
 
   void _goToNextPeriod() {
@@ -342,8 +416,8 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
           selectedDate = DateTime(selectedDate.year, selectedDate.month + 1, 1);
           break;
       }
-      filterPayments();
     });
+    _reloadForCurrentPeriod();
   }
 
   String _getPeriodTitle() {
@@ -378,11 +452,12 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
+        final textStyles = context.appTextStyles;
+        final colors = context.appColors;
+        final colorScheme = Theme.of(context).colorScheme;
         return AlertDialog(
           title: Text('Détail de la commande',
-              style: TextStyle(
-                  fontSize: AppConstants.titleFontSize,
-                  fontWeight: FontWeight.bold)),
+              style: textStyles.title.copyWith(fontWeight: FontWeight.bold)),
           content: SizedBox(
             width: 500, // Largeur fixe plus petite
             height: MediaQuery.of(context).size.height * 0.7,
@@ -391,32 +466,32 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Date : $formattedDate',
-                    style: TextStyle(
-                        fontSize: AppConstants.subtitleFontSize,
-                        fontWeight: FontWeight.w600)),
-                SizedBox(height: 16),
+                    style: textStyles.subtitle.copyWith(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 16),
                 Text('Articles commandés :',
-                    style: TextStyle(
-                        fontSize: AppConstants.subtitleFontSize,
-                        fontWeight: FontWeight.bold)),
-                SizedBox(height: 8),
+                    style: textStyles.subtitle.copyWith(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
                 if (payment.items.isEmpty)
                   Container(
                     padding: EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.grey[100],
+                      color: colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey[300]!),
+                      border: Border.all(color: colorScheme.outline),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.info_outline, color: Colors.grey[600], size: 20),
+                        Icon(
+                          Icons.info_outline,
+                          color: colorScheme.onSurface.withValues(alpha: 0.7),
+                          size: 20,
+                        ),
                         SizedBox(width: 8),
                         Text('Aucun article enregistré pour cette commande',
-                            style: TextStyle(
-                                fontSize: 14,
-                                fontStyle: FontStyle.italic,
-                                color: Colors.grey[600])),
+                            style: textStyles.caption.copyWith(
+                              fontStyle: FontStyle.italic,
+                              color: colorScheme.onSurface.withValues(alpha: 0.7),
+                            )),
                       ],
                     ),
                   )
@@ -460,32 +535,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                             var item = sortedItems[index];
 
                             // Déterminer la couleur selon le type
-                            Color borderColor;
-                            switch (item.type) {
-                              case 'Tomate':
-                                borderColor = Colors.red;
-                                break;
-                              case 'Crème':
-                                borderColor = Colors.blue;
-                                break;
-                              case 'Softs':
-                                borderColor = Colors.amber;
-                                break;
-                              case 'Vins':
-                                borderColor = Colors.orange;
-                                break;
-                              case 'Spécialités':
-                                borderColor = Colors.green;
-                                break;
-                              case 'Glaces':
-                                borderColor = Colors.purple;
-                                break;
-                              case 'Desserts':
-                                borderColor = Colors.pink;
-                                break;
-                              default:
-                                borderColor = Colors.grey;
-                            }
+                            final borderColor = colors.productTypeColor(item.type);
 
                             return Container(
                               margin: EdgeInsets.symmetric(vertical: 2),
@@ -506,8 +556,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                     SizedBox(
                     width: 48,
                     child: Text('${item.quantity} x',
-                      style: TextStyle(
-                        fontSize: 16,
+                      style: textStyles.body.copyWith(
                         fontWeight: FontWeight.bold),
                       textAlign: TextAlign.center),
                     ),
@@ -517,12 +566,10 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
                                             Text(item.name,
-                                                style: TextStyle(
-                                                    fontSize: 16,
+                                                style: textStyles.body.copyWith(
                                                     fontWeight: FontWeight.w500)),
                                             Text(item.type,
-                                                style: TextStyle(
-                                                    fontSize: 14,
+                                                style: textStyles.caption.copyWith(
                                                     color: borderColor.withValues(alpha: 0.8))),
                                           ],
                                         ),
@@ -530,17 +577,17 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                                       SizedBox(
                                         width: 60,
                                         child: Text(formatPrice(item.price),
-                                            style: TextStyle(fontSize: 16),
+                                            style: textStyles.body,
                                             textAlign: TextAlign.right),
                                       ),
                                       SizedBox(width: 8),
                                       SizedBox(
                                         width: 70,
                                         child: Text(formatPrice(item.totalPrice),
-                                            style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.green[700]),
+                                            style: textStyles.body.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                              color: colors.successGreenDark,
+                                            ),
                                             textAlign: TextAlign.right),
                                       ),
                                     ],
@@ -555,17 +602,17 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                   ),
                 SizedBox(height: 16),
                 Text('Mode de règlement : ${payment.paymentMethod}',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    style: textStyles.body.copyWith(fontWeight: FontWeight.w600)),
                 SizedBox(height: 8),
                 Text('Montant total : ${formatPrice(payment.amount)}',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    style: textStyles.body.copyWith(fontWeight: FontWeight.w600)),
               ],
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text('Fermer', style: TextStyle(fontSize: 16)),
+              child: Text('Fermer', style: textStyles.body),
             ),
           ],
         );
@@ -575,13 +622,16 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textStyles = context.appTextStyles;
+    final colors = context.appColors;
     return Scaffold(
         appBar: AppBar(
-          title: const Text(AppConstants.paymentHistoryTitle),
+          title: const Text(AppStrings.paymentHistoryTitle),
         ),
         body: Column(children: [
           Container(
-            color: Colors.blue[50],
+            color: colorScheme.surfaceContainerHighest,
             padding: const EdgeInsets.all(12.0),
             child: Column(
               children: [
@@ -611,8 +661,8 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                       onSelectionChanged: (Set<ViewMode> newSelection) {
                         setState(() {
                           currentViewMode = newSelection.first;
-                          filterPayments();
                         });
+                        _reloadForCurrentPeriod();
                       },
                     ),
                   ],
@@ -628,8 +678,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                           : currentViewMode == ViewMode.weekly
                               ? "Sélectionner la semaine:"
                               : "Sélectionner le mois:",
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w600),
+                      style: textStyles.body.copyWith(fontWeight: FontWeight.w600),
                     ),
                     // Boutons de raccourcis centrés (seulement pour le mode journalier)
                     if (currentViewMode == ViewMode.daily)
@@ -663,19 +712,20 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                         // Affichage de la période actuelle
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black,
+                            backgroundColor: colorScheme.surface,
+                            foregroundColor: colorScheme.onSurface,
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 8),
-                            minimumSize: const Size(200, 42),
+                            fixedSize: const Size(280, 42),
                           ),
                           onPressed: currentViewMode == ViewMode.daily
                               ? () => _selectDate(context)
                               : null,
                           child: Text(
                             _getPeriodTitle(),
-                            style: const TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.w500),
+                            style: textStyles.caption.copyWith(
+                              fontWeight: FontWeight.w500,
+                            ),
                             textAlign: TextAlign.center,
                           ),
                         ),
@@ -698,17 +748,48 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
           ),
           Expanded(
               child: ListView.builder(
-                  itemCount: filteredPayments.length,
+                  controller: _scrollController,
+                  itemCount: filteredPayments.isNotEmpty
+                      ? filteredPayments.length + (_hasMore ? 1 : 0)
+                      : 1,
                   itemBuilder: (context, index) {
+                    if (filteredPayments.isEmpty) {
+                      if (_isLoading) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24.0),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Text(
+                            'Aucun encaissement pour cette periode.',
+                            style: textStyles.body,
+                          ),
+                        ),
+                      );
+                    }
+
+                    if (index >= filteredPayments.length) {
+                      return _isLoading
+                          ? const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16.0),
+                              child: Center(child: CircularProgressIndicator()),
+                            )
+                          : const SizedBox(height: 16);
+                    }
+
                     var payment = filteredPayments[index];
                     // ignore: unused_local_variable
                     String formattedDate =
                         DateFormat('dd/MM/yyyy à H:mm').format(payment.date);
 
                     // Utiliser l'index pour alterner la couleur de fond
-                    Color bgColor = index % 2 == 0
-                        ? Colors.grey[200]!
-                        : Colors.white; // Couleurs alternées
+                    final bgColor = index % 2 == 0
+                      ? colorScheme.surfaceContainerLow
+                      : colorScheme.surface; // Couleurs alternées
+                    final muted = colorScheme.onSurface.withValues(alpha: 0.5);
 
                     return ListTile(
                         tileColor: bgColor, // Appliquer la couleur de fond
@@ -724,8 +805,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                               child: Text(
                                 "Montant: ${formatPrice(payment.amount)}",
                                 style: TextStyle(
-                                  color:
-                                      payment.isSelected ? Colors.grey : null,
+                                  color: payment.isSelected ? muted : null,
                                 ),
                               ),
                             ),
@@ -735,8 +815,8 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
                                 color: payment.isSelected
-                                    ? Colors.grey
-                                    : Colors.blue[700],
+                                    ? muted
+                                    : colorScheme.primary,
                               ),
                             ),
                           ],
@@ -747,8 +827,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                             Text(
                               "Mode: ${payment.paymentMethod}",
                               style: TextStyle(
-                                color:
-                                    payment.isSelected ? Colors.grey : null,
+                                color: payment.isSelected ? muted : null,
                               ),
                             ),
                             if (payment.items.isNotEmpty)
@@ -757,8 +836,8 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: payment.isSelected
-                                      ? Colors.grey
-                                      : Colors.grey[600],
+                                      ? muted
+                                      : colorScheme.onSurface.withValues(alpha: 0.7),
                                 ),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
@@ -768,15 +847,20 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            IconButton(
+                              icon: Icon(Icons.edit, color: colors.warningOrange),
+                              onPressed: () => _changePaymentMethod(payment),
+                              tooltip: 'Modifier le mode de règlement',
+                            ),
                             // Icône pour voir le détail de la commande
                             IconButton(
-                              icon: Icon(Icons.visibility, color: Colors.blue),
+                              icon: Icon(Icons.visibility, color: colorScheme.primary),
                               onPressed: () => _showPaymentDetails(payment),
                               tooltip: 'Voir le détail de la commande',
                             ),
                             // Icône pour supprimer l'encaissement
                             IconButton(
-                              icon: Icon(Icons.delete, color: Colors.red),
+                              icon: Icon(Icons.delete, color: colorScheme.error),
                               onPressed: () => _deletePayment(payment),
                               tooltip: 'Supprimer cet encaissement',
                             ),
@@ -784,66 +868,47 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                         ));
                   })),
           Container(
-              color: Colors.lightBlue[100], // Définit la couleur de fond pour les totaux
+              color: colorScheme.surfaceContainerHighest,
               padding: const EdgeInsets.all(16.0),
               child: Column(children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                Wrap(
+                  alignment: WrapAlignment.spaceEvenly,
+                  spacing: 16,
+                  runSpacing: 8,
                   children: [
                     Text(
-                      "Total pointé Chèques: ${formatPrice(totalSelectedChecks)}",
-                      style:
-                          const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      "Chèques: ${formatPrice(totalSelectedChecks)} / ${formatPrice(totalChecks)}",
+                      style: textStyles.body.copyWith(fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      "Total pointé Espèces: ${formatPrice(totalSelectedCash)}",
-                      style:
-                          const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      "Espèces: ${formatPrice(totalSelectedCash)} / ${formatPrice(totalCash)}",
+                      style: textStyles.body.copyWith(fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      "Total pointé: ${formatPrice(totalSelectedSum)}",
-                      style:
-                          const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      "Virements: ${formatPrice(totalSelectedTransfers)} / ${formatPrice(totalTransfers)}",
+                      style: textStyles.body.copyWith(fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
-                Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-                  Text(
-                    "Total Chèques: ${formatPrice(totalChecks)}",
-                    style:
-                        const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    "Total Espèces: ${formatPrice(totalCash)}",
-                    style:
-                        const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    "Total: ${formatPrice(totalSum)}",
-                    style:
-                        const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ]),
                 SizedBox(height: 8),
                 Container(
                   padding:
                       const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                   decoration: BoxDecoration(
-                    color: Colors.orange[100],
+                    color: colorScheme.secondaryContainer,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.orange[300]!),
+                    border: Border.all(color: colorScheme.outline),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.history, color: Colors.orange[700], size: 20),
+                      Icon(Icons.history, color: colorScheme.onSecondaryContainer, size: 20),
                       const SizedBox(width: 8),
                       Text(
                         _getComparisonText(),
-                        style: TextStyle(
-                          fontSize: 16,
+                        style: textStyles.body.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: Colors.orange[700],
+                          color: colorScheme.onSecondaryContainer,
                         ),
                       ),
                       if (totalSum > 0 && previousYearTotal > 0)
@@ -856,8 +921,8 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
                                 color: totalSum >= previousYearTotal
-                                    ? Colors.green[700]
-                                    : Colors.red[700],
+                                    ? colors.successGreenDark
+                                    : colorScheme.error,
                               ),
                             ),
                           ],

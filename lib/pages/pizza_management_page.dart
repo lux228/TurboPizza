@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import '../models/pizza.dart';
 import '../utils/format_utils.dart';
 import '../utils/storage_service.dart';
-import '../constants/app_constants.dart';
+import '../utils/snack_bar_utils.dart';
+import '../constants/app_categories.dart';
+import '../constants/app_strings.dart';
+import '../theme/app_theme.dart';
 
 class PizzaManagementPage extends StatefulWidget {
   final List<Pizza> availablePizzas;
@@ -19,8 +22,8 @@ class PizzaManagementPage extends StatefulWidget {
 class _PizzaManagementPageState extends State<PizzaManagementPage> {
   final _nameController = TextEditingController();
   final _priceController = TextEditingController();
-  List<String> pizzaTypes = AppConstants.categoryOrder;
-  String selectedType = AppConstants.categoryOrder.first;
+  List<String> pizzaTypes = AppCategories.categoryOrder;
+  String selectedType = AppCategories.categoryOrder.first;
 
   void _addOrUpdatePizza({String? originalName}) {
     final newOrUpdatedPizza = Pizza(
@@ -80,7 +83,7 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
                     const TextInputType.numberWithOptions(decimal: true),
               ),
               DropdownButtonFormField<String>(
-                value: selectedType, // Initialiser avec le type actuel
+                initialValue: selectedType, // Initialiser avec le type actuel
                 decoration: const InputDecoration(labelText: 'Type'),
                 onChanged: (String? newValue) {
                   setState(() {
@@ -115,11 +118,12 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
+        final textStyles = context.appTextStyles;
         return AlertDialog(
           title: const Text('Confirmer la suppression'),
           content: Text(
             'Êtes-vous sûr de vouloir supprimer "${pizza.name}" ?\n\nCette action est irréversible.',
-            style: const TextStyle(fontSize: AppConstants.subtitleFontSize),
+            style: textStyles.subtitle,
           ),
           actions: [
             TextButton(
@@ -128,7 +132,7 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
             ),
             TextButton(
               style: TextButton.styleFrom(
-                foregroundColor: Colors.red,
+                foregroundColor: Theme.of(context).colorScheme.error,
               ),
               child: const Text('Supprimer'),
               onPressed: () {
@@ -142,11 +146,10 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
                 StorageService.savePizzaList(widget.availablePizzas);
                 
                 // Afficher un message de confirmation
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('${pizza.name} supprimé avec succès'),
-                    duration: const Duration(seconds: 2),
-                  ),
+                showAppSnackBar(
+                  context,
+                  '${pizza.name} supprimé avec succès',
+                  type: AppSnackBarType.success,
                 );
               },
             ),
@@ -156,12 +159,15 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
     );
   }
 
-  Color _getCategoryColor(String type) {
-    return AppConstants.productTypeBackgroundColors[type] ?? Colors.grey[100]!;
+  Color _getCategoryColor(AppThemeColors colors, String type) {
+    return colors.productTypeBackgroundColor(type);
   }
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
+    final textStyles = context.appTextStyles;
+    final colorScheme = Theme.of(context).colorScheme;
     // Regrouper les pizzas par type
     Map<String, List<Pizza>> groupedPizzas = {};
     for (var pizza in widget.availablePizzas) {
@@ -171,21 +177,10 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
       group.sort((a, b) => a.name.compareTo(b.name));
     }
 
-    // Ordre spécifique des catégories
-    const categoryOrder = [
-      'Tomate',
-      'Crème', 
-      'Spécialités',
-      'Softs',
-      'Vins',
-      'Desserts',
-      'Glaces'
-    ];
-
     List<Widget> categoryWidgets = [];
     
     // Afficher les catégories dans l'ordre spécifié
-    for (String categoryType in categoryOrder) {
+    for (String categoryType in AppCategories.categoryOrder) {
       if (groupedPizzas.containsKey(categoryType)) {
         List<Pizza> pizzas = groupedPizzas[categoryType]!;
         
@@ -195,13 +190,12 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
             width: double.infinity,
             padding: const EdgeInsets.all(12.0),
             margin: const EdgeInsets.only(top: 8.0),
-            color: _getCategoryColor(categoryType),
+            color: _getCategoryColor(colors, categoryType),
             child: Text(
               categoryType.toUpperCase(),
-              style: const TextStyle(
-                fontSize: 18, 
+              style: textStyles.subtitle.copyWith(
                 fontWeight: FontWeight.bold,
-                color: Colors.black87,
+                color: colorScheme.onSurface,
               ),
             ),
           ),
@@ -225,13 +219,14 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
               
               return Card(
                 elevation: 2,
-                color: Colors.white,
+                color: colorScheme.surface,
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(4.0),
                     border: Border(
                       left: BorderSide(
-                        color: _getCategoryColor(categoryType).withValues(alpha: 0.8),
+                        color: _getCategoryColor(colors, categoryType)
+                            .withValues(alpha: 0.8),
                         width: 4.0,
                       ),
                     ),
@@ -247,19 +242,15 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
                           children: [
                             Text(
                               pizza.name,
-                              style: const TextStyle(
-                                fontSize: AppConstants.mediumFontSize,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: textStyles.medium.copyWith(fontWeight: FontWeight.bold),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 3),
                             Text(
                               formatPrice(pizza.price),
-                              style: const TextStyle(
-                                fontSize: AppConstants.bodyFontSize,
-                                color: Colors.green,
+                              style: textStyles.body.copyWith(
+                                color: colors.successGreen,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -276,7 +267,7 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
                               minWidth: 36,
                               minHeight: 36,
                             ),
-                            icon: const Icon(Icons.edit, color: Colors.blue),
+                            icon: Icon(Icons.edit, color: colorScheme.primary),
                             onPressed: () => _showAddEditPizzaDialog(pizza: pizza),
                           ),
                           IconButton(
@@ -286,7 +277,7 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
                               minWidth: 36,
                               minHeight: 36,
                             ),
-                            icon: const Icon(Icons.delete, color: Colors.red),
+                            icon: Icon(Icons.delete, color: colorScheme.error),
                             onPressed: () => _showDeleteConfirmationDialog(pizza),
                           ),
                         ],
@@ -303,13 +294,13 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text(AppConstants.productManagementTitle)),
+      appBar: AppBar(title: const Text(AppStrings.productManagementTitle)),
       body: widget.availablePizzas.isEmpty
-          ? const Center(
+          ? Center(
               child: Text(
-                AppConstants.noProductsMessage,
+                AppStrings.noProductsMessage,
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: AppConstants.subtitleFontSize, color: Colors.grey),
+                style: textStyles.subtitle.copyWith(color: colors.greyText),
               ),
             )
           : ListView(children: categoryWidgets),

@@ -1,14 +1,22 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import '../constants/app_constants.dart';
 import '../models/payment.dart';
 import '../models/pending_order.dart';
 import '../models/pizza.dart';
+import '../repositories/product_repository.dart';
+import '../repositories/payment_repository.dart';
+import '../repositories/pending_order_repository.dart';
+import '../utils/payment_fingerprint.dart';
+import 'migration_service.dart';
 
+/// Central database service managing SQLite database and repositories.
+/// 
+/// This service is responsible for database initialization and providing
+/// access to repositories. All data access should go through the repositories.
 class DatabaseService {
   DatabaseService._();
   static final DatabaseService instance = DatabaseService._();
@@ -16,15 +24,23 @@ class DatabaseService {
   Database? _db;
   String? _dbPath;
   static const _dbFileName = 'turbopizza.db';
-  static const _migrationMetaKey = 'migrated_from_prefs';
 
+  ProductRepository? _productRepository;
+  PaymentRepository? _paymentRepository;
+  PendingOrderRepository? _pendingOrderRepository;
+
+  /// Initializes the database and sets up repositories.
+  /// 
+  /// [overridePath] can be used for testing to specify a custom database path.
+  /// [skipMigration] prevents automatic migration from SharedPreferences.
   Future<void> init({String? overridePath, bool skipMigration = false}) async {
     if (_db != null) return;
 
-    // Init FFI for desktop targets
+    // Initialize FFI for desktop targets
     sqfliteFfiInit();
     final dbFactory = databaseFactoryFfi;
 
+    // Determine database path
     if (overridePath != null) {
       _dbPath = overridePath;
       await Directory(p.dirname(overridePath)).create(recursive: true);
@@ -35,10 +51,18 @@ class DatabaseService {
       _dbPath = dbPath;
     }
 
+    // Open database
     _db = await _openDatabase(dbFactory, _dbPath!);
 
+    // Initialize repositories
+    _productRepository = ProductRepository(_db!);
+    _paymentRepository = PaymentRepository(_db!);
+    _pendingOrderRepository = PendingOrderRepository(_db!);
+
+    // Run migration if needed
     if (!skipMigration) {
-      await _maybeMigrateFromPrefs();
+      final migrationService = MigrationService(_db!);
+      await migrationService.migrateFromPrefsIfNeeded();
     }
   }
 
@@ -46,23 +70,178 @@ class DatabaseService {
     return dbFactory.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 1,
+        version: 2,
         onConfigure: (db) async {
           await db.execute('PRAGMA foreign_keys = ON');
         },
         onCreate: (db, version) async {
           await _createSchema(db);
         },
+        onUpgrade: (db, oldVersion, newVersion) async {
+          if (oldVersion < 2) {
+            await _migrateToV2(db);
+          }
+        },
       ),
     );
   }
 
+  /// Returns the absolute path to the database file.
   String get databasePath => _dbPath ?? '';
 
+  /// Closes the database connection.
   Future<void> close() async {
     await _db?.close();
     _db = null;
+    _productRepository = null;
+    _paymentRepository = null;
+    _pendingOrderRepository = null;
   }
+
+  /// Returns the database instance.
+  /// 
+  /// Throws an exception if the database has not been initialized.
+  Database get database {
+    if (_db == null) {
+      throw StateError('Database not initialized. Call init() first.');
+    }
+    return _db!;
+  }
+
+  // ============================================================
+  // Repository Accessors
+  // ============================================================
+
+  /// Returns the product repository.
+  /// 
+  /// Throws an exception if the database has not been initialized.
+  ProductRepository get products {
+    if (_productRepository == null) {
+      throw StateError('Database not initialized. Call init() first.');
+    }
+    return _productRepository!;
+  }
+
+  /// Returns the payment repository.
+  /// 
+  /// Throws an exception if the database has not been initialized.
+  PaymentRepository get payments {
+    if (_paymentRepository == null) {
+      throw StateError('Database not initialized. Call init() first.');
+    }
+    return _paymentRepository!;
+  }
+
+  /// Returns the pending order repository.
+  /// 
+  /// Throws an exception if the database has not been initialized.
+  PendingOrderRepository get pendingOrders {
+    if (_pendingOrderRepository == null) {
+      throw StateError('Database not initialized. Call init() first.');
+    }
+    return _pendingOrderRepository!;
+  }
+
+  // ============================================================
+  // Legacy compatibility methods (delegate to repositories)
+  // ============================================================
+
+  /// @deprecated Use `DatabaseService.instance.products.fetchProducts()` instead.
+  Future<List<Pizza>> fetchProducts({bool includeInactive = false}) async {
+    return products.fetchProducts(includeInactive: includeInactive);
+  }
+
+  /// @deprecated Use `DatabaseService.instance.products.replaceProducts()` instead.
+  Future<void> replaceProducts(List<Pizza> pizzas) async {
+    return products.replaceProducts(pizzas);
+  }
+
+  /// @deprecated Use `DatabaseService.instance.payments.insertPayment()` instead.
+  Future<void> insertPayment(Payment payment) async {
+    return payments.insertPayment(payment);
+  }
+
+  /// @deprecated Use `DatabaseService.instance.payments.replacePayments()` instead.
+  Future<void> replacePayments(List<Payment> paymentList) async {
+    return payments.replacePayments(paymentList);
+  }
+
+  /// @deprecated Use `DatabaseService.instance.payments.fetchPayments()` instead.
+  Future<List<Payment>> fetchPayments() async {
+    return payments.fetchPayments();
+  }
+
+  /// @deprecated Use `DatabaseService.instance.payments.fetchPaymentsBetween()` instead.
+  Future<List<Payment>> fetchPaymentsBetween({
+    required DateTime start,
+    required DateTime endExclusive,
+  }) async {
+    return payments.fetchPaymentsBetween(
+      start: start,
+      endExclusive: endExclusive,
+    );
+  }
+
+  /// @deprecated Use `DatabaseService.instance.payments.fetchPaymentsPage()` instead.
+  Future<List<Payment>> fetchPaymentsPage({
+    required DateTime start,
+    required DateTime endExclusive,
+    required int limit,
+    required int offset,
+  }) async {
+    return payments.fetchPaymentsPage(
+      start: start,
+      endExclusive: endExclusive,
+      limit: limit,
+      offset: offset,
+    );
+  }
+
+  /// @deprecated Use `DatabaseService.instance.payments.fetchTotalsByMethodBetween()` instead.
+  Future<Map<String, double>> fetchPaymentTotalsByMethodBetween({
+    required DateTime start,
+    required DateTime endExclusive,
+  }) async {
+    return payments.fetchTotalsByMethodBetween(
+      start: start,
+      endExclusive: endExclusive,
+    );
+  }
+
+  /// @deprecated Use `DatabaseService.instance.payments.fetchTotalAmountBetween()` instead.
+  Future<double> fetchPaymentTotalAmountBetween({
+    required DateTime start,
+    required DateTime endExclusive,
+  }) async {
+    return payments.fetchTotalAmountBetween(
+      start: start,
+      endExclusive: endExclusive,
+    );
+  }
+
+  /// @deprecated Use `DatabaseService.instance.pendingOrders.savePendingOrder()` instead.
+  Future<void> savePendingOrder(PendingOrder order) async {
+    return pendingOrders.savePendingOrder(order);
+  }
+
+  /// @deprecated Use `DatabaseService.instance.pendingOrders.fetchPendingOrders()` instead.
+  Future<List<PendingOrder>> fetchPendingOrders() async {
+    return pendingOrders.fetchPendingOrders();
+  }
+
+  /// @deprecated Use `DatabaseService.instance.pendingOrders.removePendingOrder()` instead.
+  Future<void> removePendingOrder(String orderId) async {
+    return pendingOrders.removePendingOrder(orderId);
+  }
+
+  /// @deprecated Use `DatabaseService.instance.pendingOrders.replacePendingOrders()` instead.
+  Future<void> replacePendingOrders(List<PendingOrder> orders) async {
+    return pendingOrders.replacePendingOrders(orders);
+  }
+
+  // ============================================================
+  // Database Schema
+  // ============================================================
 
   Future<void> _createSchema(Database db) async {
     await db.execute('''
@@ -87,11 +266,13 @@ class DatabaseService {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         date TEXT NOT NULL,
         amount REAL NOT NULL,
-        payment_method TEXT NOT NULL
+        payment_method TEXT NOT NULL,
+        fingerprint TEXT NOT NULL
       );
     ''');
     await db.execute('CREATE INDEX idx_payments_date ON payments(date);');
     await db.execute('CREATE INDEX idx_payments_method ON payments(payment_method);');
+    await db.execute('CREATE UNIQUE INDEX idx_payments_fingerprint ON payments(fingerprint);');
 
     await db.execute('''
       CREATE TABLE payment_items (
@@ -104,6 +285,7 @@ class DatabaseService {
         FOREIGN KEY(payment_id) REFERENCES payments(id) ON DELETE CASCADE
       );
     ''');
+    await db.execute('CREATE INDEX idx_payment_items_payment_id ON payment_items(payment_id);');
 
     await db.execute('''
       CREATE TABLE pending_orders (
@@ -127,380 +309,115 @@ class DatabaseService {
     ''');
   }
 
-  Future<void> _maybeMigrateFromPrefs() async {
-    final db = _db!;
-    final existing = await db.query(
-      'meta',
-      where: 'key = ?',
-      whereArgs: [_migrationMetaKey],
-      limit: 1,
-    );
-    if (existing.isNotEmpty) return;
+  Future<void> _migrateToV2(Database db) async {
+    final columns = await db.rawQuery('PRAGMA table_info(payments);');
+    final hasFingerprint =
+        columns.any((row) => row['name'] == 'fingerprint');
+    if (!hasFingerprint) {
+      await db.execute('ALTER TABLE payments ADD COLUMN fingerprint TEXT;');
+    }
 
-    final prefs = await SharedPreferences.getInstance();
+    final rows = await db.rawQuery('''
+      SELECT
+        p.id AS payment_id,
+        p.date,
+        p.amount,
+        p.payment_method,
+        i.id AS item_id,
+        i.name,
+        i.type,
+        i.unit_price,
+        i.quantity
+      FROM payments p
+      LEFT JOIN payment_items i ON i.payment_id = p.id
+      ORDER BY p.date DESC, p.id DESC, i.id ASC
+    ''');
 
-    // Legacy loads from SharedPreferences
-    final legacyPizzas = await _loadLegacyPizzas(prefs);
-    final legacyPayments = await _loadLegacyPayments(prefs);
-    final legacyPending = await _loadLegacyPendingOrders(prefs);
+    final paymentsById = <int, Payment>{};
+    final ordered = <Payment>[];
 
-    await db.transaction((txn) async {
-      // Products
-      for (final pizza in legacyPizzas) {
-        await txn.insert(
-          'products',
-          {
-            'name': pizza.name,
-            'price': pizza.price,
-            'type': pizza.type,
-            'active': 1,
-          },
-          conflictAlgorithm: ConflictAlgorithm.replace,
+    for (final row in rows) {
+      final paymentId = row['payment_id'] as int;
+      var payment = paymentsById[paymentId];
+      if (payment == null) {
+        payment = Payment(
+          id: paymentId,
+          date: DateTime.parse(row['date'] as String),
+          amount: (row['amount'] as num).toDouble(),
+          paymentMethod: row['payment_method'] as String,
+          items: [],
+          isSelected: false,
+        );
+        paymentsById[paymentId] = payment;
+        ordered.add(payment);
+      }
+
+      final itemId = row['item_id'] as int?;
+      if (itemId != null) {
+        payment.items.add(
+          Pizza(
+            name: row['name'] as String,
+            price: (row['unit_price'] as num).toDouble(),
+            quantity: row['quantity'] as int,
+            type: row['type'] as String,
+          ),
         );
       }
+    }
 
-      // Payments + items
-      for (final payment in legacyPayments) {
-        final paymentId = await txn.insert('payments', {
-          'date': payment.date.toIso8601String(),
-          'amount': payment.amount,
-          'payment_method': payment.paymentMethod,
-        });
-        for (final item in payment.items) {
-          await txn.insert('payment_items', {
-            'payment_id': paymentId,
-            'name': item.name,
-            'type': item.type,
-            'unit_price': item.price,
-            'quantity': item.quantity,
-          });
-        }
+    final seen = <String, int>{};
+    final duplicates = <int>[];
+
+    for (final payment in ordered) {
+      final fingerprint = buildPaymentFingerprint(payment);
+      final id = payment.id!;
+      if (seen.containsKey(fingerprint)) {
+        duplicates.add(id);
+        continue;
       }
-
-      // Pending orders + items
-      for (final order in legacyPending) {
-        await txn.insert('pending_orders', {
-          'id': order.id,
-          'created_at': order.createdAt.toIso8601String(),
-          'planned_pickup': order.plannedPickupTime,
-          'amount': order.amount,
-        });
-        for (final item in order.items) {
-          await txn.insert('pending_order_items', {
-            'order_id': order.id,
-            'name': item.name,
-            'type': item.type,
-            'unit_price': item.price,
-            'quantity': item.quantity,
-          });
-        }
-      }
-
-      await txn.insert('meta', {
-        'key': _migrationMetaKey,
-        'value': '1',
-      });
-    });
-  }
-
-  Future<List<Pizza>> _loadLegacyPizzas(SharedPreferences prefs) async {
-    final pizzaJson = prefs.getStringList(AppConstants.spKeyPizzas);
-    try {
-      return pizzaJson
-              ?.map((s) {
-                final decoded = jsonDecodeSafe(s);
-                if (decoded == null) return null;
-                return Pizza.fromJson(decoded);
-              })
-              .whereType<Pizza>()
-              .toList() ??
-          [];
-    } catch (_) {
-      return [];
+      seen[fingerprint] = id;
+      await db.update(
+        'payments',
+        {'fingerprint': fingerprint},
+        where: 'id = ?',
+        whereArgs: [id],
+      );
     }
-  }
 
-  Future<List<Payment>> _loadLegacyPayments(SharedPreferences prefs) async {
-    final paymentsJson = prefs.getStringList(AppConstants.spKeyPayments);
-    try {
-      return paymentsJson
-              ?.map((s) {
-                final decoded = jsonDecodeSafe(s);
-                if (decoded == null) return null;
-                return Payment.fromJson(decoded);
-              })
-              .whereType<Payment>()
-              .toList() ??
-          [];
-    } catch (_) {
-      return [];
+    for (final id in duplicates) {
+      await db.delete('payment_items', where: 'payment_id = ?', whereArgs: [id]);
+      await db.delete('payments', where: 'id = ?', whereArgs: [id]);
     }
-  }
 
-  Future<List<PendingOrder>> _loadLegacyPendingOrders(
-      SharedPreferences prefs) async {
-    final pendingJson = prefs.getStringList(AppConstants.spKeyPendingOrders);
-    try {
-      return pendingJson
-              ?.map((s) {
-                final decoded = jsonDecodeSafe(s);
-                if (decoded == null) return null;
-                return PendingOrder.fromJson(decoded);
-              })
-              .whereType<PendingOrder>()
-              .toList() ??
-          [];
-    } catch (_) {
-      return [];
+    if (duplicates.isNotEmpty) {
+      await db.insert(
+        'meta',
+        {
+          'key': 'db_payment_duplicates_removed',
+          'value': json.encode({
+            'count': duplicates.length,
+            'date': DateTime.now().toIso8601String(),
+          }),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
     }
-  }
 
-  // Products
-  Future<List<Pizza>> fetchProducts({bool includeInactive = false}) async {
-    final db = _db!;
-    final rows = await db.query(
-      'products',
-      where: includeInactive ? null : 'active = 1',
-      orderBy: 'name COLLATE NOCASE ASC',
+    await db.execute(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_fingerprint ON payments(fingerprint);',
     );
-    return rows
-        .map((r) => Pizza(
-              name: r['name'] as String,
-              price: (r['price'] as num).toDouble(),
-              quantity: 0,
-              type: r['type'] as String,
-            ))
-        .toList();
-  }
-
-  Future<void> replaceProducts(List<Pizza> pizzas) async {
-    final db = _db!;
-    await db.transaction((txn) async {
-      await txn.delete('products');
-      for (final pizza in pizzas) {
-        await txn.insert('products', {
-          'name': pizza.name,
-          'price': pizza.price,
-          'type': pizza.type,
-          'active': 1,
-        });
-      }
-    });
-  }
-
-  // Payments
-  Future<void> insertPayment(Payment payment) async {
-    final db = _db!;
-    await db.transaction((txn) async {
-      final paymentId = await txn.insert('payments', {
-        'date': payment.date.toIso8601String(),
-        'amount': payment.amount,
-        'payment_method': payment.paymentMethod,
-      });
-      for (final item in payment.items) {
-        await txn.insert('payment_items', {
-          'payment_id': paymentId,
-          'name': item.name,
-          'type': item.type,
-          'unit_price': item.price,
-          'quantity': item.quantity,
-        });
-      }
-    });
-  }
-
-  Future<void> replacePayments(List<Payment> payments) async {
-    final db = _db!;
-    await db.transaction((txn) async {
-      await txn.delete('payment_items');
-      await txn.delete('payments');
-      for (final payment in payments) {
-        final paymentId = await txn.insert('payments', {
-          'date': payment.date.toIso8601String(),
-          'amount': payment.amount,
-          'payment_method': payment.paymentMethod,
-        });
-        for (final item in payment.items) {
-          await txn.insert('payment_items', {
-            'payment_id': paymentId,
-            'name': item.name,
-            'type': item.type,
-            'unit_price': item.price,
-            'quantity': item.quantity,
-          });
-        }
-      }
-    });
-  }
-
-  Future<List<Payment>> fetchPayments() async {
-    final db = _db!;
-    final paymentsRows = await db.query('payments', orderBy: 'date DESC');
-    final itemsRows = await db.query('payment_items');
-
-    final itemsByPayment = <int, List<Pizza>>{};
-    for (final row in itemsRows) {
-      final pid = row['payment_id'] as int;
-      itemsByPayment.putIfAbsent(pid, () => []).add(
-            Pizza(
-              name: row['name'] as String,
-              price: (row['unit_price'] as num).toDouble(),
-              quantity: row['quantity'] as int,
-              type: row['type'] as String,
-            ),
-          );
-    }
-
-    return paymentsRows.map((r) {
-      final id = r['id'] as int;
-      return Payment(
-        date: DateTime.parse(r['date'] as String),
-        amount: (r['amount'] as num).toDouble(),
-        paymentMethod: r['payment_method'] as String,
-        items: itemsByPayment[id] ?? const [],
-        isSelected: false,
-      );
-    }).toList();
-  }
-
-  Future<List<Payment>> fetchPaymentsBetween({
-    required DateTime start,
-    required DateTime endExclusive,
-  }) async {
-    final db = _db!;
-    final startIso = start.toIso8601String();
-    final endIso = endExclusive.toIso8601String();
-
-    final paymentsRows = await db.query(
-      'payments',
-      where: 'date >= ? AND date < ?',
-      whereArgs: [startIso, endIso],
-      orderBy: 'date ASC',
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_payment_items_payment_id ON payment_items(payment_id);',
     );
-
-    final ids = paymentsRows.map((r) => r['id'] as int).toList();
-    Map<int, List<Pizza>> itemsByPayment = {};
-    if (ids.isNotEmpty) {
-      final placeholders = List.filled(ids.length, '?').join(',');
-      final itemsRows = await db.query(
-        'payment_items',
-        where: 'payment_id IN ($placeholders)',
-        whereArgs: ids,
-      );
-      for (final row in itemsRows) {
-        final pid = row['payment_id'] as int;
-        itemsByPayment.putIfAbsent(pid, () => []).add(
-              Pizza(
-                name: row['name'] as String,
-                price: (row['unit_price'] as num).toDouble(),
-                quantity: row['quantity'] as int,
-                type: row['type'] as String,
-              ),
-            );
-      }
-    }
-
-    return paymentsRows.map((r) {
-      final id = r['id'] as int;
-      return Payment(
-        date: DateTime.parse(r['date'] as String),
-        amount: (r['amount'] as num).toDouble(),
-        paymentMethod: r['payment_method'] as String,
-        items: itemsByPayment[id] ?? const [],
-        isSelected: false,
-      );
-    }).toList();
   }
 
-  // Pending orders
-  Future<void> savePendingOrder(PendingOrder order) async {
-    final db = _db!;
-    await db.transaction((txn) async {
-      await txn.delete('pending_orders', where: 'id = ?', whereArgs: [order.id]);
-      await txn.delete('pending_order_items', where: 'order_id = ?', whereArgs: [order.id]);
+  // ============================================================
+  // Database Export/Import
+  // ============================================================
 
-      await txn.insert('pending_orders', {
-        'id': order.id,
-        'created_at': order.createdAt.toIso8601String(),
-        'planned_pickup': order.plannedPickupTime,
-        'amount': order.amount,
-      });
-
-      for (final item in order.items) {
-        await txn.insert('pending_order_items', {
-          'order_id': order.id,
-          'name': item.name,
-          'type': item.type,
-          'unit_price': item.price,
-          'quantity': item.quantity,
-        });
-      }
-    });
-  }
-
-  Future<List<PendingOrder>> fetchPendingOrders() async {
-    final db = _db!;
-    final ordersRows = await db.query('pending_orders', orderBy: 'planned_pickup ASC');
-    final itemsRows = await db.query('pending_order_items');
-
-    final itemsByOrder = <String, List<Pizza>>{};
-    for (final row in itemsRows) {
-      final oid = row['order_id'] as String;
-      itemsByOrder.putIfAbsent(oid, () => []).add(
-            Pizza(
-              name: row['name'] as String,
-              price: (row['unit_price'] as num).toDouble(),
-              quantity: row['quantity'] as int,
-              type: row['type'] as String,
-            ),
-          );
-    }
-
-    return ordersRows.map((r) {
-      final id = r['id'] as String;
-      return PendingOrder(
-        id: id,
-        createdAt: DateTime.parse(r['created_at'] as String),
-        plannedPickupTime: r['planned_pickup'] as String,
-        items: itemsByOrder[id] ?? const [],
-        amount: (r['amount'] as num).toDouble(),
-      );
-    }).toList();
-  }
-
-  Future<void> removePendingOrder(String orderId) async {
-    final db = _db!;
-    await db.transaction((txn) async {
-      await txn.delete('pending_order_items', where: 'order_id = ?', whereArgs: [orderId]);
-      await txn.delete('pending_orders', where: 'id = ?', whereArgs: [orderId]);
-    });
-  }
-
-  Future<void> replacePendingOrders(List<PendingOrder> orders) async {
-    final db = _db!;
-    await db.transaction((txn) async {
-      await txn.delete('pending_order_items');
-      await txn.delete('pending_orders');
-      for (final order in orders) {
-        await txn.insert('pending_orders', {
-          'id': order.id,
-          'created_at': order.createdAt.toIso8601String(),
-          'planned_pickup': order.plannedPickupTime,
-          'amount': order.amount,
-        });
-        for (final item in order.items) {
-          await txn.insert('pending_order_items', {
-            'order_id': order.id,
-            'name': item.name,
-            'type': item.type,
-            'unit_price': item.price,
-            'quantity': item.quantity,
-          });
-        }
-      }
-    });
-  }
-
+  /// Exports the database to a file.
+  /// 
+  /// The database file will be copied to the specified [destinationPath].
   Future<void> exportDatabase(String destinationPath) async {
     await init();
     final src = File(databasePath);
@@ -508,25 +425,54 @@ class DatabaseService {
     await src.copy(destinationPath);
   }
 
-  Future<void> importDatabase(String sourcePath) async {
+  /// Imports a database from a file.
+  /// 
+  /// The current database will be replaced with the one at [sourcePath].
+  /// An automatic backup of the current database is created before import.
+  /// The database connection will be reopened after import.
+  /// 
+  /// Returns the path to the backup file created.
+  Future<String> importDatabase(String sourcePath, {bool createBackup = true}) async {
     if (_dbPath == null) {
       await init();
     }
+
     final dbFactory = databaseFactoryFfi;
     final dst = File(databasePath);
+    
+    // Create automatic backup before import
+    String? backupPath;
+    if (createBackup && await dst.exists()) {
+      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
+      backupPath = '$databasePath.backup_$timestamp';
+      await dst.copy(backupPath);
+      debugPrint('[DatabaseService] 💾 Backup créé: $backupPath');
+    }
+
+    // Close current database
     await _db?.close();
     _db = null;
+
+    // Import new database
     await dst.parent.create(recursive: true);
     await File(sourcePath).copy(dst.path);
-    _db = await _openDatabase(dbFactory, dst.path);
-  }
-}
+    debugPrint('[DatabaseService] ✅ Base de données importée depuis: $sourcePath');
 
-// Safe JSON decode that tolerates errors
-Map<String, dynamic>? jsonDecodeSafe(String source) {
-  try {
-    return json.decode(source) as Map<String, dynamic>;
-  } catch (_) {
-    return null;
+    // Reopen database
+    _db = await _openDatabase(dbFactory, dst.path);
+
+    // Reinitialize repositories with new database
+    _productRepository = ProductRepository(_db!);
+    _paymentRepository = PaymentRepository(_db!);
+    _pendingOrderRepository = PendingOrderRepository(_db!);
+
+    return backupPath ?? 'no_backup';
+  }
+
+  /// Restores a database from a backup file.
+  /// 
+  /// This is a shortcut for importDatabase that doesn't create another backup.
+  Future<void> restoreFromBackup(String backupPath) async {
+    await importDatabase(backupPath, createBackup: false);
   }
 }

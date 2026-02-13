@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/pizza.dart';
 import '../utils/format_utils.dart';
-import '../constants/app_constants.dart';
+import '../constants/app_categories.dart';
+import '../theme/app_theme.dart';
 
 class ProductGrid extends StatelessWidget {
   final List<Pizza> products;
@@ -29,7 +30,7 @@ class ProductGrid extends StatelessWidget {
     final List<Widget> categoryWidgets = [];
     
     // Afficher les catégories dans l'ordre spécifié
-    for (String categoryType in AppConstants.categoryOrder) {
+    for (String categoryType in AppCategories.categoryOrder) {
       if (groupedProducts.containsKey(categoryType)) {
         final List<Pizza> productsInCategory = groupedProducts[categoryType]!;
         
@@ -63,22 +64,23 @@ class CategorySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final layout = context.appLayout;
     return Column(
       children: [
         Container(
           padding: const EdgeInsets.all(8.0),
           child: Text(
             categoryName.toUpperCase(),
-            style: AppStyles.titleStyle,
+            style: context.appTextStyles.title,
           ),
         ),
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: AppConstants.gridCrossAxisCount,
-            crossAxisSpacing: AppConstants.gridSpacing,
-            mainAxisSpacing: AppConstants.gridSpacing,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: layout.gridCrossAxisCount,
+            crossAxisSpacing: layout.gridSpacing,
+            mainAxisSpacing: layout.gridSpacing,
           ),
           itemCount: products.length,
           itemBuilder: (context, index) {
@@ -105,30 +107,9 @@ class ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color? backgroundColor;
-    switch (product.type) {
-      case 'Tomate':
-        backgroundColor = Colors.red[100];
-        break;
-      case 'Crème':
-        backgroundColor = Colors.blue[100];
-        break;
-      case 'Softs':
-        backgroundColor = Colors.amber[100];
-        break;
-      case 'Vins':
-        backgroundColor = Colors.orange[100];
-        break;
-      case 'Spécialités':
-        backgroundColor = Colors.green[100];
-        break;
-      case 'Glaces':
-        backgroundColor = Colors.purple[100];
-        break;
-      case 'Desserts':
-        backgroundColor = Colors.pink[100];
-        break;
-    }
+    final colors = context.appColors;
+    final textStyles = context.appTextStyles;
+    final backgroundColor = colors.productTypeBackgroundColor(product.type);
 
     return GestureDetector(
       onTap: onTap,
@@ -140,12 +121,12 @@ class ProductCard extends StatelessWidget {
             children: [
               Text(
                 product.name,
-                style: const TextStyle(fontSize: AppConstants.largeFontSize),
+                style: textStyles.large,
                 textAlign: TextAlign.center,
               ),
               Text(
                 formatPrice(product.price),
-                style: AppStyles.subtitleStyle,
+                style: textStyles.subtitle,
               ),
             ],
           ),

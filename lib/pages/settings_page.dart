@@ -8,6 +8,10 @@ import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import '../services/order_service.dart';
 import '../services/backup_service.dart';
+import '../services/theme_service.dart';
+import '../utils/snack_bar_utils.dart';
+import '../widgets/migration_diagnostic_widget.dart';
+import '../widgets/duplicate_diagnostic_widget.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -34,13 +38,17 @@ class _SettingsPageState extends State<SettingsPage> {
       final dest = p.join(dir.path, 'turbopizza-backup-$ts.db');
       await BackupService.instance.exportDatabase(dest);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Base exportée vers $dest')),
+      showAppSnackBar(
+        context,
+        'Base exportée vers $dest',
+        type: AppSnackBarType.success,
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Export échoué: $e')),
+      showAppSnackBar(
+        context,
+        'Export échoué: $e',
+        type: AppSnackBarType.error,
       );
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -62,13 +70,17 @@ class _SettingsPageState extends State<SettingsPage> {
       // Reload orders from new database
       await context.read<OrderService>().loadOrders();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Import réussi et données rechargées.')),
+      showAppSnackBar(
+        context,
+        'Import réussi et données rechargées.',
+        type: AppSnackBarType.success,
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Import échoué: $e')),
+      showAppSnackBar(
+        context,
+        'Import échoué: $e',
+        type: AppSnackBarType.error,
       );
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -99,13 +111,17 @@ class _SettingsPageState extends State<SettingsPage> {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('CSV exporté vers $dest')),
+      showAppSnackBar(
+        context,
+        'CSV exporté vers $dest',
+        type: AppSnackBarType.success,
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Export CSV échoué: $e')),
+      showAppSnackBar(
+        context,
+        'Export CSV échoué: $e',
+        type: AppSnackBarType.error,
       );
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -123,6 +139,8 @@ class _SettingsPageState extends State<SettingsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            const ThemeModeTile(),
+            const SizedBox(height: 24),
             ElevatedButton.icon(
               icon: const Icon(Icons.save_alt),
               label: const Text('Exporter la base SQLite'),
@@ -141,9 +159,50 @@ class _SettingsPageState extends State<SettingsPage> {
               onPressed: _busy ? null : _exportCsv,
             ),
             const SizedBox(height: 24),
+            const MigrationDiagnosticWidget(),
+            const SizedBox(height: 24),
+            const DuplicateDiagnosticWidget(),
+            const SizedBox(height: 24),
             const Text(
               'Exports enregistrés dans votre dossier Téléchargements (sinon dossier support de l\'app).',
               style: TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ThemeModeTile extends StatelessWidget {
+  const ThemeModeTile({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final themeService = context.watch<ThemeService>();
+    return Card(
+      child: ListTile(
+        title: const Text('Thème'),
+        subtitle: const Text('Choisir clair, sombre ou système'),
+        trailing: DropdownButton<ThemeMode>(
+          value: themeService.themeMode,
+          onChanged: (mode) {
+            if (mode != null) {
+              themeService.setThemeMode(mode);
+            }
+          },
+          items: const [
+            DropdownMenuItem(
+              value: ThemeMode.system,
+              child: Text('Système'),
+            ),
+            DropdownMenuItem(
+              value: ThemeMode.light,
+              child: Text('Clair'),
+            ),
+            DropdownMenuItem(
+              value: ThemeMode.dark,
+              child: Text('Sombre'),
             ),
           ],
         ),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/pending_order.dart';
 import '../models/pizza.dart';
 import '../utils/storage_service.dart';
-import '../constants/app_constants.dart';
+import '../constants/app_thresholds.dart';
 
 enum OrderStatus {
   onTime,
@@ -14,15 +14,11 @@ enum OrderStatus {
 class OrderStatusInfo {
   final OrderStatus status;
   final String statusText;
-  final Color color;
-  final Color backgroundColor;
   final IconData icon;
 
   OrderStatusInfo({
     required this.status,
     required this.statusText,
-    required this.color,
-    required this.backgroundColor,
     required this.icon,
   });
 }
@@ -72,36 +68,28 @@ class OrderService extends ChangeNotifier {
     final pickupTime = order.pickupDateTime;
     final difference = pickupTime.difference(now).inMinutes;
 
-    if (difference < AppConstants.lateThreshold) {
+    if (difference < AppThresholds.lateMinutes) {
       return OrderStatusInfo(
         status: OrderStatus.late,
         statusText: 'En retard',
-        color: AppConstants.lateColor,
-        backgroundColor: AppConstants.lateBackgroundColor,
         icon: Icons.warning,
       );
-    } else if (difference < AppConstants.slightlyLateThreshold) {
+    } else if (difference < AppThresholds.slightlyLateMinutes) {
       return OrderStatusInfo(
         status: OrderStatus.slightlyLate,
         statusText: 'Légèrement en retard',
-        color: AppConstants.slightlyLateColor,
-        backgroundColor: AppConstants.slightlyLateBackgroundColor,
         icon: Icons.access_time,
       );
-    } else if (difference <= AppConstants.comingSoonThreshold) {
+    } else if (difference <= AppThresholds.comingSoonMinutes) {
       return OrderStatusInfo(
         status: OrderStatus.comingSoon,
         statusText: 'Bientôt là',
-        color: AppConstants.comingSoonColor,
-        backgroundColor: AppConstants.comingSoonBackgroundColor,
         icon: Icons.schedule,
       );
     } else {
       return OrderStatusInfo(
         status: OrderStatus.onTime,
         statusText: 'À l\'heure',
-        color: AppConstants.onTimeColor,
-        backgroundColor: AppConstants.onTimeBackgroundColor,
         icon: Icons.check_circle,
       );
     }
