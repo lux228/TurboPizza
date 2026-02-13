@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../services/database_service.dart';
 import '../repositories/payment_repository.dart';
 import '../utils/snack_bar_utils.dart';
+import '../constants/app_constants.dart';
 
 /// Page displaying sales statistics with charts and analytics.
 class SalesStatisticsPage extends StatefulWidget {
@@ -526,7 +527,8 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
     }
 
     final formatter = NumberFormat.currency(locale: 'fr_FR', symbol: '€', decimalDigits: 2);
-    final total = _totalsByMethod!.values.fold(0.0, (sum, val) => sum + val);
+    final totals = _totalsByMethod ?? <String, double>{};
+    final total = totals.values.fold(0.0, (sum, val) => sum + val);
 
     return Card(
       elevation: 4,
@@ -540,9 +542,8 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            ..._totalsByMethod!.entries.map((entry) {
-              final method = entry.key;
-              final amount = entry.value;
+            ...AppConstants.paymentMethods.map((method) {
+              final amount = totals[method] ?? 0.0;
               final percent = total > 0 ? (amount / total * 100) : 0.0;
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),

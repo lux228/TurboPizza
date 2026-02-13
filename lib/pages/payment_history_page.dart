@@ -34,10 +34,12 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
 
   double totalChecks = 0.0;
   double totalCash = 0.0;
+  double totalTransfers = 0.0;
   double totalSum = 0.0;
 
   double totalSelectedChecks = 0.0;
   double totalSelectedCash = 0.0;
+  double totalSelectedTransfers = 0.0;
   double totalSelectedSum = 0.0;
 
   double previousYearTotal = 0.0;
@@ -88,6 +90,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
 
     final cashTotal = totals[AppConstants.paymentMethods[0]] ?? 0.0;
     final checkTotal = totals[AppConstants.paymentMethods[1]] ?? 0.0;
+    final transferTotal = totals[AppConstants.paymentMethods[2]] ?? 0.0;
 
     final previousRange = _getPeriodRange(
       DateTime(selectedDate.year - 1, selectedDate.month, selectedDate.day),
@@ -102,7 +105,8 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
     setState(() {
       totalCash = cashTotal;
       totalChecks = checkTotal;
-      totalSum = cashTotal + checkTotal;
+      totalTransfers = transferTotal;
+      totalSum = cashTotal + checkTotal + transferTotal;
       previousYearTotal = previousTotal;
     });
   }
@@ -315,6 +319,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
   void calculateSelectedTotals() {
     totalSelectedChecks = 0.0;
     totalSelectedCash = 0.0;
+    totalSelectedTransfers = 0.0;
     totalSelectedSum = 0.0;
 
     for (var payment in filteredPayments) {
@@ -323,10 +328,12 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
           totalSelectedChecks += payment.amount;
         } else if (payment.paymentMethod == "Espèces") {
           totalSelectedCash += payment.amount;
+        } else if (payment.paymentMethod == "Virement") {
+          totalSelectedTransfers += payment.amount;
         }
       }
     }
-    totalSelectedSum = totalSelectedCash + totalSelectedChecks;
+    totalSelectedSum = totalSelectedCash + totalSelectedChecks + totalSelectedTransfers;
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -883,8 +890,10 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
               color: Colors.lightBlue[100], // Définit la couleur de fond pour les totaux
               padding: const EdgeInsets.all(16.0),
               child: Column(children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                Wrap(
+                  alignment: WrapAlignment.spaceEvenly,
+                  spacing: 16,
+                  runSpacing: 8,
                   children: [
                     Text(
                       "Total pointé Chèques: ${formatPrice(totalSelectedChecks)}",
@@ -897,29 +906,44 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                           const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     Text(
+                      "Total pointé Virements: ${formatPrice(totalSelectedTransfers)}",
+                      style:
+                          const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
                       "Total pointé: ${formatPrice(totalSelectedSum)}",
                       style:
                           const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
-                Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-                  Text(
-                    "Total Chèques: ${formatPrice(totalChecks)}",
-                    style:
-                        const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    "Total Espèces: ${formatPrice(totalCash)}",
-                    style:
-                        const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    "Total: ${formatPrice(totalSum)}",
-                    style:
-                        const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ]),
+                Wrap(
+                  alignment: WrapAlignment.spaceEvenly,
+                  spacing: 16,
+                  runSpacing: 8,
+                  children: [
+                    Text(
+                      "Total Chèques: ${formatPrice(totalChecks)}",
+                      style:
+                          const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      "Total Espèces: ${formatPrice(totalCash)}",
+                      style:
+                          const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      "Total Virements: ${formatPrice(totalTransfers)}",
+                      style:
+                          const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      "Total: ${formatPrice(totalSum)}",
+                      style:
+                          const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
                 SizedBox(height: 8),
                 Container(
                   padding:
