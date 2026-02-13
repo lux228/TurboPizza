@@ -23,11 +23,11 @@ void showAppSnackBar(
 }) {
   _activeEntry?.remove();
 
-  final overlay = Overlay.of(context, rootOverlay: true);
+  final overlay = Overlay.maybeOf(context, rootOverlay: true);
   if (overlay == null) return;
 
   final accent = _resolveAccent(type);
-  final topInset = MediaQuery.of(context).padding.top;
+  final topInset = MediaQuery.maybeOf(context)?.padding.top ?? 0.0;
 
   _activeEntry = OverlayEntry(
     builder: (context) => Positioned(
@@ -62,7 +62,6 @@ class _ToastContainer extends StatefulWidget {
   final VoidCallback onDismiss;
 
   const _ToastContainer({
-    super.key,
     required this.message,
     required this.accent,
     required this.duration,
