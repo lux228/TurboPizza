@@ -47,6 +47,8 @@ class _PizzaHomePageState extends State<PizzaHomePage>
   Timer? _currentOrderShrinkTimer;
   int _appliedItemCountForHeight = 0;
   String? _selectedTopCategoryId;
+  bool _isEditingOrderFlow = false;
+  String? _editedOrderInitialPickupTime;
 
   @override
   void initState() {
@@ -229,6 +231,9 @@ class _PizzaHomePageState extends State<PizzaHomePage>
 
       // Nettoyage du panier
       cartService.clear();
+      _isEditingOrderFlow = false;
+      _editedOrderInitialPickupTime = null;
+      cartService.clearLastPickupTime();
       if (showCurrentOrder) {
         _animationController.reverse().then((_) {
           if (mounted) {
@@ -254,13 +259,16 @@ class _PizzaHomePageState extends State<PizzaHomePage>
     final cartService = context.read<CartService>();
     if (cartService.isEmpty) return;
 
-    // Utiliser l'horaire mémorisé s'il existe, sinon demander un nouvel horaire
-    String? selectedTime =
-        cartService.lastPickupTime ??
-        await showDialog<String>(
-          context: context,
-          builder: (BuildContext context) => const PickupTimeDialog(),
-        );
+    // Pré-remplir l'horaire uniquement si on vient d'une action "Modifier".
+    final initialPickupTime = _isEditingOrderFlow
+        ? _editedOrderInitialPickupTime
+        : null;
+
+    String? selectedTime = await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) =>
+          PickupTimeDialog(initialTime: initialPickupTime),
+    );
 
     if (!mounted) return;
     if (selectedTime != null) {
@@ -270,6 +278,10 @@ class _PizzaHomePageState extends State<PizzaHomePage>
         amount: cartService.totalPrice,
         pickupTime: selectedTime,
       );
+
+      _isEditingOrderFlow = false;
+      _editedOrderInitialPickupTime = null;
+      cartService.clearLastPickupTime();
 
       cartService.clear();
       if (showCurrentOrder) {
@@ -329,10 +341,23 @@ class _PizzaHomePageState extends State<PizzaHomePage>
   // Méthode pour modifier une commande en attente
   void editOrderOnHold(PendingOrder order) async {
     final cartService = context.read<CartService>();
+
+    // Évite d'écraser une modification déjà en cours dans le panier.
+    if (!cartService.isEmpty && showCurrentOrder) {
+      showAppSnackBar(
+        context,
+        'Terminez d\'abord la modification en cours (mettre en attente ou encaisser).',
+        type: AppSnackBarType.warning,
+      );
+      return;
+    }
+
     // Remettre la commande dans le panier
     cartService.loadFromOrder(order.items);
 
-    // Mémoriser l'horaire de récupération pour pouvoir le réutiliser
+    // Mémoriser qu'on est en mode édition pour pré-remplir au prochain "Mise en attente".
+    _isEditingOrderFlow = true;
+    _editedOrderInitialPickupTime = order.plannedPickupTime;
     cartService.setLastPickupTime(order.plannedPickupTime);
 
     // Afficher la commande en cours avec animation
@@ -359,7 +384,8 @@ class _PizzaHomePageState extends State<PizzaHomePage>
   void changeOrderTime(PendingOrder order) async {
     final selectedTime = await showDialog<String>(
       context: context,
-      builder: (BuildContext context) => const PickupTimeDialog(),
+      builder: (BuildContext context) =>
+          PickupTimeDialog(initialTime: order.plannedPickupTime),
     );
 
     if (!mounted) return;
