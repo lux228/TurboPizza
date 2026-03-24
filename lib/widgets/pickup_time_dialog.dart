@@ -73,7 +73,7 @@ class _PickupTimeDialogState extends State<PickupTimeDialog> {
 
   Map<int, List<int>> _buildAvailableSlotsByHour() {
     final now = _referenceNow;
-    final minimumTime = now.add(const Duration(minutes: 5));
+    final minimumTime = now;
     final slots = <int, List<int>>{};
 
     // Ajouter l'initialTime à la sélection s'il est fourni (pour les modifications)
