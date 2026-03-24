@@ -87,7 +87,7 @@ class AppStrings {
   static const String categoryButtonsSettingsTitle =
       "Boutons catégories (écran principal)";
   static const String categoryButtonsVisibleDescription =
-      "Tous les boutons sont visibles (Pizza, Spécialités, Desserts, Boissons).";
+      "Tous les boutons sont visibles (Tomate, Crème, Spécialités, Desserts, Boissons).";
   static const String categoryButtonsHiddenDescription =
       "Tous les boutons sont masqués.";
   static const String orderThresholdsSettingsTitle =
@@ -138,6 +138,7 @@ class AppStrings {
   static const String pizzaTypeDistributionLabel =
       "Répartition par type de pizza";
   static const String settingsMenuLabel = "Paramètres";
+    static const String quitMenuLabel = "Quitter";
   static const String homeWindowTooSmallMessage =
       "Fenetre trop petite. Agrandissez la fenetre pour un affichage correct.";
   static const String calculatorTooltip = "Calculatrice";

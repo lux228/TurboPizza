@@ -1,5 +1,6 @@
 // ignore_for_file: library_private_types_in_public_api
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
 import '../models/pizza.dart';
@@ -687,61 +688,82 @@ class _PizzaHomePageState extends State<PizzaHomePage>
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.appTitle)),
       drawer: Drawer(
-        child: ListView(
-          children: <Widget>[
-            DrawerHeader(
-              decoration: BoxDecoration(color: colors.primaryBlue),
-              child: Text(
-                AppStrings.appMenuTitle,
-                style: textStyles.header.copyWith(color: colorScheme.onPrimary),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  children: <Widget>[
+                    DrawerHeader(
+                      decoration: BoxDecoration(color: colors.primaryBlue),
+                      child: Text(
+                        AppStrings.appMenuTitle,
+                        style: textStyles.header.copyWith(
+                          color: colorScheme.onPrimary,
+                        ),
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.manage_accounts),
+                      title: const Text(AppStrings.productManagementTitle),
+                      onTap: () {
+                        Navigator.pop(context);
+                        openPizzaManagementPage();
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.history),
+                      title: const Text(AppStrings.paymentHistoryTitle),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const PaymentHistoryPage(),
+                          ),
+                        );
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.bar_chart),
+                      title: const Text(AppStrings.salesStatisticsTitle),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SalesStatisticsPage(),
+                          ),
+                        );
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.settings),
+                      title: const Text(AppStrings.settingsMenuLabel),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SettingsPage(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.manage_accounts),
-              title: const Text(AppStrings.productManagementTitle),
-              onTap: () {
-                Navigator.pop(context);
-                openPizzaManagementPage();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.history),
-              title: const Text(AppStrings.paymentHistoryTitle),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const PaymentHistoryPage(),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.bar_chart),
-              title: const Text(AppStrings.salesStatisticsTitle),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const SalesStatisticsPage(),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings),
-              title: const Text(AppStrings.settingsMenuLabel),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const SettingsPage()),
-                );
-              },
-            ),
-          ],
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.exit_to_app),
+                title: const Text(AppStrings.quitMenuLabel),
+                onTap: () {
+                  Navigator.pop(context);
+                  SystemNavigator.pop();
+                },
+              ),
+            ],
+          ),
         ),
       ),
       body: LayoutBuilder(
