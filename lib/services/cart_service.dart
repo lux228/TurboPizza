@@ -4,17 +4,18 @@ import '../models/pizza.dart';
 class CartService extends ChangeNotifier {
   final Map<String, Pizza> _cart = {};
   String? _lastPickupTime; // Mémoriser le dernier horaire utilisé
-  
+
   Map<String, Pizza> get cart => Map.unmodifiable(_cart);
-  
+
   bool get isEmpty => _cart.isEmpty;
-  
+
   int get itemCount => _cart.length;
-  
-  double get totalPrice => _cart.values.fold(0, (total, pizza) => total + pizza.totalPrice);
-  
+
+  double get totalPrice =>
+      _cart.values.fold(0, (total, pizza) => total + pizza.totalPrice);
+
   List<Pizza> get items => _cart.values.toList();
-  
+
   String? get lastPickupTime => _lastPickupTime;
 
   void addToCart(Pizza pizza) {
@@ -64,12 +65,12 @@ class CartService extends ChangeNotifier {
     }
     notifyListeners();
   }
-  
+
   void setLastPickupTime(String pickupTime) {
     _lastPickupTime = pickupTime;
     notifyListeners();
   }
-  
+
   void clearLastPickupTime() {
     _lastPickupTime = null;
     notifyListeners();

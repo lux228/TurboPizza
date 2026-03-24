@@ -9,13 +9,21 @@ class PendingOrderRepository {
   PendingOrderRepository(this.db);
 
   /// Saves a pending order and its items to the database.
-  /// 
+  ///
   /// If an order with the same ID already exists, it will be replaced.
   /// This operation is atomic - either the order and all its items are saved or none are.
   Future<void> savePendingOrder(PendingOrder order) async {
     await db.transaction((txn) async {
-      await txn.delete('pending_orders', where: 'id = ?', whereArgs: [order.id]);
-      await txn.delete('pending_order_items', where: 'order_id = ?', whereArgs: [order.id]);
+      await txn.delete(
+        'pending_orders',
+        where: 'id = ?',
+        whereArgs: [order.id],
+      );
+      await txn.delete(
+        'pending_order_items',
+        where: 'order_id = ?',
+        whereArgs: [order.id],
+      );
 
       await txn.insert('pending_orders', {
         'id': order.id,
@@ -38,13 +46,18 @@ class PendingOrderRepository {
 
   /// Fetches all pending orders from the database, ordered by planned pickup time.
   Future<List<PendingOrder>> fetchPendingOrders() async {
-    final ordersRows = await db.query('pending_orders', orderBy: 'planned_pickup ASC');
+    final ordersRows = await db.query(
+      'pending_orders',
+      orderBy: 'planned_pickup ASC',
+    );
     final itemsRows = await db.query('pending_order_items');
 
     final itemsByOrder = <String, List<Pizza>>{};
     for (final row in itemsRows) {
       final oid = row['order_id'] as String;
-      itemsByOrder.putIfAbsent(oid, () => []).add(
+      itemsByOrder
+          .putIfAbsent(oid, () => [])
+          .add(
             Pizza(
               name: row['name'] as String,
               price: (row['unit_price'] as num).toDouble(),
@@ -69,13 +82,17 @@ class PendingOrderRepository {
   /// Removes a pending order and all its items from the database.
   Future<void> removePendingOrder(String orderId) async {
     await db.transaction((txn) async {
-      await txn.delete('pending_order_items', where: 'order_id = ?', whereArgs: [orderId]);
+      await txn.delete(
+        'pending_order_items',
+        where: 'order_id = ?',
+        whereArgs: [orderId],
+      );
       await txn.delete('pending_orders', where: 'id = ?', whereArgs: [orderId]);
     });
   }
 
   /// Replaces all pending orders in the database with the provided list.
-  /// 
+  ///
   /// This operation is atomic - either all orders are replaced or none are.
   Future<void> replacePendingOrders(List<PendingOrder> orders) async {
     await db.transaction((txn) async {
@@ -102,7 +119,7 @@ class PendingOrderRepository {
   }
 
   /// Fetches a specific pending order by ID.
-  /// 
+  ///
   /// Returns null if no order with the given ID exists.
   Future<PendingOrder?> fetchPendingOrderById(String orderId) async {
     final orderRows = await db.query(
@@ -122,12 +139,14 @@ class PendingOrderRepository {
     );
 
     final items = itemsRows
-        .map((row) => Pizza(
-              name: row['name'] as String,
-              price: (row['unit_price'] as num).toDouble(),
-              quantity: row['quantity'] as int,
-              type: row['type'] as String,
-            ))
+        .map(
+          (row) => Pizza(
+            name: row['name'] as String,
+            price: (row['unit_price'] as num).toDouble(),
+            quantity: row['quantity'] as int,
+            type: row['type'] as String,
+          ),
+        )
         .toList();
 
     return PendingOrder(

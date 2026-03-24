@@ -9,11 +9,11 @@ class MigrationUtility {
   /// Checks if legacy data exists in SharedPreferences.
   static Future<bool> hasLegacyData() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     final hasPizzas = prefs.containsKey(AppStorageKeys.pizzas);
     final hasPayments = prefs.containsKey(AppStorageKeys.payments);
     final hasPendingOrders = prefs.containsKey(AppStorageKeys.pendingOrders);
-    
+
     return hasPizzas || hasPayments || hasPendingOrders;
   }
 
@@ -21,19 +21,27 @@ class MigrationUtility {
   static Future<MigrationDiagnostic> diagnose() async {
     await DatabaseService.instance.init();
     final prefs = await SharedPreferences.getInstance();
-    
-    final migrationService = MigrationService(DatabaseService.instance.database);
+
+    final migrationService = MigrationService(
+      DatabaseService.instance.database,
+    );
     final isCompleted = await migrationService.isMigrationCompleted();
     final stats = await migrationService.getMigrationStats();
-    
-    final legacyPizzasCount = prefs.getStringList(AppStorageKeys.pizzas)?.length ?? 0;
-    final legacyPaymentsCount = prefs.getStringList(AppStorageKeys.payments)?.length ?? 0;
-    final legacyPendingCount = prefs.getStringList(AppStorageKeys.pendingOrders)?.length ?? 0;
-    
-    final dbProducts = await DatabaseService.instance.products.fetchProducts(includeInactive: true);
+
+    final legacyPizzasCount =
+        prefs.getStringList(AppStorageKeys.pizzas)?.length ?? 0;
+    final legacyPaymentsCount =
+        prefs.getStringList(AppStorageKeys.payments)?.length ?? 0;
+    final legacyPendingCount =
+        prefs.getStringList(AppStorageKeys.pendingOrders)?.length ?? 0;
+
+    final dbProducts = await DatabaseService.instance.products.fetchProducts(
+      includeInactive: true,
+    );
     final dbPayments = await DatabaseService.instance.payments.fetchPayments();
-    final dbPendingOrders = await DatabaseService.instance.pendingOrders.fetchPendingOrders();
-    
+    final dbPendingOrders = await DatabaseService.instance.pendingOrders
+        .fetchPendingOrders();
+
     return MigrationDiagnostic(
       isMigrationCompleted: isCompleted,
       migrationStats: stats,
@@ -52,29 +60,31 @@ class MigrationUtility {
   }
 
   /// Forces a migration from SharedPreferences to SQLite.
-  /// 
+  ///
   /// This intelligently merges legacy data with existing SQLite data:
   /// - Products are updated/inserted based on name
   /// - Duplicate payments are detected and skipped
   /// - Pending orders are merged by ID
-  /// 
+  ///
   /// Safe to call multiple times - won't create duplicates.
   static Future<MigrationStats?> forceMigration() async {
     await DatabaseService.instance.init(skipMigration: true);
-    final migrationService = MigrationService(DatabaseService.instance.database);
-    
+    final migrationService = MigrationService(
+      DatabaseService.instance.database,
+    );
+
     // Clear the migration marker to allow re-migration
     await DatabaseService.instance.database.delete(
       'meta',
       where: 'key = ?',
       whereArgs: ['migrated_from_prefs'],
     );
-    
+
     return await migrationService.migrateFromPrefsIfNeeded();
   }
 
   /// Clears legacy data from SharedPreferences.
-  /// 
+  ///
   /// This should only be called AFTER successful migration.
   /// Use with caution - this action cannot be undone.
   static Future<void> clearLegacyData() async {
@@ -85,18 +95,18 @@ class MigrationUtility {
   }
 
   /// Exports legacy data from SharedPreferences to a JSON string.
-  /// 
+  ///
   /// This can be used to backup legacy data before clearing it.
   static Future<String> exportLegacyDataAsJson() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     final data = {
       'pizzas': prefs.getStringList(AppStorageKeys.pizzas) ?? [],
       'payments': prefs.getStringList(AppStorageKeys.payments) ?? [],
       'pending_orders': prefs.getStringList(AppStorageKeys.pendingOrders) ?? [],
       'export_date': DateTime.now().toIso8601String(),
     };
-    
+
     return const JsonEncoder.withIndent('  ').convert(data);
   }
 }
@@ -120,8 +130,10 @@ class MigrationDiagnostic {
   String get summary {
     final buffer = StringBuffer();
     buffer.writeln('=== État de la migration ===');
-    buffer.writeln('Migration complétée: ${isMigrationCompleted ? "✅ Oui" : "❌ Non"}');
-    
+    buffer.writeln(
+      'Migration complétée: ${isMigrationCompleted ? "✅ Oui" : "❌ Non"}',
+    );
+
     if (migrationStats != null) {
       buffer.writeln('\nStatistiques de migration:');
       buffer.writeln('  - ${migrationStats!.productsCount} produits');
@@ -129,28 +141,38 @@ class MigrationDiagnostic {
       buffer.writeln('  - ${migrationStats!.pendingOrdersCount} commandes');
       buffer.writeln('  - Date: ${migrationStats!.migrationDate}');
     }
-    
+
     buffer.writeln('\nDonnées dans SharedPreferences:');
     buffer.writeln('  - ${legacyDataCounts.products} produits');
     buffer.writeln('  - ${legacyDataCounts.payments} paiements');
     buffer.writeln('  - ${legacyDataCounts.pendingOrders} commandes');
     buffer.writeln('  - Présence: ${hasLegacyData ? "Oui" : "Non"}');
-    
+
     buffer.writeln('\nDonnées dans SQLite:');
     buffer.writeln('  - ${currentDataCounts.products} produits');
     buffer.writeln('  - ${currentDataCounts.payments} paiements');
     buffer.writeln('  - ${currentDataCounts.pendingOrders} commandes');
-    
+
     if (hasLegacyData && !isMigrationCompleted) {
-      buffer.writeln('\n⚠️  ATTENTION: Des données legacy existent mais la migration n\'est pas marquée comme complétée.');
-      buffer.writeln('   → Utilisez MigrationUtility.forceMigration() pour migrer.');
+      buffer.writeln(
+        '\n⚠️  ATTENTION: Des données legacy existent mais la migration n\'est pas marquée comme complétée.',
+      );
+      buffer.writeln(
+        '   → Utilisez MigrationUtility.forceMigration() pour migrer.',
+      );
     } else if (!hasLegacyData && !isMigrationCompleted) {
-      buffer.writeln('\nℹ️  Pas de données legacy trouvées. Migration non nécessaire.');
+      buffer.writeln(
+        '\nℹ️  Pas de données legacy trouvées. Migration non nécessaire.',
+      );
     } else if (hasLegacyData && isMigrationCompleted) {
-      buffer.writeln('\n✅ Migration complétée. Les données legacy peuvent être supprimées.');
-      buffer.writeln('   → Utilisez MigrationUtility.clearLegacyData() pour nettoyer.');
+      buffer.writeln(
+        '\n✅ Migration complétée. Les données legacy peuvent être supprimées.',
+      );
+      buffer.writeln(
+        '   → Utilisez MigrationUtility.clearLegacyData() pour nettoyer.',
+      );
     }
-    
+
     return buffer.toString();
   }
 }

@@ -12,11 +12,14 @@ class BackupService {
   }
 
   /// Imports a database from the specified path.
-  /// 
+  ///
   /// An automatic backup of the current database is created before import.
   /// Returns the path to the backup file created.
   Future<String> importDatabase(String sourcePath, {bool createBackup = true}) {
-    return DatabaseService.instance.importDatabase(sourcePath, createBackup: createBackup);
+    return DatabaseService.instance.importDatabase(
+      sourcePath,
+      createBackup: createBackup,
+    );
   }
 
   /// Restores the database from a backup file.
@@ -43,7 +46,9 @@ class BackupService {
           .map((i) => '${i.quantity}x ${i.name} (${i.type}) @${i.price}')
           .join(' | ');
       final dateIso = p.date.toIso8601String();
-      buffer.writeln('$dateIso;${p.amount.toStringAsFixed(2)};${p.paymentMethod};$itemsText');
+      buffer.writeln(
+        '$dateIso;${p.amount.toStringAsFixed(2)};${p.paymentMethod};$itemsText',
+      );
     }
 
     final file = File(destinationPath);

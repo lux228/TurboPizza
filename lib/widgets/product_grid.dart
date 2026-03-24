@@ -21,19 +21,19 @@ class ProductGrid extends StatelessWidget {
     for (var product in products) {
       groupedProducts.putIfAbsent(product.type, () => []).add(product);
     }
-    
+
     // Trier chaque groupe par nom
     for (var group in groupedProducts.values) {
       group.sort((a, b) => a.name.compareTo(b.name));
     }
 
     final List<Widget> categoryWidgets = [];
-    
+
     // Afficher les catégories dans l'ordre spécifié
     for (String categoryType in AppCategories.categoryOrder) {
       if (groupedProducts.containsKey(categoryType)) {
         final List<Pizza> productsInCategory = groupedProducts[categoryType]!;
-        
+
         categoryWidgets.add(
           CategorySection(
             categoryName: categoryType,
@@ -44,9 +44,7 @@ class ProductGrid extends StatelessWidget {
       }
     }
 
-    return SingleChildScrollView(
-      child: Column(children: categoryWidgets),
-    );
+    return SingleChildScrollView(child: Column(children: categoryWidgets));
   }
 }
 
@@ -99,11 +97,7 @@ class ProductCard extends StatelessWidget {
   final Pizza product;
   final VoidCallback onTap;
 
-  const ProductCard({
-    super.key,
-    required this.product,
-    required this.onTap,
-  });
+  const ProductCard({super.key, required this.product, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -124,10 +118,7 @@ class ProductCard extends StatelessWidget {
                 style: textStyles.large,
                 textAlign: TextAlign.center,
               ),
-              Text(
-                formatPrice(product.price),
-                style: textStyles.subtitle,
-              ),
+              Text(formatPrice(product.price), style: textStyles.subtitle),
             ],
           ),
         ),

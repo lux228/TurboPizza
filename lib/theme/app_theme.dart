@@ -119,7 +119,8 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
       comingSoonBackgroundColor:
           comingSoonBackgroundColor ?? this.comingSoonBackgroundColor,
       onTimeColor: onTimeColor ?? this.onTimeColor,
-      onTimeBackgroundColor: onTimeBackgroundColor ?? this.onTimeBackgroundColor,
+      onTimeBackgroundColor:
+          onTimeBackgroundColor ?? this.onTimeBackgroundColor,
       validateButtonBg: validateButtonBg ?? this.validateButtonBg,
       validateButtonFg: validateButtonFg ?? this.validateButtonFg,
       editButtonBg: editButtonBg ?? this.editButtonBg,
@@ -147,39 +148,71 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
       warningOrange: Color.lerp(warningOrange, other.warningOrange, t)!,
       errorRed: Color.lerp(errorRed, other.errorRed, t)!,
       lightBlue: Color.lerp(lightBlue, other.lightBlue, t)!,
-      lightBlueAccent:
-          Color.lerp(lightBlueAccent, other.lightBlueAccent, t)!,
+      lightBlueAccent: Color.lerp(lightBlueAccent, other.lightBlueAccent, t)!,
       lateColor: Color.lerp(lateColor, other.lateColor, t)!,
-      lateBackgroundColor:
-          Color.lerp(lateBackgroundColor, other.lateBackgroundColor, t)!,
-      slightlyLateColor:
-          Color.lerp(slightlyLateColor, other.slightlyLateColor, t)!,
+      lateBackgroundColor: Color.lerp(
+        lateBackgroundColor,
+        other.lateBackgroundColor,
+        t,
+      )!,
+      slightlyLateColor: Color.lerp(
+        slightlyLateColor,
+        other.slightlyLateColor,
+        t,
+      )!,
       slightlyLateBackgroundColor: Color.lerp(
-          slightlyLateBackgroundColor, other.slightlyLateBackgroundColor, t)!,
+        slightlyLateBackgroundColor,
+        other.slightlyLateBackgroundColor,
+        t,
+      )!,
       comingSoonColor: Color.lerp(comingSoonColor, other.comingSoonColor, t)!,
       comingSoonBackgroundColor: Color.lerp(
-          comingSoonBackgroundColor, other.comingSoonBackgroundColor, t)!,
+        comingSoonBackgroundColor,
+        other.comingSoonBackgroundColor,
+        t,
+      )!,
       onTimeColor: Color.lerp(onTimeColor, other.onTimeColor, t)!,
-      onTimeBackgroundColor:
-          Color.lerp(onTimeBackgroundColor, other.onTimeBackgroundColor, t)!,
-      validateButtonBg:
-          Color.lerp(validateButtonBg, other.validateButtonBg, t)!,
-      validateButtonFg:
-          Color.lerp(validateButtonFg, other.validateButtonFg, t)!,
+      onTimeBackgroundColor: Color.lerp(
+        onTimeBackgroundColor,
+        other.onTimeBackgroundColor,
+        t,
+      )!,
+      validateButtonBg: Color.lerp(
+        validateButtonBg,
+        other.validateButtonBg,
+        t,
+      )!,
+      validateButtonFg: Color.lerp(
+        validateButtonFg,
+        other.validateButtonFg,
+        t,
+      )!,
       editButtonBg: Color.lerp(editButtonBg, other.editButtonBg, t)!,
       editButtonFg: Color.lerp(editButtonFg, other.editButtonFg, t)!,
       cancelButtonBg: Color.lerp(cancelButtonBg, other.cancelButtonBg, t)!,
       cancelButtonFg: Color.lerp(cancelButtonFg, other.cancelButtonFg, t)!,
-      cartItemTileColor:
-          Color.lerp(cartItemTileColor, other.cartItemTileColor, t)!,
-      disabledButtonColor:
-          Color.lerp(disabledButtonColor, other.disabledButtonColor, t)!,
+      cartItemTileColor: Color.lerp(
+        cartItemTileColor,
+        other.cartItemTileColor,
+        t,
+      )!,
+      disabledButtonColor: Color.lerp(
+        disabledButtonColor,
+        other.disabledButtonColor,
+        t,
+      )!,
       holdButtonColor: Color.lerp(holdButtonColor, other.holdButtonColor, t)!,
-      checkoutButtonColor:
-          Color.lerp(checkoutButtonColor, other.checkoutButtonColor, t)!,
+      checkoutButtonColor: Color.lerp(
+        checkoutButtonColor,
+        other.checkoutButtonColor,
+        t,
+      )!,
       greyText: Color.lerp(greyText, other.greyText, t)!,
-      successGreenDark:
-          Color.lerp(successGreenDark, other.successGreenDark, t)!,
+      successGreenDark: Color.lerp(
+        successGreenDark,
+        other.successGreenDark,
+        t,
+      )!,
       productTypeColors: t < 0.5 ? productTypeColors : other.productTypeColors,
       productTypeBackgroundColors: t < 0.5
           ? productTypeBackgroundColors
@@ -422,14 +455,21 @@ class AppLayoutTokens extends ThemeExtension<AppLayoutTokens> {
     if (other is! AppLayoutTokens) return this;
     return AppLayoutTokens(
       gridCrossAxisCount:
-          (lerpDouble(gridCrossAxisCount.toDouble(), other.gridCrossAxisCount.toDouble(), t) ??
+          (lerpDouble(
+                    gridCrossAxisCount.toDouble(),
+                    other.gridCrossAxisCount.toDouble(),
+                    t,
+                  ) ??
                   gridCrossAxisCount.toDouble())
               .round(),
       gridSpacing: lerpDouble(gridSpacing, other.gridSpacing, t) ?? gridSpacing,
-      cardElevation: lerpDouble(cardElevation, other.cardElevation, t) ?? cardElevation,
-      borderRadius: lerpDouble(borderRadius, other.borderRadius, t) ?? borderRadius,
+      cardElevation:
+          lerpDouble(cardElevation, other.cardElevation, t) ?? cardElevation,
+      borderRadius:
+          lerpDouble(borderRadius, other.borderRadius, t) ?? borderRadius,
       dialogBorderRadius:
-          lerpDouble(dialogBorderRadius, other.dialogBorderRadius, t) ?? dialogBorderRadius,
+          lerpDouble(dialogBorderRadius, other.dialogBorderRadius, t) ??
+          dialogBorderRadius,
     );
   }
 
@@ -466,13 +506,14 @@ class AppTheme {
     final textStyles = AppTextStyles.dark(colors);
     final base = ThemeData(
       useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: colors.primaryBlue,
-        brightness: Brightness.dark,
-      ).copyWith(
-        surface: const Color(0xFF171A20),
-        outline: Colors.grey.shade700,
-      ),
+      colorScheme:
+          ColorScheme.fromSeed(
+            seedColor: colors.primaryBlue,
+            brightness: Brightness.dark,
+          ).copyWith(
+            surface: const Color(0xFF171A20),
+            outline: Colors.grey.shade700,
+          ),
       textTheme: const TextTheme(),
     );
     return base.copyWith(
