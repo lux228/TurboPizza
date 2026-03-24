@@ -138,6 +138,8 @@ class AppStrings {
   static const String pizzaTypeDistributionLabel =
       "Répartition par type de pizza";
   static const String settingsMenuLabel = "Paramètres";
+    static const String enterFullscreenMenuLabel = "Plein écran";
+    static const String exitFullscreenMenuLabel = "Quitter le plein écran";
     static const String quitMenuLabel = "Quitter";
   static const String homeWindowTooSmallMessage =
       "Fenetre trop petite. Agrandissez la fenetre pour un affichage correct.";
