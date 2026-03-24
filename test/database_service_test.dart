@@ -80,6 +80,44 @@ void main() {
     expect(fetched.single.items.single.name, 'Reine');
   });
 
+  test(
+    'legacy pending order IDs are migrated to UUID while keeping items',
+    () async {
+      final createdAt = DateTime.utc(2024, 1, 5, 10, 0).toIso8601String();
+
+      await db.database.insert('pending_orders', {
+        'id': 'legacy-order-123',
+        'created_at': createdAt,
+        'planned_pickup': '12:30',
+        'amount': 10.0,
+      });
+
+      await db.database.insert('pending_order_items', {
+        'order_id': 'legacy-order-123',
+        'name': 'Reine',
+        'type': 'Tomate',
+        'unit_price': 10.0,
+        'quantity': 1,
+      });
+
+      // Reopen DB to trigger startup migration.
+      await db.close();
+      await db.init(overridePath: dbPath, skipMigration: true);
+
+      final fetched = await db.fetchPendingOrders();
+      expect(fetched.length, 1);
+      expect(fetched.single.id, isNot('legacy-order-123'));
+
+      final uuidPattern = RegExp(
+        r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
+      );
+      expect(fetched.single.id.length, 36);
+      expect(uuidPattern.hasMatch(fetched.single.id), isTrue);
+      expect(fetched.single.items.length, 1);
+      expect(fetched.single.items.single.name, 'Reine');
+    },
+  );
+
   test('fetch payments between dates', () async {
     final p1 = Payment(
       date: DateTime.utc(2024, 1, 1, 9),

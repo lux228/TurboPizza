@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:uuid/uuid.dart';
 import '../models/payment.dart';
 import '../models/pending_order.dart';
 import '../models/pizza.dart';
@@ -14,7 +15,7 @@ import '../utils/payment_fingerprint.dart';
 import 'migration_service.dart';
 
 /// Central database service managing SQLite database and repositories.
-/// 
+///
 /// This service is responsible for database initialization and providing
 /// access to repositories. All data access should go through the repositories.
 class DatabaseService {
@@ -28,9 +29,17 @@ class DatabaseService {
   ProductRepository? _productRepository;
   PaymentRepository? _paymentRepository;
   PendingOrderRepository? _pendingOrderRepository;
+  static final RegExp _uuidPattern = RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}',
+  );
+  static final Uuid _uuid = Uuid();
+
+  static bool _looksLikeUuid(String value) {
+    return value.length == 36 && _uuidPattern.hasMatch(value);
+  }
 
   /// Initializes the database and sets up repositories.
-  /// 
+  ///
   /// [overridePath] can be used for testing to specify a custom database path.
   /// [skipMigration] prevents automatic migration from SharedPreferences.
   Future<void> init({String? overridePath, bool skipMigration = false}) async {
@@ -64,6 +73,9 @@ class DatabaseService {
       final migrationService = MigrationService(_db!);
       await migrationService.migrateFromPrefsIfNeeded();
     }
+
+    // One-shot compatibility migration: convert legacy pending order IDs to UUID.
+    await _migrateLegacyPendingOrderIdsToUuid(_db!);
   }
 
   Future<Database> _openDatabase(DatabaseFactory dbFactory, String path) {
@@ -99,7 +111,7 @@ class DatabaseService {
   }
 
   /// Returns the database instance.
-  /// 
+  ///
   /// Throws an exception if the database has not been initialized.
   Database get database {
     if (_db == null) {
@@ -113,7 +125,7 @@ class DatabaseService {
   // ============================================================
 
   /// Returns the product repository.
-  /// 
+  ///
   /// Throws an exception if the database has not been initialized.
   ProductRepository get products {
     if (_productRepository == null) {
@@ -123,7 +135,7 @@ class DatabaseService {
   }
 
   /// Returns the payment repository.
-  /// 
+  ///
   /// Throws an exception if the database has not been initialized.
   PaymentRepository get payments {
     if (_paymentRepository == null) {
@@ -133,7 +145,7 @@ class DatabaseService {
   }
 
   /// Returns the pending order repository.
-  /// 
+  ///
   /// Throws an exception if the database has not been initialized.
   PendingOrderRepository get pendingOrders {
     if (_pendingOrderRepository == null) {
@@ -271,8 +283,12 @@ class DatabaseService {
       );
     ''');
     await db.execute('CREATE INDEX idx_payments_date ON payments(date);');
-    await db.execute('CREATE INDEX idx_payments_method ON payments(payment_method);');
-    await db.execute('CREATE UNIQUE INDEX idx_payments_fingerprint ON payments(fingerprint);');
+    await db.execute(
+      'CREATE INDEX idx_payments_method ON payments(payment_method);',
+    );
+    await db.execute(
+      'CREATE UNIQUE INDEX idx_payments_fingerprint ON payments(fingerprint);',
+    );
 
     await db.execute('''
       CREATE TABLE payment_items (
@@ -285,7 +301,9 @@ class DatabaseService {
         FOREIGN KEY(payment_id) REFERENCES payments(id) ON DELETE CASCADE
       );
     ''');
-    await db.execute('CREATE INDEX idx_payment_items_payment_id ON payment_items(payment_id);');
+    await db.execute(
+      'CREATE INDEX idx_payment_items_payment_id ON payment_items(payment_id);',
+    );
 
     await db.execute('''
       CREATE TABLE pending_orders (
@@ -311,8 +329,7 @@ class DatabaseService {
 
   Future<void> _migrateToV2(Database db) async {
     final columns = await db.rawQuery('PRAGMA table_info(payments);');
-    final hasFingerprint =
-        columns.any((row) => row['name'] == 'fingerprint');
+    final hasFingerprint = columns.any((row) => row['name'] == 'fingerprint');
     if (!hasFingerprint) {
       await db.execute('ALTER TABLE payments ADD COLUMN fingerprint TEXT;');
     }
@@ -385,22 +402,22 @@ class DatabaseService {
     }
 
     for (final id in duplicates) {
-      await db.delete('payment_items', where: 'payment_id = ?', whereArgs: [id]);
+      await db.delete(
+        'payment_items',
+        where: 'payment_id = ?',
+        whereArgs: [id],
+      );
       await db.delete('payments', where: 'id = ?', whereArgs: [id]);
     }
 
     if (duplicates.isNotEmpty) {
-      await db.insert(
-        'meta',
-        {
-          'key': 'db_payment_duplicates_removed',
-          'value': json.encode({
-            'count': duplicates.length,
-            'date': DateTime.now().toIso8601String(),
-          }),
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      await db.insert('meta', {
+        'key': 'db_payment_duplicates_removed',
+        'value': json.encode({
+          'count': duplicates.length,
+          'date': DateTime.now().toIso8601String(),
+        }),
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
 
     await db.execute(
@@ -411,12 +428,61 @@ class DatabaseService {
     );
   }
 
+  Future<void> _migrateLegacyPendingOrderIdsToUuid(Database db) async {
+    final orderRows = await db.query(
+      'pending_orders',
+      columns: ['id', 'created_at', 'planned_pickup', 'amount'],
+    );
+
+    if (orderRows.isEmpty) return;
+
+    final legacyRows = orderRows
+        .where((row) => !_looksLikeUuid(row['id'] as String))
+        .toList();
+
+    if (legacyRows.isEmpty) return;
+
+    final existingIds = orderRows.map((row) => row['id'] as String).toSet();
+
+    await db.transaction((txn) async {
+      for (final row in legacyRows) {
+        final oldId = row['id'] as String;
+
+        var newId = _uuid.v4();
+        while (existingIds.contains(newId)) {
+          newId = _uuid.v4();
+        }
+        existingIds.add(newId);
+
+        await txn.insert('pending_orders', {
+          'id': newId,
+          'created_at': row['created_at'],
+          'planned_pickup': row['planned_pickup'],
+          'amount': row['amount'],
+        });
+
+        await txn.update(
+          'pending_order_items',
+          {'order_id': newId},
+          where: 'order_id = ?',
+          whereArgs: [oldId],
+        );
+
+        await txn.delete('pending_orders', where: 'id = ?', whereArgs: [oldId]);
+      }
+    });
+
+    debugPrint(
+      '[DatabaseService] IDs legacy pending_orders migrés vers UUID: ${legacyRows.length}',
+    );
+  }
+
   // ============================================================
   // Database Export/Import
   // ============================================================
 
   /// Exports the database to a file.
-  /// 
+  ///
   /// The database file will be copied to the specified [destinationPath].
   Future<void> exportDatabase(String destinationPath) async {
     await init();
@@ -426,20 +492,23 @@ class DatabaseService {
   }
 
   /// Imports a database from a file.
-  /// 
+  ///
   /// The current database will be replaced with the one at [sourcePath].
   /// An automatic backup of the current database is created before import.
   /// The database connection will be reopened after import.
-  /// 
+  ///
   /// Returns the path to the backup file created.
-  Future<String> importDatabase(String sourcePath, {bool createBackup = true}) async {
+  Future<String> importDatabase(
+    String sourcePath, {
+    bool createBackup = true,
+  }) async {
     if (_dbPath == null) {
       await init();
     }
 
     final dbFactory = databaseFactoryFfi;
     final dst = File(databasePath);
-    
+
     // Create automatic backup before import
     String? backupPath;
     if (createBackup && await dst.exists()) {
@@ -456,10 +525,15 @@ class DatabaseService {
     // Import new database
     await dst.parent.create(recursive: true);
     await File(sourcePath).copy(dst.path);
-    debugPrint('[DatabaseService] ✅ Base de données importée depuis: $sourcePath');
+    debugPrint(
+      '[DatabaseService] ✅ Base de données importée depuis: $sourcePath',
+    );
 
     // Reopen database
     _db = await _openDatabase(dbFactory, dst.path);
+
+    // Ensure imported DB also uses UUID IDs for pending orders.
+    await _migrateLegacyPendingOrderIdsToUuid(_db!);
 
     // Reinitialize repositories with new database
     _productRepository = ProductRepository(_db!);
@@ -470,7 +544,7 @@ class DatabaseService {
   }
 
   /// Restores a database from a backup file.
-  /// 
+  ///
   /// This is a shortcut for importDatabase that doesn't create another backup.
   Future<void> restoreFromBackup(String backupPath) async {
     await importDatabase(backupPath, createBackup: false);

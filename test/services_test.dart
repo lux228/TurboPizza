@@ -124,5 +124,31 @@ void main() {
         throwsA(isA<InvalidPickupTimeException>()),
       );
     });
+
+    test('createOrder generates unique UUID v4 ids', () async {
+      final service = OrderService();
+      final items = [
+        Pizza(name: 'Margherita', price: 10.0, quantity: 1, type: 'Tomate'),
+      ];
+
+      final o1 = await service.createOrder(
+        items: items,
+        amount: 10.0,
+        pickupTime: '18:00',
+      );
+      final o2 = await service.createOrder(
+        items: items,
+        amount: 10.0,
+        pickupTime: '18:10',
+      );
+
+      final uuidV4Pattern = RegExp(
+        r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+      );
+
+      expect(o1.id, isNot(equals(o2.id)));
+      expect(uuidV4Pattern.hasMatch(o1.id), isTrue);
+      expect(uuidV4Pattern.hasMatch(o2.id), isTrue);
+    });
   });
 }

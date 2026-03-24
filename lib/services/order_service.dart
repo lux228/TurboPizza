@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 import '../models/pending_order.dart';
 import '../models/pizza.dart';
 import '../services/order_exceptions.dart';
@@ -22,6 +23,7 @@ class OrderStatusInfo {
 }
 
 class OrderService extends ChangeNotifier {
+  static final Uuid _uuid = Uuid();
   List<PendingOrder> _orders = [];
 
   List<PendingOrder> get orders => List.unmodifiable(_orders);
@@ -103,7 +105,7 @@ class OrderService extends ChangeNotifier {
     }
 
     final order = PendingOrder(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: _uuid.v4(),
       createdAt: DateTime.now(),
       plannedPickupTime: pickupTime,
       items: items,
