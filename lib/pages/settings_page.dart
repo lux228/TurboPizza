@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../services/order_service.dart';
 import '../services/backup_service.dart';
 import '../services/theme_service.dart';
+import '../services/category_filter_service.dart';
 import '../utils/snack_bar_utils.dart';
 import '../widgets/migration_diagnostic_widget.dart';
 import '../widgets/duplicate_diagnostic_widget.dart';
@@ -102,7 +103,10 @@ class _SettingsPageState extends State<SettingsPage> {
       final dir = await _defaultDir();
       final startLabel = DateFormat('yyyyMMdd').format(range.start);
       final endLabel = DateFormat('yyyyMMdd').format(range.end);
-      final dest = p.join(dir.path, 'turbopizza-encaissements-$startLabel-$endLabel.csv');
+      final dest = p.join(
+        dir.path,
+        'turbopizza-encaissements-$startLabel-$endLabel.csv',
+      );
 
       await BackupService.instance.exportPaymentsCsv(
         start: range.start,
@@ -131,15 +135,15 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Sauvegarde & export'),
-      ),
-      body: Padding(
+      appBar: AppBar(title: const Text('Paramètres')),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const ThemeModeTile(),
+            const SizedBox(height: 12),
+            const CategoryButtonsSettingsCard(),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               icon: const Icon(Icons.save_alt),
@@ -192,17 +196,42 @@ class ThemeModeTile extends StatelessWidget {
             }
           },
           items: const [
-            DropdownMenuItem(
-              value: ThemeMode.system,
-              child: Text('Système'),
-            ),
-            DropdownMenuItem(
-              value: ThemeMode.light,
-              child: Text('Clair'),
-            ),
-            DropdownMenuItem(
-              value: ThemeMode.dark,
-              child: Text('Sombre'),
+            DropdownMenuItem(value: ThemeMode.system, child: Text('Système')),
+            DropdownMenuItem(value: ThemeMode.light, child: Text('Clair')),
+            DropdownMenuItem(value: ThemeMode.dark, child: Text('Sombre')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CategoryButtonsSettingsCard extends StatelessWidget {
+  const CategoryButtonsSettingsCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final filterService = context.watch<CategoryFilterService>();
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ListTile(
+              title: Text('Boutons catégories (écran principal)'),
+              subtitle: Text(
+                filterService.showTopCategoryButtons
+                    ? 'Tous les boutons sont visibles (Pizza, Spécialités, Desserts, Boissons).'
+                    : 'Tous les boutons sont masqués.',
+              ),
+              trailing: Switch(
+                value: filterService.showTopCategoryButtons,
+                onChanged: (value) {
+                  filterService.setShowTopCategoryButtons(value);
+                },
+              ),
             ),
           ],
         ),

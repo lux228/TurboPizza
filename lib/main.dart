@@ -7,16 +7,17 @@ import 'services/cart_service.dart';
 import 'services/order_service.dart';
 import 'services/database_service.dart';
 import 'services/theme_service.dart';
+import 'services/category_filter_service.dart';
 import 'constants/app_locales.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialiser les données de localisation française
   await initializeDateFormatting(AppLocales.french, null);
   await DatabaseService.instance.init();
-  
+
   runApp(const MyApp());
 }
 
@@ -30,6 +31,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CartService()),
         ChangeNotifierProvider(create: (_) => OrderService()),
         ChangeNotifierProvider(create: (_) => ThemeService()),
+        ChangeNotifierProvider(create: (_) => CategoryFilterService()),
       ],
       child: Consumer<ThemeService>(
         builder: (context, themeService, child) {
