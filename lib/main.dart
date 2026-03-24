@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:window_manager/window_manager.dart';
 import 'pages/pizza_home_page.dart';
 import 'services/cart_service.dart';
 import 'services/order_service.dart';
@@ -11,8 +13,19 @@ import 'services/category_filter_service.dart';
 import 'constants/app_locales.dart';
 import 'theme/app_theme.dart';
 
+bool _isDesktopPlatform() {
+  if (kIsWeb) return false;
+  return defaultTargetPlatform == TargetPlatform.linux ||
+      defaultTargetPlatform == TargetPlatform.windows ||
+      defaultTargetPlatform == TargetPlatform.macOS;
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (_isDesktopPlatform()) {
+    await windowManager.ensureInitialized();
+  }
 
   // Initialiser les données de localisation française
   await initializeDateFormatting(AppLocales.french, null);

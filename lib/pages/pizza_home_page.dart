@@ -1,6 +1,9 @@
 // ignore_for_file: library_private_types_in_public_api
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:window_manager/window_manager.dart';
 import 'dart:async';
 import '../models/pizza.dart';
 import '../models/payment.dart';
@@ -50,6 +53,7 @@ class _PizzaHomePageState extends State<PizzaHomePage>
   String? _selectedTopCategoryId;
   bool _isEditingOrderFlow = false;
   String? _editedOrderInitialPickupTime;
+  bool _isFullscreen = false;
 
   @override
   void initState() {
@@ -57,6 +61,33 @@ class _PizzaHomePageState extends State<PizzaHomePage>
     _initializeAnimation();
     _loadData();
     _startStatusUpdateTimer();
+    _loadFullscreenState();
+  }
+
+  bool get _isDesktopPlatform {
+    if (kIsWeb) return false;
+    return defaultTargetPlatform == TargetPlatform.linux ||
+        defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.macOS;
+  }
+
+  Future<void> _loadFullscreenState() async {
+    if (!_isDesktopPlatform) return;
+    final isFullscreen = await windowManager.isFullScreen();
+    if (!mounted) return;
+    setState(() {
+      _isFullscreen = isFullscreen;
+    });
+  }
+
+  Future<void> _toggleFullscreen() async {
+    if (!_isDesktopPlatform) return;
+    final nextState = !_isFullscreen;
+    await windowManager.setFullScreen(nextState);
+    if (!mounted) return;
+    setState(() {
+      _isFullscreen = nextState;
+    });
   }
 
   void _initializeAnimation() {
@@ -687,61 +718,97 @@ class _PizzaHomePageState extends State<PizzaHomePage>
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.appTitle)),
       drawer: Drawer(
-        child: ListView(
-          children: <Widget>[
-            DrawerHeader(
-              decoration: BoxDecoration(color: colors.primaryBlue),
-              child: Text(
-                AppStrings.appMenuTitle,
-                style: textStyles.header.copyWith(color: colorScheme.onPrimary),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  children: <Widget>[
+                    DrawerHeader(
+                      decoration: BoxDecoration(color: colors.primaryBlue),
+                      child: Text(
+                        AppStrings.appMenuTitle,
+                        style: textStyles.header.copyWith(
+                          color: colorScheme.onPrimary,
+                        ),
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.manage_accounts),
+                      title: const Text(AppStrings.productManagementTitle),
+                      onTap: () {
+                        Navigator.pop(context);
+                        openPizzaManagementPage();
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.history),
+                      title: const Text(AppStrings.paymentHistoryTitle),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const PaymentHistoryPage(),
+                          ),
+                        );
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.bar_chart),
+                      title: const Text(AppStrings.salesStatisticsTitle),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SalesStatisticsPage(),
+                          ),
+                        );
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.settings),
+                      title: const Text(AppStrings.settingsMenuLabel),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SettingsPage(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.manage_accounts),
-              title: const Text(AppStrings.productManagementTitle),
-              onTap: () {
-                Navigator.pop(context);
-                openPizzaManagementPage();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.history),
-              title: const Text(AppStrings.paymentHistoryTitle),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const PaymentHistoryPage(),
+              const Divider(height: 1),
+              if (_isDesktopPlatform)
+                ListTile(
+                  leading: Icon(
+                    _isFullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
                   ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.bar_chart),
-              title: const Text(AppStrings.salesStatisticsTitle),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const SalesStatisticsPage(),
+                  title: Text(
+                    _isFullscreen
+                        ? AppStrings.exitFullscreenMenuLabel
+                        : AppStrings.enterFullscreenMenuLabel,
                   ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings),
-              title: const Text(AppStrings.settingsMenuLabel),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const SettingsPage()),
-                );
-              },
-            ),
-          ],
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await _toggleFullscreen();
+                  },
+                ),
+              ListTile(
+                leading: const Icon(Icons.exit_to_app),
+                title: const Text(AppStrings.quitMenuLabel),
+                onTap: () {
+                  Navigator.pop(context);
+                  SystemNavigator.pop();
+                },
+              ),
+            ],
+          ),
         ),
       ),
       body: LayoutBuilder(

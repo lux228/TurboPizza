@@ -145,6 +145,8 @@ class _SettingsPageState extends State<SettingsPage> {
             const ThemeModeTile(),
             const SizedBox(height: 12),
             const CategoryButtonsSettingsCard(),
+            const SizedBox(height: 12),
+            const OrderThresholdsSettingsCard(),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               icon: const Icon(Icons.save_alt),
@@ -241,6 +243,208 @@ class CategoryButtonsSettingsCard extends StatelessWidget {
                 onChanged: (value) {
                   filterService.setShowTopCategoryButtons(value);
                 },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class OrderThresholdsSettingsCard extends StatefulWidget {
+  const OrderThresholdsSettingsCard({super.key});
+
+  @override
+  State<OrderThresholdsSettingsCard> createState() =>
+      _OrderThresholdsSettingsCardState();
+}
+
+class _OrderThresholdsSettingsCardState
+    extends State<OrderThresholdsSettingsCard> {
+  late final TextEditingController _lateController;
+  late final TextEditingController _slightlyLateController;
+  late final TextEditingController _onTimeController;
+  late final TextEditingController _comingSoonController;
+  bool _initializedFromService = false;
+  bool _isDirty = false;
+  bool _isSyncing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _lateController = TextEditingController();
+    _slightlyLateController = TextEditingController();
+    _onTimeController = TextEditingController();
+    _comingSoonController = TextEditingController();
+
+    _lateController.addListener(_markDirty);
+    _slightlyLateController.addListener(_markDirty);
+    _onTimeController.addListener(_markDirty);
+    _comingSoonController.addListener(_markDirty);
+  }
+
+  @override
+  void dispose() {
+    _lateController.dispose();
+    _slightlyLateController.dispose();
+    _onTimeController.dispose();
+    _comingSoonController.dispose();
+    super.dispose();
+  }
+
+  void _markDirty() {
+    if (_isSyncing) return;
+    if (_isDirty) return;
+    setState(() => _isDirty = true);
+  }
+
+  void _syncFromService(OrderService service) {
+    _isSyncing = true;
+    _lateController.text = service.lateMinutes.toString();
+    _slightlyLateController.text = service.slightlyLateMinutes.toString();
+    _onTimeController.text = service.onTimeMinutes.toString();
+    _comingSoonController.text = service.comingSoonMinutes.toString();
+    _isSyncing = false;
+    _initializedFromService = true;
+    _isDirty = false;
+  }
+
+  Future<void> _saveThresholds() async {
+    final late = int.tryParse(_lateController.text.trim());
+    final slightlyLate = int.tryParse(_slightlyLateController.text.trim());
+    final onTime = int.tryParse(_onTimeController.text.trim());
+    final comingSoon = int.tryParse(_comingSoonController.text.trim());
+
+    if (late == null ||
+        slightlyLate == null ||
+        onTime == null ||
+        comingSoon == null) {
+      if (!mounted) return;
+      showAppSnackBar(
+        context,
+        AppStrings.thresholdsInvalidNumberMessage,
+        type: AppSnackBarType.warning,
+      );
+      return;
+    }
+
+    final orderService = context.read<OrderService>();
+    final saved = await orderService.setStatusThresholds(
+      lateMinutes: late,
+      slightlyLateMinutes: slightlyLate,
+      onTimeMinutes: onTime,
+      comingSoonMinutes: comingSoon,
+    );
+
+    if (!mounted) return;
+    if (!saved) {
+      showAppSnackBar(
+        context,
+        AppStrings.thresholdsInvalidMessage,
+        type: AppSnackBarType.warning,
+      );
+      return;
+    }
+
+    setState(() => _isDirty = false);
+    showAppSnackBar(
+      context,
+      AppStrings.thresholdsSavedMessage,
+      type: AppSnackBarType.success,
+    );
+  }
+
+  Future<void> _resetThresholds() async {
+    final orderService = context.read<OrderService>();
+    await orderService.resetStatusThresholdsToDefaults();
+    if (!mounted) return;
+
+    setState(() {
+      _syncFromService(orderService);
+    });
+
+    showAppSnackBar(
+      context,
+      AppStrings.thresholdsResetMessage,
+      type: AppSnackBarType.success,
+    );
+  }
+
+  Widget _buildThresholdField({
+    required String label,
+    required TextEditingController controller,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: TextField(
+        controller: controller,
+        keyboardType: const TextInputType.numberWithOptions(signed: true),
+        decoration: InputDecoration(labelText: label, suffixText: 'min'),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final orderService = context.watch<OrderService>();
+
+    if (orderService.thresholdsLoaded &&
+        !_initializedFromService &&
+        !_isDirty) {
+      _syncFromService(orderService);
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ListTile(
+              title: Text(AppStrings.orderThresholdsSettingsTitle),
+              subtitle: Text(AppStrings.orderThresholdsSettingsDescription),
+            ),
+            _buildThresholdField(
+              label: AppStrings.thresholdLateLabel,
+              controller: _lateController,
+            ),
+            const SizedBox(height: 8),
+            _buildThresholdField(
+              label: AppStrings.thresholdSlightlyLateLabel,
+              controller: _slightlyLateController,
+            ),
+            const SizedBox(height: 8),
+            _buildThresholdField(
+              label: AppStrings.thresholdOnTimeLabel,
+              controller: _onTimeController,
+            ),
+            const SizedBox(height: 8),
+            _buildThresholdField(
+              label: AppStrings.thresholdComingSoonLabel,
+              controller: _comingSoonController,
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _saveThresholds,
+                      icon: const Icon(Icons.save),
+                      label: const Text(AppStrings.saveThresholdsButtonLabel),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _resetThresholds,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text(AppStrings.resetThresholdsButtonLabel),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
