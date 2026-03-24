@@ -99,8 +99,7 @@ class AppStrings {
   static const String thresholdOnTimeLabel = "À l'heure";
   static const String thresholdComingSoonLabel = "Bientôt là";
   static const String saveThresholdsButtonLabel = "Sauvegarder les seuils";
-  static const String resetThresholdsButtonLabel =
-      "Réinitialiser par défaut";
+  static const String resetThresholdsButtonLabel = "Réinitialiser par défaut";
   static const String thresholdsSavedMessage = "Seuils sauvegardés.";
   static const String thresholdsResetMessage =
       "Seuils réinitialisés aux valeurs par défaut.";
@@ -138,9 +137,9 @@ class AppStrings {
   static const String pizzaTypeDistributionLabel =
       "Répartition par type de pizza";
   static const String settingsMenuLabel = "Paramètres";
-    static const String enterFullscreenMenuLabel = "Plein écran";
-    static const String exitFullscreenMenuLabel = "Quitter le plein écran";
-    static const String quitMenuLabel = "Quitter";
+  static const String enterFullscreenMenuLabel = "Plein écran";
+  static const String exitFullscreenMenuLabel = "Quitter le plein écran";
+  static const String quitMenuLabel = "Quitter";
   static const String homeWindowTooSmallMessage =
       "Fenetre trop petite. Agrandissez la fenetre pour un affichage correct.";
   static const String calculatorTooltip = "Calculatrice";

@@ -260,7 +260,8 @@ class OrderThresholdsSettingsCard extends StatefulWidget {
       _OrderThresholdsSettingsCardState();
 }
 
-class _OrderThresholdsSettingsCardState extends State<OrderThresholdsSettingsCard> {
+class _OrderThresholdsSettingsCardState
+    extends State<OrderThresholdsSettingsCard> {
   late final TextEditingController _lateController;
   late final TextEditingController _slightlyLateController;
   late final TextEditingController _onTimeController;
@@ -379,10 +380,7 @@ class _OrderThresholdsSettingsCardState extends State<OrderThresholdsSettingsCar
       child: TextField(
         controller: controller,
         keyboardType: const TextInputType.numberWithOptions(signed: true),
-        decoration: InputDecoration(
-          labelText: label,
-          suffixText: 'min',
-        ),
+        decoration: InputDecoration(labelText: label, suffixText: 'min'),
       ),
     );
   }
@@ -391,7 +389,9 @@ class _OrderThresholdsSettingsCardState extends State<OrderThresholdsSettingsCar
   Widget build(BuildContext context) {
     final orderService = context.watch<OrderService>();
 
-    if (orderService.thresholdsLoaded && !_initializedFromService && !_isDirty) {
+    if (orderService.thresholdsLoaded &&
+        !_initializedFromService &&
+        !_isDirty) {
       _syncFromService(orderService);
     }
 
