@@ -5,8 +5,8 @@ import 'package:turbo_pizza/models/pending_order.dart';
 import 'package:turbo_pizza/utils/time_validator.dart';
 
 void main() {
-  group('Pizza Model Tests', () {
-    test('Pizza creation and total price calculation', () {
+  group('Pizza model', () {
+    test('should compute total price from quantity and unit price', () {
       final pizza = Pizza(
         name: 'Margherita',
         price: 12.50,
@@ -18,7 +18,7 @@ void main() {
       expect(pizza.totalPrice, 25.0);
     });
 
-    test('Pizza JSON serialization', () {
+    test('should roundtrip with JSON serialization', () {
       final pizza = Pizza(
         name: 'Margherita',
         price: 12.50,
@@ -35,8 +35,8 @@ void main() {
     });
   });
 
-  group('Payment Model Tests', () {
-    test('Payment JSON roundtrip keeps key fields', () {
+  group('Payment model', () {
+    test('should roundtrip JSON while keeping key fields', () {
       final date = DateTime(2026, 1, 2, 13, 45);
       final payment = Payment(
         date: date,
@@ -55,7 +55,7 @@ void main() {
       expect(fromJson.items.first.name, 'Margherita');
     });
 
-    test('Payment copyWith updates only requested fields', () {
+    test('should update only requested fields with copyWith', () {
       final payment = Payment(
         date: DateTime(2026, 1, 2, 13, 45),
         amount: 12.50,
@@ -70,8 +70,8 @@ void main() {
     });
   });
 
-  group('PendingOrder Model Tests', () {
-    test('accepts valid HH:mm pickup time', () {
+  group('PendingOrder model', () {
+    test('should accept valid HH:mm pickup time', () {
       final order = PendingOrder(
         id: 'id-1',
         createdAt: DateTime(2026, 1, 1, 12, 0),
@@ -85,12 +85,12 @@ void main() {
       expect(order.plannedPickupTime, '18:30');
     });
 
-    test('detects invalid HH:mm values', () {
+    test('should detect invalid HH:mm values', () {
       expect(TimeValidator.isValidHHmm('25:99'), isFalse);
       expect(TimeValidator.isValidHHmm('bad'), isFalse);
     });
 
-    test('accepts edge HH:mm values', () {
+    test('should accept edge HH:mm values', () {
       final min = PendingOrder(
         id: 'id-3',
         createdAt: DateTime(2026, 1, 1, 12, 0),
@@ -110,7 +110,7 @@ void main() {
       expect(max.plannedPickupTime, '23:59');
     });
 
-    test('pickupDateTime fallback does not throw for malformed time', () {
+    test('should fallback without throwing for malformed pickup time', () {
       final malformed = PendingOrder(
         id: 'id-5',
         createdAt: DateTime(2026, 1, 1, 12, 0),
@@ -122,7 +122,7 @@ void main() {
       expect(() => malformed.pickupDateTime, returnsNormally);
     });
 
-    test('fromJson normalizes malformed pickup time to fallback', () {
+    test('should normalize malformed pickup time from JSON to fallback', () {
       final order = PendingOrder.fromJson({
         'id': 'legacy-1',
         'heureComposition': '2026-01-01T12:00:00.000',

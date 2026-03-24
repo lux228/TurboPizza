@@ -35,7 +35,7 @@ void main() {
     }
   });
   group('CartService', () {
-    test('add, adjust and total price', () {
+    test('should add items, adjust quantity and compute total price', () {
       final cart = CartService();
       final margherita = Pizza(
         name: 'Margherita',
@@ -59,7 +59,7 @@ void main() {
   });
 
   group('OrderService sorting and status', () {
-    test('orders are sorted by pickup time', () async {
+    test('should sort orders by pickup time', () async {
       final service = OrderService();
       final items = [
         Pizza(name: 'Margherita', price: 10.0, quantity: 1, type: 'Tomate'),
@@ -97,7 +97,7 @@ void main() {
       expect(ids, ['2', '3', '1']);
     });
 
-    test('createOrder creates and persists a retrievable order', () async {
+    test('should create and persist a retrievable order', () async {
       final service = OrderService();
       final items = [
         Pizza(name: 'Margherita', price: 10.0, quantity: 1, type: 'Tomate'),
@@ -116,7 +116,7 @@ void main() {
       expect(byId.amount, 10.0);
     });
 
-    test('createOrder rejects invalid pickup time format', () async {
+    test('should reject invalid pickup time format', () async {
       final service = OrderService();
       final items = [
         Pizza(name: 'Margherita', price: 10.0, quantity: 1, type: 'Tomate'),
@@ -129,7 +129,7 @@ void main() {
       );
     });
 
-    test('createOrder rejects empty order items', () async {
+    test('should reject empty order items', () async {
       final service = OrderService();
 
       expect(
@@ -142,7 +142,7 @@ void main() {
       );
     });
 
-    test('createOrder rejects non-positive amount', () async {
+    test('should reject non-positive amount', () async {
       final service = OrderService();
       final items = [
         Pizza(name: 'Margherita', price: 10.0, quantity: 1, type: 'Tomate'),
@@ -154,7 +154,7 @@ void main() {
       );
     });
 
-    test('createOrder generates unique UUID v4 ids', () async {
+    test('should generate unique UUID v4 ids', () async {
       final service = OrderService();
       final items = [
         Pizza(name: 'Margherita', price: 10.0, quantity: 1, type: 'Tomate'),

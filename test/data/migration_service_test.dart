@@ -12,7 +12,7 @@ import 'package:turbo_pizza/services/migration_service.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('Intelligent Migration Tests', () {
+  group('Intelligent migration', () {
     late String testDbPath;
     late DatabaseService dbService;
 
@@ -28,12 +28,17 @@ void main() {
       await File(testDbPath).delete();
     });
 
-    test('Migration merges data without duplicates', () async {
+    test('should merge data without duplicates', () async {
       // 1. Initialize database with some existing data
       await dbService.init(overridePath: testDbPath, skipMigration: true);
 
       // Add existing products to SQLite
-      final existingPizza = Pizza(name: 'Margherita', price: 10.0, quantity: 1, type: 'Pizza');
+      final existingPizza = Pizza(
+        name: 'Margherita',
+        price: 10.0,
+        quantity: 1,
+        type: 'Pizza',
+      );
       await dbService.products.insertProduct(existingPizza);
 
       // Add existing payment to SQLite
@@ -72,7 +77,7 @@ void main() {
                 'price': 10.0,
                 'quantity': 1,
                 'type': 'Pizza',
-              }
+              },
             ],
           }), // Duplicate - should be skipped
           json.encode({
@@ -80,12 +85,7 @@ void main() {
             'montant': 25.0,
             'modeReglement': 'CB',
             'articles': [
-              {
-                'name': 'Regina',
-                'price': 12.0,
-                'quantity': 2,
-                'type': 'Pizza',
-              }
+              {'name': 'Regina', 'price': 12.0, 'quantity': 2, 'type': 'Pizza'},
             ],
           }), // New - should be added
         ],
@@ -101,7 +101,7 @@ void main() {
                 'price': 10.0,
                 'quantity': 1,
                 'type': 'Pizza',
-              }
+              },
             ],
           }),
         ],
@@ -113,23 +113,25 @@ void main() {
 
       // 4. Verify results
       expect(stats, isNotNull);
-      
+
       // Products: 1 updated (Margherita), 1 new (Regina) = 1 migrated
       expect(stats!.productsCount, equals(1));
-      
+
       // Payments: 1 duplicate skipped, 1 new = 1 migrated
       expect(stats.paymentsCount, equals(1));
-      
+
       // Pending orders: 1 new = 1 migrated
       expect(stats.pendingOrdersCount, equals(1));
 
       // Verify actual database content
-      final products = await dbService.products.fetchProducts(includeInactive: true);
+      final products = await dbService.products.fetchProducts(
+        includeInactive: true,
+      );
       expect(products.length, equals(2)); // Margherita + Regina
-      
+
       final margherita = products.firstWhere((p) => p.name == 'Margherita');
       expect(margherita.price, equals(11.0)); // Updated price
-      
+
       final regina = products.firstWhere((p) => p.name == 'Regina');
       expect(regina.price, equals(12.0));
 
@@ -143,7 +145,7 @@ void main() {
       expect(orders.first.id, equals('order123'));
     });
 
-    test('Migration handles already completed migration gracefully', () async {
+    test('should handle already completed migration gracefully', () async {
       // Initialize with skip migration
       await dbService.init(overridePath: testDbPath, skipMigration: true);
 
@@ -196,20 +198,23 @@ void main() {
       expect(products.length, equals(1));
     });
 
-    test('Migration with empty SharedPreferences marks as completed', () async {
-      await dbService.init(overridePath: testDbPath, skipMigration: true);
+    test(
+      'should mark migration as completed when SharedPreferences is empty',
+      () async {
+        await dbService.init(overridePath: testDbPath, skipMigration: true);
 
-      // Empty SharedPreferences
-      SharedPreferences.setMockInitialValues({});
+        // Empty SharedPreferences
+        SharedPreferences.setMockInitialValues({});
 
-      final migrationService = MigrationService(dbService.database);
-      final stats = await migrationService.migrateFromPrefsIfNeeded();
-      
-      expect(stats, isNull);
-      
-      // Should still be marked as completed
-      final isCompleted = await migrationService.isMigrationCompleted();
-      expect(isCompleted, isTrue);
-    });
+        final migrationService = MigrationService(dbService.database);
+        final stats = await migrationService.migrateFromPrefsIfNeeded();
+
+        expect(stats, isNull);
+
+        // Should still be marked as completed
+        final isCompleted = await migrationService.isMigrationCompleted();
+        expect(isCompleted, isTrue);
+      },
+    );
   });
 }

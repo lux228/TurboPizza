@@ -30,7 +30,7 @@ void main() {
     }
   });
 
-  test('products roundtrip', () async {
+  test('should roundtrip products', () async {
     final pizzas = [
       Pizza(name: 'Margherita', price: 8.0, quantity: 0, type: 'Tomate'),
       Pizza(name: 'Reine', price: 10.0, quantity: 0, type: 'Tomate'),
@@ -43,7 +43,7 @@ void main() {
     expect(fetched.first.name, 'Margherita');
   });
 
-  test('payments with items roundtrip', () async {
+  test('should roundtrip payments with items', () async {
     final payment = Payment(
       date: DateTime.utc(2024, 1, 5, 12, 0),
       amount: 20.5,
@@ -63,7 +63,7 @@ void main() {
     expect(fetched.single.items.first.name, 'Margherita');
   });
 
-  test('pending orders roundtrip', () async {
+  test('should roundtrip pending orders', () async {
     final order = PendingOrder(
       id: 'order-1',
       createdAt: DateTime.utc(2024, 1, 5, 10, 0),
@@ -81,7 +81,7 @@ void main() {
   });
 
   test(
-    'legacy pending order IDs are migrated to UUID while keeping items',
+    'should migrate legacy pending order IDs to UUID while keeping items',
     () async {
       final createdAt = DateTime.utc(2024, 1, 5, 10, 0).toIso8601String();
 
@@ -118,7 +118,7 @@ void main() {
     },
   );
 
-  test('fetch payments between dates', () async {
+  test('should fetch payments between dates', () async {
     final p1 = Payment(
       date: DateTime.utc(2024, 1, 1, 9),
       amount: 10,
@@ -142,7 +142,7 @@ void main() {
     expect(ranged.single.paymentMethod, 'Chèque');
   });
 
-  test('export/import database and CSV', () async {
+  test('should export/import database and CSV', () async {
     final payment = Payment(
       date: DateTime.utc(2024, 2, 1, 18, 30),
       amount: 30,
