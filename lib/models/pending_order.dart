@@ -1,4 +1,5 @@
 import 'pizza.dart';
+import '../utils/time_validator.dart';
 
 class PendingOrder {
   String id;
@@ -16,21 +17,25 @@ class PendingOrder {
   });
 
   Map<String, dynamic> toJson() => {
-        // Keep original JSON keys for backward compatibility
-        'id': id,
-        'heureComposition': createdAt.toIso8601String(),
-        'heureRecuperationPrevue': plannedPickupTime,
-        'articles': items.map((pizza) => pizza.toJson()).toList(),
-        'montant': amount,
-      };
+    // Keep original JSON keys for backward compatibility
+    'id': id,
+    'heureComposition': createdAt.toIso8601String(),
+    'heureRecuperationPrevue': plannedPickupTime,
+    'articles': items.map((pizza) => pizza.toJson()).toList(),
+    'montant': amount,
+  };
 
   static PendingOrder fromJson(Map<String, dynamic> json) => PendingOrder(
-        id: json['id'],
-        createdAt: DateTime.parse(json['heureComposition']),
-        plannedPickupTime: json['heureRecuperationPrevue'],
-        items: (json['articles'] as List).map((item) => Pizza.fromJson(item)).toList(),
-        amount: (json['montant'] as num).toDouble(),
-      );
+    id: json['id'],
+    createdAt: DateTime.parse(json['heureComposition']),
+    plannedPickupTime: TimeValidator.normalizeOrFallback(
+      json['heureRecuperationPrevue']?.toString() ?? '',
+    ),
+    items: (json['articles'] as List)
+        .map((item) => Pizza.fromJson(item))
+        .toList(),
+    amount: (json['montant'] as num).toDouble(),
+  );
 
   // Helper to get pickup DateTime for sorting
   DateTime get pickupDateTime {
@@ -82,12 +87,12 @@ class PendingOrder {
 
   @override
   int get hashCode => Object.hash(
-        id,
-        createdAt,
-        plannedPickupTime,
-        Object.hashAll(items),
-        amount,
-      );
+    id,
+    createdAt,
+    plannedPickupTime,
+    Object.hashAll(items),
+    amount,
+  );
 
   static bool _listEquals<T>(List<T> a, List<T> b) {
     if (identical(a, b)) return true;

@@ -17,6 +17,7 @@ import '../widgets/product_grid.dart';
 import '../widgets/current_order_widget.dart';
 import '../services/cart_service.dart';
 import '../services/order_service.dart';
+import '../services/order_exceptions.dart';
 import '../services/category_filter_service.dart';
 import '../constants/app_categories.dart';
 import '../constants/app_durations.dart';
@@ -293,11 +294,21 @@ class _PizzaHomePageState extends State<PizzaHomePage>
     if (!mounted) return;
     if (selectedTime != null) {
       final orderService = context.read<OrderService>();
-      await orderService.createOrder(
-        items: cartService.items,
-        amount: cartService.totalPrice,
-        pickupTime: selectedTime,
-      );
+      try {
+        await orderService.createOrder(
+          items: cartService.items,
+          amount: cartService.totalPrice,
+          pickupTime: selectedTime,
+        );
+      } on InvalidPickupTimeException {
+        if (!mounted) return;
+        showAppSnackBar(
+          context,
+          AppStrings.invalidPickupTimeMessage,
+          type: AppSnackBarType.error,
+        );
+        return;
+      }
 
       _resetEditingFlow(cartService);
 

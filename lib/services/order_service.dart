@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/pending_order.dart';
 import '../models/pizza.dart';
+import '../services/order_exceptions.dart';
 import '../utils/storage_service.dart';
+import '../utils/time_validator.dart';
 import '../constants/app_strings.dart';
 import '../constants/app_thresholds.dart';
 
@@ -96,6 +98,10 @@ class OrderService extends ChangeNotifier {
     required double amount,
     required String pickupTime,
   }) async {
+    if (!TimeValidator.isValidHHmm(pickupTime)) {
+      throw InvalidPickupTimeException(pickupTime);
+    }
+
     final order = PendingOrder(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       createdAt: DateTime.now(),
