@@ -1,5 +1,8 @@
 # TurboPizza
 
+[![CI/CD](https://github.com/lux228/TurboPizza/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/lux228/TurboPizza/actions/workflows/ci-cd.yml)
+[![CI/CD (dev)](https://github.com/lux228/TurboPizza/actions/workflows/ci-cd.yml/badge.svg?branch=dev)](https://github.com/lux228/TurboPizza/actions/workflows/ci-cd.yml?query=branch%3Adev)
+
 Un petit projet Flutter pour gérer les commandes et encaissements d'une pizzeria.
 
 ## Description
