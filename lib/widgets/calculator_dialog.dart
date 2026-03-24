@@ -1,10 +1,11 @@
 // ignore_for_file: library_private_types_in_public_api
 import 'package:flutter/material.dart';
+import '../constants/app_strings.dart';
 import '../utils/format_utils.dart';
 
 class CalculatorDialog extends StatefulWidget {
   final double currentOrderTotal;
-  
+
   const CalculatorDialog({super.key, required this.currentOrderTotal});
 
   @override
@@ -18,9 +19,7 @@ class _CalculatorDialogState extends State<CalculatorDialog> {
   bool _waitingForOperand = false;
 
   String _formatResult(double value) {
-    return value % 1 == 0
-        ? value.toInt().toString()
-        : value.toStringAsFixed(2);
+    return value % 1 == 0 ? value.toInt().toString() : value.toStringAsFixed(2);
   }
 
   double? _performCalculation() {
@@ -99,7 +98,12 @@ class _CalculatorDialogState extends State<CalculatorDialog> {
     });
   }
 
-  Widget _buildButton(String text, {Color? color, Color? textColor, int flex = 1}) {
+  Widget _buildButton(
+    String text, {
+    Color? color,
+    Color? textColor,
+    int flex = 1,
+  }) {
     return Expanded(
       flex: flex,
       child: Container(
@@ -136,7 +140,7 @@ class _CalculatorDialogState extends State<CalculatorDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Calculatrice'),
+      title: const Text(AppStrings.calculatorTitle),
       content: SizedBox(
         width: 320,
         child: Column(
@@ -178,7 +182,7 @@ class _CalculatorDialogState extends State<CalculatorDialog> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    'Commande en cours :',
+                    AppStrings.currentOrderLabel,
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -200,39 +204,57 @@ class _CalculatorDialogState extends State<CalculatorDialog> {
             Column(
               children: [
                 // Ligne 1: C (vide) (vide) ÷
-                Row(children: [
-                  _buildButton('C', color: Colors.red[400], textColor: Colors.white),
-                  const Expanded(child: SizedBox()), // Espace vide
-                  const Expanded(child: SizedBox()), // Espace vide
-                  _buildButton('÷', color: Colors.orange[300]),
-                ]),
+                Row(
+                  children: [
+                    _buildButton(
+                      'C',
+                      color: Colors.red[400],
+                      textColor: Colors.white,
+                    ),
+                    const Expanded(child: SizedBox()), // Espace vide
+                    const Expanded(child: SizedBox()), // Espace vide
+                    _buildButton('÷', color: Colors.orange[300]),
+                  ],
+                ),
                 // Ligne 2: 7 8 9 ×
-                Row(children: [
-                  _buildButton('7'),
-                  _buildButton('8'),
-                  _buildButton('9'),
-                  _buildButton('×', color: Colors.orange[300]),
-                ]),
+                Row(
+                  children: [
+                    _buildButton('7'),
+                    _buildButton('8'),
+                    _buildButton('9'),
+                    _buildButton('×', color: Colors.orange[300]),
+                  ],
+                ),
                 // Ligne 3: 4 5 6 -
-                Row(children: [
-                  _buildButton('4'),
-                  _buildButton('5'),
-                  _buildButton('6'),
-                  _buildButton('-', color: Colors.orange[300]),
-                ]),
+                Row(
+                  children: [
+                    _buildButton('4'),
+                    _buildButton('5'),
+                    _buildButton('6'),
+                    _buildButton('-', color: Colors.orange[300]),
+                  ],
+                ),
                 // Ligne 4: 1 2 3 +
-                Row(children: [
-                  _buildButton('1'),
-                  _buildButton('2'),
-                  _buildButton('3'),
-                  _buildButton('+', color: Colors.orange[300]),
-                ]),
+                Row(
+                  children: [
+                    _buildButton('1'),
+                    _buildButton('2'),
+                    _buildButton('3'),
+                    _buildButton('+', color: Colors.orange[300]),
+                  ],
+                ),
                 // Ligne 5: 0 (double largeur) . =
-                Row(children: [
-                  _buildButton('0', flex: 2),
-                  _buildButton('.'),
-                  _buildButton('=', color: Colors.blue[400], textColor: Colors.white),
-                ]),
+                Row(
+                  children: [
+                    _buildButton('0', flex: 2),
+                    _buildButton('.'),
+                    _buildButton(
+                      '=',
+                      color: Colors.blue[400],
+                      textColor: Colors.white,
+                    ),
+                  ],
+                ),
               ],
             ),
           ],
@@ -241,7 +263,7 @@ class _CalculatorDialogState extends State<CalculatorDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Fermer'),
+          child: const Text(AppStrings.closeLabel),
         ),
       ],
     );

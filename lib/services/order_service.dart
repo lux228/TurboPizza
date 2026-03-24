@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 import '../models/pending_order.dart';
 import '../models/pizza.dart';
+import '../services/order_exceptions.dart';
 import '../utils/storage_service.dart';
+import '../utils/time_validator.dart';
+import '../constants/app_strings.dart';
 import '../constants/app_thresholds.dart';
 
-enum OrderStatus {
-  onTime,
-  comingSoon,
-  slightlyLate,
-  late,
-}
+enum OrderStatus { onTime, comingSoon, slightlyLate, late }
 
 class OrderStatusInfo {
   final OrderStatus status;
@@ -24,12 +23,13 @@ class OrderStatusInfo {
 }
 
 class OrderService extends ChangeNotifier {
+  static final Uuid _uuid = Uuid();
   List<PendingOrder> _orders = [];
-  
+
   List<PendingOrder> get orders => List.unmodifiable(_orders);
-  
+
   bool get hasOrders => _orders.isNotEmpty;
-  
+
   int get orderCount => _orders.length;
 
   Future<void> loadOrders() async {
@@ -71,25 +71,25 @@ class OrderService extends ChangeNotifier {
     if (difference < AppThresholds.lateMinutes) {
       return OrderStatusInfo(
         status: OrderStatus.late,
-        statusText: 'En retard',
+        statusText: AppStrings.orderStatusLate,
         icon: Icons.warning,
       );
     } else if (difference < AppThresholds.slightlyLateMinutes) {
       return OrderStatusInfo(
         status: OrderStatus.slightlyLate,
-        statusText: 'Légèrement en retard',
+        statusText: AppStrings.orderStatusSlightlyLate,
         icon: Icons.access_time,
       );
     } else if (difference <= AppThresholds.comingSoonMinutes) {
       return OrderStatusInfo(
         status: OrderStatus.comingSoon,
-        statusText: 'Bientôt là',
+        statusText: AppStrings.orderStatusComingSoon,
         icon: Icons.schedule,
       );
     } else {
       return OrderStatusInfo(
         status: OrderStatus.onTime,
-        statusText: 'À l\'heure',
+        statusText: AppStrings.orderStatusOnTime,
         icon: Icons.check_circle,
       );
     }
@@ -100,8 +100,18 @@ class OrderService extends ChangeNotifier {
     required double amount,
     required String pickupTime,
   }) async {
+    if (items.isEmpty) {
+      throw const EmptyOrderItemsException();
+    }
+    if (amount <= 0) {
+      throw InvalidOrderAmountException(amount);
+    }
+    if (!TimeValidator.isValidHHmm(pickupTime)) {
+      throw InvalidPickupTimeException(pickupTime);
+    }
+
     final order = PendingOrder(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: _uuid.v4(),
       createdAt: DateTime.now(),
       plannedPickupTime: pickupTime,
       items: items,

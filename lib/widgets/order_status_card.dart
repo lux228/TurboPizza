@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../constants/app_strings.dart';
 import '../models/pending_order.dart';
 import '../services/order_service.dart';
 import '../utils/format_utils.dart';
@@ -39,10 +40,7 @@ class OrderStatusCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(layout.borderRadius),
-            border: Border.all(
-              color: statusPalette.foreground,
-              width: 2,
-            ),
+            border: Border.all(color: statusPalette.foreground, width: 2),
           ),
           child: Padding(
             padding: const EdgeInsets.all(12.0),
@@ -68,7 +66,10 @@ class OrderStatusCard extends StatelessWidget {
   ) {
     switch (status) {
       case OrderStatus.late:
-        return (foreground: colors.lateColor, background: colors.lateBackgroundColor);
+        return (
+          foreground: colors.lateColor,
+          background: colors.lateBackgroundColor,
+        );
       case OrderStatus.slightlyLate:
         return (
           foreground: colors.slightlyLateColor,
@@ -80,7 +81,10 @@ class OrderStatusCard extends StatelessWidget {
           background: colors.comingSoonBackgroundColor,
         );
       case OrderStatus.onTime:
-        return (foreground: colors.onTimeColor, background: colors.onTimeBackgroundColor);
+        return (
+          foreground: colors.onTimeColor,
+          background: colors.onTimeBackgroundColor,
+        );
     }
   }
 
@@ -94,14 +98,10 @@ class OrderStatusCard extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(
-              statusInfo.icon,
-              size: 16,
-              color: statusColor,
-            ),
+            Icon(statusInfo.icon, size: 16, color: statusColor),
             const SizedBox(width: 4),
             Text(
-              'Récup: ${order.plannedPickupTime}',
+              '${AppStrings.pickupShortPrefix} ${order.plannedPickupTime}',
               style: textStyles.subtitle.copyWith(
                 fontWeight: FontWeight.bold,
                 color: colors.greyText,
@@ -138,9 +138,7 @@ class OrderStatusCard extends StatelessWidget {
 
   Widget _buildOrderItems(AppTextStyles textStyles) {
     return Text(
-    order.items
-      .map((a) => '${a.quantity} x ${a.name}')
-          .join(', '),
+      order.items.map((a) => '${a.quantity} x ${a.name}').join(', '),
       style: textStyles.caption,
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
@@ -156,20 +154,21 @@ class OrderStatusCard extends StatelessWidget {
             child: _buildActionButton(
               onPressed: onValidate!,
               icon: Icons.check,
-              label: 'Valider',
+              label: AppStrings.validateLabel,
               backgroundColor: colors.validateButtonBg,
               foregroundColor: colors.validateButtonFg,
               textStyles: textStyles,
             ),
           ),
-        if (onValidate != null && (onEdit != null || onChangeTime != null || onCancel != null))
+        if (onValidate != null &&
+            (onEdit != null || onChangeTime != null || onCancel != null))
           const SizedBox(width: 8),
         if (onEdit != null)
           Expanded(
             child: _buildActionButton(
               onPressed: onEdit!,
               icon: Icons.edit,
-              label: 'Modifier',
+              label: AppStrings.editLabel,
               backgroundColor: colors.editButtonBg,
               foregroundColor: colors.editButtonFg,
               textStyles: textStyles,
@@ -182,20 +181,19 @@ class OrderStatusCard extends StatelessWidget {
             child: _buildActionButton(
               onPressed: onChangeTime!,
               icon: Icons.schedule,
-              label: 'Horaire',
+              label: AppStrings.scheduleLabel,
               backgroundColor: colors.lightBlueAccent,
               foregroundColor: colors.primaryBlue,
               textStyles: textStyles,
             ),
           ),
-        if (onChangeTime != null && onCancel != null)
-          const SizedBox(width: 8),
+        if (onChangeTime != null && onCancel != null) const SizedBox(width: 8),
         if (onCancel != null)
           Expanded(
             child: _buildActionButton(
               onPressed: onCancel!,
               icon: Icons.delete,
-              label: 'Annuler',
+              label: AppStrings.cancelLabel,
               backgroundColor: colors.cancelButtonBg,
               foregroundColor: colors.cancelButtonFg,
               textStyles: textStyles,

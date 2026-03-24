@@ -5,6 +5,7 @@ import '../services/database_service.dart';
 import '../repositories/payment_repository.dart';
 import '../utils/snack_bar_utils.dart';
 import '../constants/app_payments.dart';
+import '../constants/app_strings.dart';
 import '../theme/app_theme.dart';
 
 /// Page displaying sales statistics with charts and analytics.
@@ -51,7 +52,9 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
 
   /// Returns the start and end dates based on the selected period.
   (DateTime, DateTime) _getDateRange() {
-    if (_selectedPeriod == 'custom' && _customStart != null && _customEnd != null) {
+    if (_selectedPeriod == 'custom' &&
+        _customStart != null &&
+        _customEnd != null) {
       return (_customStart!, _customEnd!);
     }
 
@@ -83,10 +86,24 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
 
       final results = await Future.wait([
         _paymentRepo.fetchDailyRevenue(start: start, endExclusive: end),
-        _paymentRepo.fetchDailyRevenue(start: previousStart, endExclusive: previousEnd),
-        _paymentRepo.fetchTopProductsByQuantity(start: start, endExclusive: end, limit: 5),
-        _paymentRepo.fetchTopProductsByRevenue(start: start, endExclusive: end, limit: 5),
-        _paymentRepo.fetchTotalsByMethodBetween(start: start, endExclusive: end),
+        _paymentRepo.fetchDailyRevenue(
+          start: previousStart,
+          endExclusive: previousEnd,
+        ),
+        _paymentRepo.fetchTopProductsByQuantity(
+          start: start,
+          endExclusive: end,
+          limit: 5,
+        ),
+        _paymentRepo.fetchTopProductsByRevenue(
+          start: start,
+          endExclusive: end,
+          limit: 5,
+        ),
+        _paymentRepo.fetchTotalsByMethodBetween(
+          start: start,
+          endExclusive: end,
+        ),
         _paymentRepo.fetchTotalsByType(start: start, endExclusive: end),
         _paymentRepo.fetchTotalAmountBetween(start: start, endExclusive: end),
       ]);
@@ -109,7 +126,7 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
       if (mounted) {
         showAppSnackBar(
           context,
-          'Erreur lors du chargement : $e',
+          '${AppStrings.salesLoadErrorPrefix} $e',
           type: AppSnackBarType.error,
         );
       }
@@ -122,7 +139,7 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
     final textStyles = context.appTextStyles;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Statistiques de vente'),
+        title: const Text(AppStrings.salesStatisticsTitle),
         backgroundColor: colorScheme.primary,
         foregroundColor: colorScheme.onPrimary,
       ),
@@ -139,14 +156,17 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
     );
   }
 
-  Widget _buildPeriodSelector(ColorScheme colorScheme, AppTextStyles textStyles) {
+  Widget _buildPeriodSelector(
+    ColorScheme colorScheme,
+    AppTextStyles textStyles,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       color: colorScheme.surfaceContainerHighest,
       child: Row(
         children: [
           Text(
-            'Période : ',
+            AppStrings.periodLabel,
             style: textStyles.subtitle.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(width: 8),
@@ -154,11 +174,11 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
             child: Wrap(
               spacing: 8,
               children: [
-                _buildPeriodChip('7 jours', '7days'),
-                _buildPeriodChip('30 jours', '30days'),
-                _buildPeriodChip('90 jours', '90days'),
-                _buildPeriodChip('1 an', '1year'),
-                _buildPeriodChip('Personnalisé', 'custom'),
+                _buildPeriodChip(AppStrings.period7DaysLabel, '7days'),
+                _buildPeriodChip(AppStrings.period30DaysLabel, '30days'),
+                _buildPeriodChip(AppStrings.period90DaysLabel, '90days'),
+                _buildPeriodChip(AppStrings.period1YearLabel, '1year'),
+                _buildPeriodChip(AppStrings.customPeriodLabel, 'custom'),
               ],
             ),
           ),
@@ -209,7 +229,11 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
       setState(() {
         _selectedPeriod = 'custom';
         _customStart = dateRange.start;
-        _customEnd = DateTime(dateRange.end.year, dateRange.end.month, dateRange.end.day + 1);
+        _customEnd = DateTime(
+          dateRange.end.year,
+          dateRange.end.month,
+          dateRange.end.day + 1,
+        );
       });
       await _loadStatistics();
     }
@@ -219,7 +243,7 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
     if (_dailyRevenue == null || _dailyRevenue!.isEmpty) {
       final textStyles = context.appTextStyles;
       return Center(
-        child: Text('Aucune donnée pour cette période', style: textStyles.body),
+        child: Text(AppStrings.noDataForPeriodMessage, style: textStyles.body),
       );
     }
 
@@ -243,7 +267,11 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
   }
 
   Widget _buildTotalRevenueCard() {
-    final formatter = NumberFormat.currency(locale: 'fr_FR', symbol: '€', decimalDigits: 2);
+    final formatter = NumberFormat.currency(
+      locale: 'fr_FR',
+      symbol: '€',
+      decimalDigits: 2,
+    );
     final textStyles = context.appTextStyles;
     final colors = context.appColors;
     return Card(
@@ -253,7 +281,7 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
         child: Column(
           children: [
             Text(
-              'Chiffre d\'affaires total',
+              AppStrings.totalRevenueLabel,
               style: textStyles.subtitle.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
@@ -293,7 +321,10 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
     final previousTotals = _dailyRevenuePrev == null
         ? <String, double>{}
         : _buildDailyTotalsMap(_dailyRevenuePrev!);
-    final prevDays = _buildDayList(prevStart, prevStart.add(endExclusive.difference(start)));
+    final prevDays = _buildDayList(
+      prevStart,
+      prevStart.add(endExclusive.difference(start)),
+    );
 
     return Card(
       elevation: 4,
@@ -303,7 +334,7 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Évolution du chiffre d\'affaires',
+              AppStrings.revenueTrendLabel,
               style: textStyles.subtitle.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
@@ -311,11 +342,11 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
               children: [
                 _buildLegendDot(currentColor),
                 const SizedBox(width: 6),
-                Text('Cette année', style: textStyles.caption),
+                Text(AppStrings.currentYearLabel, style: textStyles.caption),
                 const SizedBox(width: 16),
                 _buildLegendDot(previousColor),
                 const SizedBox(width: 6),
-                Text('N-1', style: textStyles.caption),
+                Text(AppStrings.previousYearLabel, style: textStyles.caption),
               ],
             ),
             const SizedBox(height: 12),
@@ -364,8 +395,12 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
                         },
                       ),
                     ),
-                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
                   ),
                   borderData: FlBorderData(show: true),
                   lineBarsData: [
@@ -417,7 +452,7 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Top 5 des produits',
+              AppStrings.topProductsLabel,
               style: textStyles.subtitle.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
@@ -437,7 +472,11 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
 
   List<DateTime> _buildDayList(DateTime start, DateTime endExclusive) {
     final startDate = DateTime(start.year, start.month, start.day);
-    final endDate = DateTime(endExclusive.year, endExclusive.month, endExclusive.day);
+    final endDate = DateTime(
+      endExclusive.year,
+      endExclusive.month,
+      endExclusive.day,
+    );
     final days = endDate.difference(startDate).inDays;
     if (days <= 0) return [];
     return List.generate(days, (index) => startDate.add(Duration(days: index)));
@@ -462,16 +501,13 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
     return Container(
       width: 10,
       height: 10,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-      ),
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
 
   Widget _buildTopByQuantity() {
     if (_topByQuantity == null || _topByQuantity!.isEmpty) {
-      return Text('Aucune donnée', style: context.appTextStyles.body);
+      return Text(AppStrings.noDataMessage, style: context.appTextStyles.body);
     }
 
     final textStyles = context.appTextStyles;
@@ -480,7 +516,10 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Par quantité', style: textStyles.subtitle.copyWith(fontWeight: FontWeight.bold)),
+        Text(
+          AppStrings.byQuantityLabel,
+          style: textStyles.subtitle.copyWith(fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         ..._topByQuantity!.asMap().entries.map((entry) {
           final index = entry.key + 1;
@@ -514,10 +553,14 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
 
   Widget _buildTopByRevenue() {
     if (_topByRevenue == null || _topByRevenue!.isEmpty) {
-      return Text('Aucune donnée', style: context.appTextStyles.body);
+      return Text(AppStrings.noDataMessage, style: context.appTextStyles.body);
     }
 
-    final formatter = NumberFormat.currency(locale: 'fr_FR', symbol: '€', decimalDigits: 0);
+    final formatter = NumberFormat.currency(
+      locale: 'fr_FR',
+      symbol: '€',
+      decimalDigits: 0,
+    );
     final textStyles = context.appTextStyles;
     final colors = context.appColors;
 
@@ -525,7 +568,7 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Par chiffre d\'affaires',
+          AppStrings.byRevenueLabel,
           style: textStyles.subtitle.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
@@ -564,7 +607,11 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
       return const SizedBox.shrink();
     }
 
-    final formatter = NumberFormat.currency(locale: 'fr_FR', symbol: '€', decimalDigits: 2);
+    final formatter = NumberFormat.currency(
+      locale: 'fr_FR',
+      symbol: '€',
+      decimalDigits: 2,
+    );
     final totals = _totalsByMethod ?? <String, double>{};
     final total = totals.values.fold(0.0, (sum, val) => sum + val);
     final textStyles = context.appTextStyles;
@@ -578,7 +625,7 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Répartition par méthode de paiement',
+              AppStrings.paymentMethodDistributionLabel,
               style: textStyles.subtitle.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
@@ -613,8 +660,15 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
       return const SizedBox.shrink();
     }
 
-    final formatter = NumberFormat.currency(locale: 'fr_FR', symbol: '€', decimalDigits: 2);
-    final totalRevenue = _totalsByType!.values.fold(0.0, (sum, val) => sum + (val['revenue'] as num).toDouble());
+    final formatter = NumberFormat.currency(
+      locale: 'fr_FR',
+      symbol: '€',
+      decimalDigits: 2,
+    );
+    final totalRevenue = _totalsByType!.values.fold(
+      0.0,
+      (sum, val) => sum + (val['revenue'] as num).toDouble(),
+    );
     final textStyles = context.appTextStyles;
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -626,7 +680,7 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Répartition par type de pizza',
+              AppStrings.pizzaTypeDistributionLabel,
               style: textStyles.subtitle.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
@@ -634,7 +688,9 @@ class _SalesStatisticsPageState extends State<SalesStatisticsPage> {
               final type = entry.key;
               final quantity = (entry.value['quantity'] as num).toInt();
               final revenue = (entry.value['revenue'] as num).toDouble();
-              final percent = totalRevenue > 0 ? (revenue / totalRevenue * 100) : 0.0;
+              final percent = totalRevenue > 0
+                  ? (revenue / totalRevenue * 100)
+                  : 0.0;
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(

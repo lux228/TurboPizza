@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../constants/app_strings.dart';
 import '../utils/duplicate_diagnostic.dart';
 import '../theme/app_theme.dart';
 
@@ -7,7 +8,8 @@ class DuplicateDiagnosticWidget extends StatefulWidget {
   const DuplicateDiagnosticWidget({super.key});
 
   @override
-  State<DuplicateDiagnosticWidget> createState() => _DuplicateDiagnosticWidgetState();
+  State<DuplicateDiagnosticWidget> createState() =>
+      _DuplicateDiagnosticWidgetState();
 }
 
 class _DuplicateDiagnosticWidgetState extends State<DuplicateDiagnosticWidget> {
@@ -25,7 +27,7 @@ class _DuplicateDiagnosticWidgetState extends State<DuplicateDiagnosticWidget> {
     return Card(
       child: ExpansionTile(
         leading: const Icon(Icons.copy_all_outlined),
-        title: const Text('Diagnostic doublons'),
+        title: const Text(AppStrings.diagnosticDuplicatesTitle),
         children: [
           Padding(
             padding: const EdgeInsets.all(16.0),
@@ -36,24 +38,30 @@ class _DuplicateDiagnosticWidgetState extends State<DuplicateDiagnosticWidget> {
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (snapshot.hasError) {
-                  return Text('Erreur: ${snapshot.error}', style: textStyles.body);
+                  return Text(
+                    '${AppStrings.errorPrefix} ${snapshot.error}',
+                    style: textStyles.body,
+                  );
                 }
                 final data = snapshot.data;
                 if (data == null) {
-                  return Text('Aucune information disponible.', style: textStyles.body);
+                  return Text(
+                    AppStrings.noInfoAvailableMessage,
+                    style: textStyles.body,
+                  );
                 }
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildLine(
-                      'Doublons ignores (migration legacy)',
+                      AppStrings.duplicateSkippedLabel,
                       data.migrationSkippedCount,
                       data.migrationSkippedAt,
                     ),
                     const SizedBox(height: 12),
                     _buildLine(
-                      'Doublons supprimes (upgrade base)',
+                      AppStrings.duplicateRemovedLabel,
                       data.dbDedupedCount,
                       data.dbDedupedAt,
                     ),
@@ -71,7 +79,7 @@ class _DuplicateDiagnosticWidgetState extends State<DuplicateDiagnosticWidget> {
     final textStyles = context.appTextStyles;
     final countText = (count == null) ? '0' : count.toString();
     final dateText = (date == null)
-        ? 'n/a'
+        ? AppStrings.notAvailableLabel
         : DateFormat('dd/MM/yyyy HH:mm').format(date);
 
     return Row(

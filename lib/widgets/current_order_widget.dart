@@ -32,7 +32,7 @@ class CurrentOrderWidget extends StatelessWidget {
                 padding: const EdgeInsets.all(12.0),
                 color: colorScheme.surfaceContainerHighest,
                 child: Text(
-                  'COMMANDE EN COURS',
+                  AppStrings.currentOrderHeader,
                   style: textStyles.subtitle.copyWith(
                     fontWeight: FontWeight.bold,
                     color: colorScheme.onSurface,
@@ -62,7 +62,7 @@ class CurrentOrderWidget extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            "Total: ${formatPrice(cartService.totalPrice)}",
+                            "${AppStrings.totalPrefix} ${formatPrice(cartService.totalPrice)}",
                             style: textStyles.title.copyWith(
                               fontWeight: FontWeight.bold,
                               color: colorScheme.onSurface,
@@ -80,19 +80,25 @@ class CurrentOrderWidget extends StatelessWidget {
                             child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
                                 foregroundColor: cartService.isEmpty
-                                  ? colorScheme.onSurface.withValues(alpha: 0.5)
-                                  : colorScheme.onSurface,
+                                    ? colorScheme.onSurface.withValues(
+                                        alpha: 0.5,
+                                      )
+                                    : colorScheme.onSurface,
                                 backgroundColor: cartService.isEmpty
-                                  ? colorScheme.surfaceContainerHighest
-                                  : colors.holdButtonColor,
+                                    ? colorScheme.surfaceContainerHighest
+                                    : colors.holdButtonColor,
                                 textStyle: textStyles.subtitle,
                               ),
-                              onPressed: cartService.isEmpty ? null : onPutOnHold,
-                              child: Text(cartService.isEmpty 
-                                ? AppStrings.emptyCartMessage 
-                                : cartService.lastPickupTime != null 
-                                  ? "En attente (${cartService.lastPickupTime})"
-                                  : "En attente"),
+                              onPressed: cartService.isEmpty
+                                  ? null
+                                  : onPutOnHold,
+                              child: Text(
+                                cartService.isEmpty
+                                    ? AppStrings.emptyCartMessage
+                                    : cartService.lastPickupTime != null
+                                    ? '${AppStrings.holdLabel} (${cartService.lastPickupTime})'
+                                    : AppStrings.holdLabel,
+                              ),
                             ),
                           ),
                         ),
@@ -103,15 +109,23 @@ class CurrentOrderWidget extends StatelessWidget {
                             child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
                                 foregroundColor: cartService.isEmpty
-                                  ? colorScheme.onSurface.withValues(alpha: 0.5)
-                                  : colorScheme.onSurface,
+                                    ? colorScheme.onSurface.withValues(
+                                        alpha: 0.5,
+                                      )
+                                    : colorScheme.onSurface,
                                 backgroundColor: cartService.isEmpty
-                                  ? colorScheme.surfaceContainerHighest
-                                  : colors.checkoutButtonColor,
+                                    ? colorScheme.surfaceContainerHighest
+                                    : colors.checkoutButtonColor,
                                 textStyle: textStyles.subtitle,
                               ),
-                              onPressed: cartService.isEmpty ? null : onCheckoutDirect,
-                              child: Text(cartService.isEmpty ? AppStrings.emptyCartMessage : "Encaisser"),
+                              onPressed: cartService.isEmpty
+                                  ? null
+                                  : onCheckoutDirect,
+                              child: Text(
+                                cartService.isEmpty
+                                    ? AppStrings.emptyCartMessage
+                                    : AppStrings.checkoutLabel,
+                              ),
                             ),
                           ),
                         ),

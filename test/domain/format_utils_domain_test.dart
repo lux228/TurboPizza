@@ -5,18 +5,18 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('formatPrice', () {
-    test('uses euro symbol and comma decimal separator', () {
+    test('should use euro symbol and comma decimal separator', () {
       final s = formatPrice(12.5);
       expect(s.contains('€'), isTrue);
       expect(s.contains(','), isTrue);
     });
 
-    test('rounds to two decimals', () {
+    test('should round to two decimals', () {
       final s = formatPrice(12.345);
       expect(s.contains('12,35'), isTrue);
     });
 
-    test('formats zero amount', () {
+    test('should format zero amount with two decimals', () {
       final s = formatPrice(0);
       expect(s.contains('0,00'), isTrue);
     });

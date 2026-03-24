@@ -14,7 +14,9 @@ void main() {
       SharedPreferences.setMockInitialValues({});
     });
 
-    testWidgets('dropdown updates ThemeService', (tester) async {
+    testWidgets('should update ThemeService when selecting a dropdown value', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1200, 1200);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() {

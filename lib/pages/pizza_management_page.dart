@@ -12,8 +12,11 @@ class PizzaManagementPage extends StatefulWidget {
   final List<Pizza> availablePizzas;
   final Function onUpdate;
 
-  const PizzaManagementPage(
-      {super.key, required this.availablePizzas, required this.onUpdate});
+  const PizzaManagementPage({
+    super.key,
+    required this.availablePizzas,
+    required this.onUpdate,
+  });
 
   @override
   _PizzaManagementPageState createState() => _PizzaManagementPageState();
@@ -33,14 +36,15 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
       quantity: originalName == null
           ? 0
           : widget.availablePizzas
-              .firstWhere((p) => p.name == originalName)
-              .quantity,
+                .firstWhere((p) => p.name == originalName)
+                .quantity,
     );
 
     setState(() {
       if (originalName != null) {
-        final index =
-            widget.availablePizzas.indexWhere((p) => p.name == originalName);
+        final index = widget.availablePizzas.indexWhere(
+          (p) => p.name == originalName,
+        );
         if (index != -1) {
           widget.availablePizzas[index] = newOrUpdatedPizza;
         }
@@ -61,30 +65,41 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
     } else {
       _nameController.clear();
       _priceController.clear();
-      selectedType = 'Tomate'; // Réinitialiser à la valeur par défaut
+      selectedType = AppCategories.categoryOrder.first;
     }
 
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text(pizza != null ? 'Modifier produit' : 'Ajouter produit'),
+          title: Text(
+            pizza != null
+                ? AppStrings.editProductTitle
+                : AppStrings.addProductTitle,
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Nom'),
+                decoration: const InputDecoration(
+                  labelText: AppStrings.productNameLabel,
+                ),
               ),
               TextField(
                 controller: _priceController,
-                decoration: const InputDecoration(labelText: 'Prix'),
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: AppStrings.productPriceLabel,
+                ),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
               ),
               DropdownButtonFormField<String>(
                 initialValue: selectedType, // Initialiser avec le type actuel
-                decoration: const InputDecoration(labelText: 'Type'),
+                decoration: const InputDecoration(
+                  labelText: AppStrings.productTypeLabel,
+                ),
                 onChanged: (String? newValue) {
                   setState(() {
                     selectedType = newValue!;
@@ -101,11 +116,11 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
           ),
           actions: [
             TextButton(
-              child: const Text('Annuler'),
+              child: const Text(AppStrings.cancelLabel),
               onPressed: () => Navigator.of(context).pop(),
             ),
             TextButton(
-              child: const Text('Sauvegarder'),
+              child: const Text(AppStrings.saveLabel),
               onPressed: () => _addOrUpdatePizza(originalName: pizza?.name),
             ),
           ],
@@ -120,35 +135,37 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
       builder: (BuildContext context) {
         final textStyles = context.appTextStyles;
         return AlertDialog(
-          title: const Text('Confirmer la suppression'),
+          title: const Text(AppStrings.paymentDeleteConfirmTitle),
           content: Text(
-            'Êtes-vous sûr de vouloir supprimer "${pizza.name}" ?\n\nCette action est irréversible.',
+            '${AppStrings.deleteProductConfirmMessagePrefix} "${pizza.name}" ?\n\n${AppStrings.irreversibleActionMessage}',
             style: textStyles.subtitle,
           ),
           actions: [
             TextButton(
-              child: const Text('Annuler'),
+              child: const Text(AppStrings.cancelLabel),
               onPressed: () => Navigator.of(context).pop(),
             ),
             TextButton(
               style: TextButton.styleFrom(
                 foregroundColor: Theme.of(context).colorScheme.error,
               ),
-              child: const Text('Supprimer'),
+              child: const Text(AppStrings.deleteLabel),
               onPressed: () {
                 Navigator.of(context).pop(); // Fermer la boîte de dialogue
                 setState(() {
                   widget.availablePizzas.removeAt(
-                    widget.availablePizzas.indexWhere((p) => p.name == pizza.name)
+                    widget.availablePizzas.indexWhere(
+                      (p) => p.name == pizza.name,
+                    ),
                   );
                 });
                 widget.onUpdate();
                 StorageService.savePizzaList(widget.availablePizzas);
-                
+
                 // Afficher un message de confirmation
                 showAppSnackBar(
                   context,
-                  '${pizza.name} supprimé avec succès',
+                  '${pizza.name} ${AppStrings.productDeletedSuccessSuffix}',
                   type: AppSnackBarType.success,
                 );
               },
@@ -178,12 +195,12 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
     }
 
     List<Widget> categoryWidgets = [];
-    
+
     // Afficher les catégories dans l'ordre spécifié
     for (String categoryType in AppCategories.categoryOrder) {
       if (groupedPizzas.containsKey(categoryType)) {
         List<Pizza> pizzas = groupedPizzas[categoryType]!;
-        
+
         // En-tête de catégorie
         categoryWidgets.add(
           Container(
@@ -211,12 +228,13 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
               crossAxisCount: 3,
               crossAxisSpacing: 8.0,
               mainAxisSpacing: 8.0,
-              childAspectRatio: 7.0, // Ratio beaucoup plus élevé pour des cartes très fines
+              childAspectRatio:
+                  7.0, // Ratio beaucoup plus élevé pour des cartes très fines
             ),
             itemCount: pizzas.length,
             itemBuilder: (context, index) {
               final pizza = pizzas[index];
-              
+
               return Card(
                 elevation: 2,
                 color: colorScheme.surface,
@@ -225,71 +243,83 @@ class _PizzaManagementPageState extends State<PizzaManagementPage> {
                     borderRadius: BorderRadius.circular(4.0),
                     border: Border(
                       left: BorderSide(
-                        color: _getCategoryColor(colors, categoryType)
-                            .withValues(alpha: 0.8),
+                        color: _getCategoryColor(
+                          colors,
+                          categoryType,
+                        ).withValues(alpha: 0.8),
                         width: 4.0,
                       ),
                     ),
                   ),
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              pizza.name,
-                              style: textStyles.medium.copyWith(fontWeight: FontWeight.bold),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              formatPrice(pizza.price),
-                              style: textStyles.body.copyWith(
-                                color: colors.successGreen,
-                                fontWeight: FontWeight.w600,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                pizza.name,
+                                style: textStyles.medium.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
+                              const SizedBox(height: 3),
+                              Text(
+                                formatPrice(pizza.price),
+                                style: textStyles.body.copyWith(
+                                  color: colors.successGreen,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              iconSize: 22,
+                              padding: const EdgeInsets.all(4),
+                              constraints: const BoxConstraints(
+                                minWidth: 36,
+                                minHeight: 36,
+                              ),
+                              icon: Icon(
+                                Icons.edit,
+                                color: colorScheme.primary,
+                              ),
+                              onPressed: () =>
+                                  _showAddEditPizzaDialog(pizza: pizza),
+                            ),
+                            IconButton(
+                              iconSize: 22,
+                              padding: const EdgeInsets.all(4),
+                              constraints: const BoxConstraints(
+                                minWidth: 36,
+                                minHeight: 36,
+                              ),
+                              icon: Icon(
+                                Icons.delete,
+                                color: colorScheme.error,
+                              ),
+                              onPressed: () =>
+                                  _showDeleteConfirmationDialog(pizza),
                             ),
                           ],
                         ),
-                      ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            iconSize: 22,
-                            padding: const EdgeInsets.all(4),
-                            constraints: const BoxConstraints(
-                              minWidth: 36,
-                              minHeight: 36,
-                            ),
-                            icon: Icon(Icons.edit, color: colorScheme.primary),
-                            onPressed: () => _showAddEditPizzaDialog(pizza: pizza),
-                          ),
-                          IconButton(
-                            iconSize: 22,
-                            padding: const EdgeInsets.all(4),
-                            constraints: const BoxConstraints(
-                              minWidth: 36,
-                              minHeight: 36,
-                            ),
-                            icon: Icon(Icons.delete, color: colorScheme.error),
-                            onPressed: () => _showDeleteConfirmationDialog(pizza),
-                          ),
-                        ],
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            );
-          },
-        ),
-      );
+              );
+            },
+          ),
+        );
       }
     }
 

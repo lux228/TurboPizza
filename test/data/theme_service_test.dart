@@ -7,21 +7,21 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('ThemeService', () {
-    test('defaults to system when no preference stored', () async {
+    test('should default to system when no preference is stored', () async {
       SharedPreferences.setMockInitialValues({});
       final service = ThemeService();
       await pumpUntilLoaded(service);
       expect(service.themeMode, ThemeMode.system);
     });
 
-    test('loads persisted theme mode', () async {
+    test('should load persisted theme mode', () async {
       SharedPreferences.setMockInitialValues({'theme_mode': 'dark'});
       final service = ThemeService();
       await pumpUntilLoaded(service);
       expect(service.themeMode, ThemeMode.dark);
     });
 
-    test('setThemeMode persists and notifies', () async {
+    test('should persist and notify on setThemeMode', () async {
       SharedPreferences.setMockInitialValues({});
       final service = ThemeService();
       await pumpUntilLoaded(service);

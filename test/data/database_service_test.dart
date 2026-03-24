@@ -30,7 +30,7 @@ void main() {
     }
   });
 
-  test('products roundtrip', () async {
+  test('should roundtrip products', () async {
     final pizzas = [
       Pizza(name: 'Margherita', price: 8.0, quantity: 0, type: 'Tomate'),
       Pizza(name: 'Reine', price: 10.0, quantity: 0, type: 'Tomate'),
@@ -43,7 +43,7 @@ void main() {
     expect(fetched.first.name, 'Margherita');
   });
 
-  test('payments with items roundtrip', () async {
+  test('should roundtrip payments with items', () async {
     final payment = Payment(
       date: DateTime.utc(2024, 1, 5, 12, 0),
       amount: 20.5,
@@ -63,7 +63,7 @@ void main() {
     expect(fetched.single.items.first.name, 'Margherita');
   });
 
-  test('pending orders roundtrip', () async {
+  test('should roundtrip pending orders', () async {
     final order = PendingOrder(
       id: 'order-1',
       createdAt: DateTime.utc(2024, 1, 5, 10, 0),
@@ -80,7 +80,45 @@ void main() {
     expect(fetched.single.items.single.name, 'Reine');
   });
 
-  test('fetch payments between dates', () async {
+  test(
+    'should migrate legacy pending order IDs to UUID while keeping items',
+    () async {
+      final createdAt = DateTime.utc(2024, 1, 5, 10, 0).toIso8601String();
+
+      await db.database.insert('pending_orders', {
+        'id': 'legacy-order-123',
+        'created_at': createdAt,
+        'planned_pickup': '12:30',
+        'amount': 10.0,
+      });
+
+      await db.database.insert('pending_order_items', {
+        'order_id': 'legacy-order-123',
+        'name': 'Reine',
+        'type': 'Tomate',
+        'unit_price': 10.0,
+        'quantity': 1,
+      });
+
+      // Reopen DB to trigger startup migration.
+      await db.close();
+      await db.init(overridePath: dbPath, skipMigration: true);
+
+      final fetched = await db.fetchPendingOrders();
+      expect(fetched.length, 1);
+      expect(fetched.single.id, isNot('legacy-order-123'));
+
+      final uuidPattern = RegExp(
+        r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
+      );
+      expect(fetched.single.id.length, 36);
+      expect(uuidPattern.hasMatch(fetched.single.id), isTrue);
+      expect(fetched.single.items.length, 1);
+      expect(fetched.single.items.single.name, 'Reine');
+    },
+  );
+
+  test('should fetch payments between dates', () async {
     final p1 = Payment(
       date: DateTime.utc(2024, 1, 1, 9),
       amount: 10,
@@ -104,7 +142,7 @@ void main() {
     expect(ranged.single.paymentMethod, 'Chèque');
   });
 
-  test('export/import database and CSV', () async {
+  test('should export/import database and CSV', () async {
     final payment = Payment(
       date: DateTime.utc(2024, 2, 1, 18, 30),
       amount: 30,

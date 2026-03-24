@@ -1,5 +1,6 @@
 // ignore_for_file: library_private_types_in_public_api
 import 'package:flutter/material.dart';
+import '../constants/app_strings.dart';
 import '../theme/app_theme.dart';
 
 class PickupTimeDialog extends StatefulWidget {
@@ -14,12 +15,14 @@ class PickupTimeDialog extends StatefulWidget {
 class _PickupTimeDialogState extends State<PickupTimeDialog> {
   late int selectedHour;
   late int selectedMinute;
+  late final DateTime _referenceNow;
   String? selectedTime;
   static const List<int> _minuteOptions = [0, 10, 20, 30, 40, 50];
 
   @override
   void initState() {
     super.initState();
+    _referenceNow = DateTime.now();
     _initializeSelection();
   }
 
@@ -69,7 +72,7 @@ class _PickupTimeDialogState extends State<PickupTimeDialog> {
   }
 
   Map<int, List<int>> _buildAvailableSlotsByHour() {
-    final now = DateTime.now();
+    final now = _referenceNow;
     final minimumTime = now.add(const Duration(minutes: 5));
     final slots = <int, List<int>>{};
 
@@ -181,7 +184,7 @@ class _PickupTimeDialogState extends State<PickupTimeDialog> {
                     )
                   : Center(
                       child: Text(
-                        'Plus de créneaux disponibles aujourd\'hui.',
+                        AppStrings.noSlotsAvailableTodayMessage,
                         style: textStyles.body.copyWith(
                           color: colorScheme.onSurface.withValues(alpha: 0.7),
                         ),
@@ -202,7 +205,7 @@ class _PickupTimeDialogState extends State<PickupTimeDialog> {
                       minimumSize: const Size.fromHeight(56),
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
-                    child: Text('Annuler', style: textStyles.body),
+                    child: Text(AppStrings.cancelLabel, style: textStyles.body),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -230,8 +233,8 @@ class _PickupTimeDialogState extends State<PickupTimeDialog> {
                     ),
                     child: Text(
                       hasAvailableSlot && selectedTime != null
-                          ? 'Confirmer'
-                          : 'Aucun créneau',
+                          ? AppStrings.confirmLabel
+                          : AppStrings.noSlotLabel,
                       style: textStyles.body.copyWith(
                         fontWeight: FontWeight.w600,
                       ),

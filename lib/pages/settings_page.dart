@@ -9,7 +9,9 @@ import 'package:provider/provider.dart';
 import '../services/order_service.dart';
 import '../services/backup_service.dart';
 import '../services/theme_service.dart';
+import '../services/category_filter_service.dart';
 import '../utils/snack_bar_utils.dart';
+import '../constants/app_strings.dart';
 import '../widgets/migration_diagnostic_widget.dart';
 import '../widgets/duplicate_diagnostic_widget.dart';
 
@@ -40,14 +42,14 @@ class _SettingsPageState extends State<SettingsPage> {
       if (!mounted) return;
       showAppSnackBar(
         context,
-        'Base exportée vers $dest',
+        '${AppStrings.dbExportSuccessPrefix} $dest',
         type: AppSnackBarType.success,
       );
     } catch (e) {
       if (!mounted) return;
       showAppSnackBar(
         context,
-        'Export échoué: $e',
+        '${AppStrings.exportFailedPrefix} $e',
         type: AppSnackBarType.error,
       );
     } finally {
@@ -72,14 +74,14 @@ class _SettingsPageState extends State<SettingsPage> {
       if (!mounted) return;
       showAppSnackBar(
         context,
-        'Import réussi et données rechargées.',
+        AppStrings.importSuccessMessage,
         type: AppSnackBarType.success,
       );
     } catch (e) {
       if (!mounted) return;
       showAppSnackBar(
         context,
-        'Import échoué: $e',
+        '${AppStrings.importFailedPrefix} $e',
         type: AppSnackBarType.error,
       );
     } finally {
@@ -102,7 +104,10 @@ class _SettingsPageState extends State<SettingsPage> {
       final dir = await _defaultDir();
       final startLabel = DateFormat('yyyyMMdd').format(range.start);
       final endLabel = DateFormat('yyyyMMdd').format(range.end);
-      final dest = p.join(dir.path, 'turbopizza-encaissements-$startLabel-$endLabel.csv');
+      final dest = p.join(
+        dir.path,
+        'turbopizza-encaissements-$startLabel-$endLabel.csv',
+      );
 
       await BackupService.instance.exportPaymentsCsv(
         start: range.start,
@@ -113,14 +118,14 @@ class _SettingsPageState extends State<SettingsPage> {
       if (!mounted) return;
       showAppSnackBar(
         context,
-        'CSV exporté vers $dest',
+        '${AppStrings.csvExportSuccessPrefix} $dest',
         type: AppSnackBarType.success,
       );
     } catch (e) {
       if (!mounted) return;
       showAppSnackBar(
         context,
-        'Export CSV échoué: $e',
+        '${AppStrings.exportFailedPrefix} $e',
         type: AppSnackBarType.error,
       );
     } finally {
@@ -131,31 +136,31 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Sauvegarde & export'),
-      ),
-      body: Padding(
+      appBar: AppBar(title: const Text(AppStrings.settingsTitle)),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const ThemeModeTile(),
+            const SizedBox(height: 12),
+            const CategoryButtonsSettingsCard(),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               icon: const Icon(Icons.save_alt),
-              label: const Text('Exporter la base SQLite'),
+              label: const Text(AppStrings.exportDbButtonLabel),
               onPressed: _busy ? null : _exportDb,
             ),
             const SizedBox(height: 12),
             ElevatedButton.icon(
               icon: const Icon(Icons.upload_file),
-              label: const Text('Importer une base SQLite (.db)'),
+              label: const Text(AppStrings.importDbButtonLabel),
               onPressed: _busy ? null : _importDb,
             ),
             const SizedBox(height: 12),
             ElevatedButton.icon(
               icon: const Icon(Icons.description),
-              label: const Text('Exporter les encaissements en CSV'),
+              label: const Text(AppStrings.exportCsvButtonLabel),
               onPressed: _busy ? null : _exportCsv,
             ),
             const SizedBox(height: 24),
@@ -164,7 +169,7 @@ class _SettingsPageState extends State<SettingsPage> {
             const DuplicateDiagnosticWidget(),
             const SizedBox(height: 24),
             const Text(
-              'Exports enregistrés dans votre dossier Téléchargements (sinon dossier support de l\'app).',
+              AppStrings.exportSavedLocationMessage,
               style: TextStyle(fontSize: 13, color: Colors.grey),
             ),
           ],
@@ -182,8 +187,8 @@ class ThemeModeTile extends StatelessWidget {
     final themeService = context.watch<ThemeService>();
     return Card(
       child: ListTile(
-        title: const Text('Thème'),
-        subtitle: const Text('Choisir clair, sombre ou système'),
+        title: const Text(AppStrings.themeLabel),
+        subtitle: const Text(AppStrings.themeDescription),
         trailing: DropdownButton<ThemeMode>(
           value: themeService.themeMode,
           onChanged: (mode) {
@@ -194,15 +199,49 @@ class ThemeModeTile extends StatelessWidget {
           items: const [
             DropdownMenuItem(
               value: ThemeMode.system,
-              child: Text('Système'),
+              child: Text(AppStrings.themeSystemLabel),
             ),
             DropdownMenuItem(
               value: ThemeMode.light,
-              child: Text('Clair'),
+              child: Text(AppStrings.themeLightLabel),
             ),
             DropdownMenuItem(
               value: ThemeMode.dark,
-              child: Text('Sombre'),
+              child: Text(AppStrings.themeDarkLabel),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CategoryButtonsSettingsCard extends StatelessWidget {
+  const CategoryButtonsSettingsCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final filterService = context.watch<CategoryFilterService>();
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ListTile(
+              title: Text(AppStrings.categoryButtonsSettingsTitle),
+              subtitle: Text(
+                filterService.showTopCategoryButtons
+                    ? AppStrings.categoryButtonsVisibleDescription
+                    : AppStrings.categoryButtonsHiddenDescription,
+              ),
+              trailing: Switch(
+                value: filterService.showTopCategoryButtons,
+                onChanged: (value) {
+                  filterService.setShowTopCategoryButtons(value);
+                },
+              ),
             ),
           ],
         ),

@@ -1,4 +1,8 @@
 class AppPayments {
-  static const String defaultPaymentMethod = "Espèces";
-  static const List<String> methods = ["Espèces", "Chèque", "Virement"];
+  static const String cash = 'Espèces';
+  static const String check = 'Chèque';
+  static const String transfer = 'Virement';
+
+  static const String defaultPaymentMethod = cash;
+  static const List<String> methods = [cash, check, transfer];
 }
