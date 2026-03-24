@@ -36,21 +36,37 @@ void main() {
   });
 
   group('Payment Model Tests', () {
-    test('Payment creation', () {
-      final articles = [
-        Pizza(name: 'Margherita', price: 12.50, quantity: 1, type: 'Tomate'),
-      ];
-
+    test('Payment JSON roundtrip keeps key fields', () {
+      final date = DateTime(2026, 1, 2, 13, 45);
       final payment = Payment(
-        date: DateTime.now(),
+        date: date,
         amount: 12.50,
         paymentMethod: 'Espèces',
-        items: articles,
+        items: [
+          Pizza(name: 'Margherita', price: 12.50, quantity: 1, type: 'Tomate'),
+        ],
       );
 
-      expect(payment.amount, 12.50);
-      expect(payment.paymentMethod, 'Espèces');
-      expect(payment.items.length, 1);
+      final fromJson = Payment.fromJson(payment.toJson());
+      expect(fromJson.date, date);
+      expect(fromJson.amount, payment.amount);
+      expect(fromJson.paymentMethod, payment.paymentMethod);
+      expect(fromJson.items.length, 1);
+      expect(fromJson.items.first.name, 'Margherita');
+    });
+
+    test('Payment copyWith updates only requested fields', () {
+      final payment = Payment(
+        date: DateTime(2026, 1, 2, 13, 45),
+        amount: 12.50,
+        paymentMethod: 'Espèces',
+        items: const [],
+      );
+
+      final updated = payment.copyWith(amount: 20.0, paymentMethod: 'Chèque');
+      expect(updated.amount, 20.0);
+      expect(updated.paymentMethod, 'Chèque');
+      expect(updated.date, payment.date);
     });
   });
 
@@ -104,6 +120,18 @@ void main() {
       );
 
       expect(() => malformed.pickupDateTime, returnsNormally);
+    });
+
+    test('fromJson normalizes malformed pickup time to fallback', () {
+      final order = PendingOrder.fromJson({
+        'id': 'legacy-1',
+        'heureComposition': '2026-01-01T12:00:00.000',
+        'heureRecuperationPrevue': 'bad-time',
+        'articles': const [],
+        'montant': 0,
+      });
+
+      expect(order.plannedPickupTime, '23:59');
     });
   });
 }

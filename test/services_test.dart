@@ -97,19 +97,23 @@ void main() {
       expect(ids, ['2', '3', '1']);
     });
 
-    test('pickup time parsing fallback', () {
+    test('createOrder creates and persists a retrievable order', () async {
+      final service = OrderService();
       final items = [
         Pizza(name: 'Margherita', price: 10.0, quantity: 1, type: 'Tomate'),
       ];
-      final malformed = PendingOrder(
-        id: 'x',
-        createdAt: DateTime.now(),
-        plannedPickupTime: 'bad',
+
+      final created = await service.createOrder(
         items: items,
         amount: 10.0,
+        pickupTime: '18:00',
       );
-      // Should not throw
-      expect(() => malformed.pickupDateTime, returnsNormally);
+
+      final byId = service.getOrderById(created.id);
+      expect(byId, isNotNull);
+      expect(byId!.plannedPickupTime, '18:00');
+      expect(byId.items.length, 1);
+      expect(byId.amount, 10.0);
     });
 
     test('createOrder rejects invalid pickup time format', () async {
