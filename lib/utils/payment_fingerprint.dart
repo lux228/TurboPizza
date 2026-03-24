@@ -14,8 +14,10 @@ String buildPaymentFingerprint(Payment payment) {
   });
 
   final itemsKey = items
-      .map((item) =>
-          '${item.name}|${item.type}|${item.price.toStringAsFixed(2)}|${item.quantity}')
+      .map(
+        (item) =>
+            '${item.name}|${item.type}|${item.price.toStringAsFixed(2)}|${item.quantity}',
+      )
       .join(',');
 
   final dateKey = payment.date.toIso8601String();

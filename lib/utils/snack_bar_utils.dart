@@ -142,9 +142,14 @@ class _ToastContainerState extends State<_ToastContainer>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.95),
+              color: colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.95,
+              ),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: widget.accent.withValues(alpha: 0.6), width: 1),
+              border: Border.all(
+                color: widget.accent.withValues(alpha: 0.6),
+                width: 1,
+              ),
               boxShadow: [
                 BoxShadow(
                   color: colorScheme.onSurface.withValues(alpha: 0.15),

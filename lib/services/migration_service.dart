@@ -51,12 +51,12 @@ class MigrationService {
   }
 
   /// Migrates data from SharedPreferences to SQLite intelligently.
-  /// 
+  ///
   /// This operation merges legacy data with existing SQLite data without creating duplicates:
   /// - Products: UPSERT based on name
   /// - Payments: Skip exact duplicates (same date, amount, method)
   /// - Pending orders: UPSERT based on order ID
-  /// 
+  ///
   /// Returns migration statistics if any data was migrated, null if:
   /// - Migration was already completed
   /// - No legacy data found
@@ -75,17 +75,25 @@ class MigrationService {
     final legacyPending = await _loadLegacyPendingOrders(prefs);
 
     // Check if there's any legacy data to migrate
-    if (legacyPizzas.isEmpty && legacyPayments.isEmpty && legacyPending.isEmpty) {
-      debugPrint('[Migration] Aucune donnée legacy trouvée dans SharedPreferences.');
-      
+    if (legacyPizzas.isEmpty &&
+        legacyPayments.isEmpty &&
+        legacyPending.isEmpty) {
+      debugPrint(
+        '[Migration] Aucune donnée legacy trouvée dans SharedPreferences.',
+      );
+
       // Mark as completed even if no data (to avoid checking every time)
       await _markMigrationCompleted(0, 0, 0);
       return null;
     }
 
-    debugPrint('[Migration] Début de la migration intelligente depuis SharedPreferences...');
-    debugPrint('[Migration] Trouvé: ${legacyPizzas.length} produits, '
-        '${legacyPayments.length} paiements, ${legacyPending.length} commandes');
+    debugPrint(
+      '[Migration] Début de la migration intelligente depuis SharedPreferences...',
+    );
+    debugPrint(
+      '[Migration] Trouvé: ${legacyPizzas.length} produits, '
+      '${legacyPayments.length} paiements, ${legacyPending.length} commandes',
+    );
 
     int migratedProducts = 0;
     int migratedPayments = 0;
@@ -114,14 +122,11 @@ class MigrationService {
         } else {
           // Product exists, update price/type if different
           final existingProduct = existing.first;
-          if (existingProduct['price'] != pizza.price || 
+          if (existingProduct['price'] != pizza.price ||
               existingProduct['type'] != pizza.type) {
             await txn.update(
               'products',
-              {
-                'price': pizza.price,
-                'type': pizza.type,
-              },
+              {'price': pizza.price, 'type': pizza.type},
               where: 'name = ?',
               whereArgs: [pizza.name],
             );
@@ -148,7 +153,7 @@ class MigrationService {
             'payment_method': payment.paymentMethod,
             'fingerprint': fingerprint,
           });
-          
+
           for (final item in payment.items) {
             await txn.insert('payment_items', {
               'payment_id': paymentId,
@@ -161,7 +166,9 @@ class MigrationService {
           migratedPayments++;
         } else {
           duplicatePaymentsSkipped++;
-          debugPrint('[Migration] Paiement doublé ignoré: ${payment.date} - ${payment.amount}€');
+          debugPrint(
+            '[Migration] Paiement doublé ignoré: ${payment.date} - ${payment.amount}€',
+          );
         }
       }
 
@@ -181,7 +188,7 @@ class MigrationService {
             'planned_pickup': order.plannedPickupTime,
             'amount': order.amount,
           });
-          
+
           for (final item in order.items) {
             await txn.insert('pending_order_items', {
               'order_id': order.id,
@@ -193,13 +200,17 @@ class MigrationService {
           }
           migratedPendingOrders++;
         } else {
-          debugPrint('[Migration] Commande "${order.id}" déjà existante, ignorée');
+          debugPrint(
+            '[Migration] Commande "${order.id}" déjà existante, ignorée',
+          );
         }
       }
     });
 
-    debugPrint('[Migration] ✅ Terminée: $migratedProducts produits, '
-        '$migratedPayments paiements, $migratedPendingOrders commandes migrées');
+    debugPrint(
+      '[Migration] ✅ Terminée: $migratedProducts produits, '
+      '$migratedPayments paiements, $migratedPendingOrders commandes migrées',
+    );
 
     // Save migration stats
     await _markMigrationCompleted(
@@ -231,38 +242,26 @@ class MigrationService {
       'date': DateTime.now().toIso8601String(),
     };
 
-    await db.insert(
-      'meta',
-      {
-        'key': _migrationStatsKey,
-        'value': json.encode(stats),
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert('meta', {
+      'key': _migrationStatsKey,
+      'value': json.encode(stats),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
 
-    await db.insert(
-      'meta',
-      {
-        'key': _migrationMetaKey,
-        'value': '1',
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert('meta', {
+      'key': _migrationMetaKey,
+      'value': '1',
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> _recordDuplicateStats(int duplicatePaymentsSkipped) async {
     if (duplicatePaymentsSkipped == 0) return;
-    await db.insert(
-      'meta',
-      {
-        'key': _migrationDuplicatesKey,
-        'value': json.encode({
-          'count': duplicatePaymentsSkipped,
-          'date': DateTime.now().toIso8601String(),
-        }),
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert('meta', {
+      'key': _migrationDuplicatesKey,
+      'value': json.encode({
+        'count': duplicatePaymentsSkipped,
+        'date': DateTime.now().toIso8601String(),
+      }),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   /// Retrieves migration statistics if available.
@@ -325,7 +324,8 @@ class MigrationService {
   }
 
   Future<List<PendingOrder>> _loadLegacyPendingOrders(
-      SharedPreferences prefs) async {
+    SharedPreferences prefs,
+  ) async {
     final pendingJson = prefs.getStringList(AppStorageKeys.pendingOrders);
     try {
       return pendingJson

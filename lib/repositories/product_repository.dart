@@ -8,7 +8,7 @@ class ProductRepository {
   ProductRepository(this.db);
 
   /// Fetches all products from the database.
-  /// 
+  ///
   /// If [includeInactive] is true, inactive products will also be returned.
   Future<List<Pizza>> fetchProducts({bool includeInactive = false}) async {
     final rows = await db.query(
@@ -17,17 +17,19 @@ class ProductRepository {
       orderBy: 'name COLLATE NOCASE ASC',
     );
     return rows
-        .map((r) => Pizza(
-              name: r['name'] as String,
-              price: (r['price'] as num).toDouble(),
-              quantity: 0,
-              type: r['type'] as String,
-            ))
+        .map(
+          (r) => Pizza(
+            name: r['name'] as String,
+            price: (r['price'] as num).toDouble(),
+            quantity: 0,
+            type: r['type'] as String,
+          ),
+        )
         .toList();
   }
 
   /// Replaces all products in the database with the provided list.
-  /// 
+  ///
   /// This operation is atomic - either all products are replaced or none are.
   Future<void> replaceProducts(List<Pizza> pizzas) async {
     await db.transaction((txn) async {
@@ -44,7 +46,7 @@ class ProductRepository {
   }
 
   /// Inserts a product into the database.
-  /// 
+  ///
   /// Throws an exception if a product with the same name already exists.
   Future<void> insertProduct(Pizza pizza) async {
     await db.insert('products', {
@@ -59,10 +61,7 @@ class ProductRepository {
   Future<void> updateProduct(Pizza pizza) async {
     await db.update(
       'products',
-      {
-        'price': pizza.price,
-        'type': pizza.type,
-      },
+      {'price': pizza.price, 'type': pizza.type},
       where: 'name = ?',
       whereArgs: [pizza.name],
     );
@@ -70,11 +69,7 @@ class ProductRepository {
 
   /// Deletes a product from the database by name.
   Future<void> deleteProduct(String name) async {
-    await db.delete(
-      'products',
-      where: 'name = ?',
-      whereArgs: [name],
-    );
+    await db.delete('products', where: 'name = ?', whereArgs: [name]);
   }
 
   /// Marks a product as inactive without deleting it.

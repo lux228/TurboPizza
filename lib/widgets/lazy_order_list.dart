@@ -69,7 +69,7 @@ class _LazyOrderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     // Calcul du statut seulement au moment de l'affichage
     final statusInfo = orderService.getOrderStatus(order);
-    
+
     return OrderStatusCard(
       order: order,
       statusInfo: statusInfo,

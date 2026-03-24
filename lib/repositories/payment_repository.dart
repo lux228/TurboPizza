@@ -46,7 +46,7 @@ class PaymentRepository {
   }
 
   /// Inserts a payment and its items into the database.
-  /// 
+  ///
   /// This operation is atomic - either the payment and all its items are saved or none are.
   Future<void> insertPayment(Payment payment) async {
     await db.transaction((txn) async {
@@ -71,7 +71,7 @@ class PaymentRepository {
   }
 
   /// Replaces all payments in the database with the provided list.
-  /// 
+  ///
   /// This operation is atomic - either all payments are replaced or none are.
   Future<void> replacePayments(List<Payment> payments) async {
     await db.transaction((txn) async {
@@ -120,7 +120,7 @@ class PaymentRepository {
   }
 
   /// Fetches payments within a specific date range.
-  /// 
+  ///
   /// [start] is inclusive, [endExclusive] is exclusive.
   /// Results are ordered by date (oldest first).
   Future<List<Payment>> fetchPaymentsBetween({
@@ -130,7 +130,8 @@ class PaymentRepository {
     final startIso = start.toIso8601String();
     final endIso = endExclusive.toIso8601String();
 
-    final rows = await db.rawQuery('''
+    final rows = await db.rawQuery(
+      '''
       SELECT
         p.id AS payment_id,
         p.date,
@@ -145,13 +146,15 @@ class PaymentRepository {
       LEFT JOIN payment_items i ON i.payment_id = p.id
       WHERE p.date >= ? AND p.date < ?
       ORDER BY p.date ASC, p.id ASC, i.id ASC
-    ''', [startIso, endIso]);
+    ''',
+      [startIso, endIso],
+    );
 
     return _mapPaymentsFromJoinRows(rows);
   }
 
   /// Fetches payments for a date range using pagination.
-  /// 
+  ///
   /// [start] is inclusive, [endExclusive] is exclusive.
   /// Results are ordered by date (most recent first).
   Future<List<Payment>> fetchPaymentsPage({
@@ -163,7 +166,8 @@ class PaymentRepository {
     final startIso = start.toIso8601String();
     final endIso = endExclusive.toIso8601String();
 
-    final rows = await db.rawQuery('''
+    final rows = await db.rawQuery(
+      '''
       WITH paged AS (
         SELECT id, date, amount, payment_method
         FROM payments
@@ -184,13 +188,15 @@ class PaymentRepository {
       FROM paged p
       LEFT JOIN payment_items i ON i.payment_id = p.id
       ORDER BY p.date DESC, p.id DESC, i.id ASC
-    ''', [startIso, endIso, limit, offset]);
+    ''',
+      [startIso, endIso, limit, offset],
+    );
 
     return _mapPaymentsFromJoinRows(rows);
   }
 
   /// Returns totals by payment method for a date range.
-  /// 
+  ///
   /// The returned map uses payment_method as key and sum(amount) as value.
   Future<Map<String, double>> fetchTotalsByMethodBetween({
     required DateTime start,
@@ -199,12 +205,15 @@ class PaymentRepository {
     final startIso = start.toIso8601String();
     final endIso = endExclusive.toIso8601String();
 
-    final rows = await db.rawQuery('''
+    final rows = await db.rawQuery(
+      '''
       SELECT payment_method, SUM(amount) AS total
       FROM payments
       WHERE date >= ? AND date < ?
       GROUP BY payment_method
-    ''', [startIso, endIso]);
+    ''',
+      [startIso, endIso],
+    );
 
     final totals = <String, double>{};
     for (final row in rows) {
@@ -223,11 +232,14 @@ class PaymentRepository {
     final startIso = start.toIso8601String();
     final endIso = endExclusive.toIso8601String();
 
-    final rows = await db.rawQuery('''
+    final rows = await db.rawQuery(
+      '''
       SELECT SUM(amount) AS total
       FROM payments
       WHERE date >= ? AND date < ?
-    ''', [startIso, endIso]);
+    ''',
+      [startIso, endIso],
+    );
 
     if (rows.isEmpty) return 0.0;
     return (rows.first['total'] as num?)?.toDouble() ?? 0.0;
@@ -236,7 +248,11 @@ class PaymentRepository {
   /// Deletes a payment and all its items from the database.
   Future<void> deletePayment(int paymentId) async {
     await db.transaction((txn) async {
-      await txn.delete('payment_items', where: 'payment_id = ?', whereArgs: [paymentId]);
+      await txn.delete(
+        'payment_items',
+        where: 'payment_id = ?',
+        whereArgs: [paymentId],
+      );
       await txn.delete('payments', where: 'id = ?', whereArgs: [paymentId]);
     });
   }
@@ -255,17 +271,14 @@ class PaymentRepository {
 
     await db.update(
       'payments',
-      {
-        'payment_method': newMethod,
-        'fingerprint': fingerprint,
-      },
+      {'payment_method': newMethod, 'fingerprint': fingerprint},
       where: 'id = ?',
       whereArgs: [payment.id],
     );
   }
 
   /// Returns top products by quantity sold within a date range.
-  /// 
+  ///
   /// [limit] specifies the maximum number of products to return (default: 10).
   /// Returns a list of maps with keys: name, type, total_quantity, total_revenue.
   Future<List<Map<String, dynamic>>> fetchTopProductsByQuantity({
@@ -276,7 +289,8 @@ class PaymentRepository {
     final startIso = start.toIso8601String();
     final endIso = endExclusive.toIso8601String();
 
-    final rows = await db.rawQuery('''
+    final rows = await db.rawQuery(
+      '''
       SELECT 
         i.name,
         i.type,
@@ -288,13 +302,15 @@ class PaymentRepository {
       GROUP BY i.name, i.type
       ORDER BY total_quantity DESC
       LIMIT ?
-    ''', [startIso, endIso, limit]);
+    ''',
+      [startIso, endIso, limit],
+    );
 
     return rows;
   }
 
   /// Returns top products by revenue within a date range.
-  /// 
+  ///
   /// [limit] specifies the maximum number of products to return (default: 10).
   /// Returns a list of maps with keys: name, type, total_quantity, total_revenue.
   Future<List<Map<String, dynamic>>> fetchTopProductsByRevenue({
@@ -305,7 +321,8 @@ class PaymentRepository {
     final startIso = start.toIso8601String();
     final endIso = endExclusive.toIso8601String();
 
-    final rows = await db.rawQuery('''
+    final rows = await db.rawQuery(
+      '''
       SELECT 
         i.name,
         i.type,
@@ -317,13 +334,15 @@ class PaymentRepository {
       GROUP BY i.name, i.type
       ORDER BY total_revenue DESC
       LIMIT ?
-    ''', [startIso, endIso, limit]);
+    ''',
+      [startIso, endIso, limit],
+    );
 
     return rows;
   }
 
   /// Returns daily revenue totals within a date range.
-  /// 
+  ///
   /// Returns a list of maps with keys: date (YYYY-MM-DD string), total.
   Future<List<Map<String, dynamic>>> fetchDailyRevenue({
     required DateTime start,
@@ -332,7 +351,8 @@ class PaymentRepository {
     final startIso = start.toIso8601String();
     final endIso = endExclusive.toIso8601String();
 
-    final rows = await db.rawQuery('''
+    final rows = await db.rawQuery(
+      '''
       SELECT 
         DATE(date) AS date,
         SUM(amount) AS total
@@ -340,13 +360,15 @@ class PaymentRepository {
       WHERE date >= ? AND date < ?
       GROUP BY DATE(date)
       ORDER BY date ASC
-    ''', [startIso, endIso]);
+    ''',
+      [startIso, endIso],
+    );
 
     return rows;
   }
 
   /// Returns totals by pizza type within a date range.
-  /// 
+  ///
   /// The returned map uses type as key and map with quantity and revenue as value.
   Future<Map<String, Map<String, num>>> fetchTotalsByType({
     required DateTime start,
@@ -355,7 +377,8 @@ class PaymentRepository {
     final startIso = start.toIso8601String();
     final endIso = endExclusive.toIso8601String();
 
-    final rows = await db.rawQuery('''
+    final rows = await db.rawQuery(
+      '''
       SELECT 
         i.type,
         SUM(i.quantity) AS total_quantity,
@@ -364,7 +387,9 @@ class PaymentRepository {
       JOIN payments p ON p.id = i.payment_id
       WHERE p.date >= ? AND p.date < ?
       GROUP BY i.type
-    ''', [startIso, endIso]);
+    ''',
+      [startIso, endIso],
+    );
 
     final totals = <String, Map<String, num>>{};
     for (final row in rows) {

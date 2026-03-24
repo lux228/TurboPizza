@@ -18,23 +18,23 @@ class Payment {
   });
 
   Map<String, dynamic> toJson() => {
-        // Keep original JSON keys for backward compatibility
-        'date': date.toIso8601String(),
-        'montant': amount,
-        'modeReglement': paymentMethod,
-        'articles': items.map((pizza) => pizza.toJson()).toList(),
-      };
+    // Keep original JSON keys for backward compatibility
+    'date': date.toIso8601String(),
+    'montant': amount,
+    'modeReglement': paymentMethod,
+    'articles': items.map((pizza) => pizza.toJson()).toList(),
+  };
 
-    static Payment fromJson(Map<String, dynamic> json) => Payment(
-      date: DateTime.parse(json['date']),
-      amount: (json['montant'] as num).toDouble(),
-      paymentMethod: json['modeReglement'],
-      items: json['articles'] != null
+  static Payment fromJson(Map<String, dynamic> json) => Payment(
+    date: DateTime.parse(json['date']),
+    amount: (json['montant'] as num).toDouble(),
+    paymentMethod: json['modeReglement'],
+    items: json['articles'] != null
         ? (json['articles'] as List)
-          .map((item) => Pizza.fromJson(item))
-          .toList()
+              .map((item) => Pizza.fromJson(item))
+              .toList()
         : [],
-      );
+  );
 
   Payment copyWith({
     int? id,
@@ -67,12 +67,12 @@ class Payment {
 
   @override
   int get hashCode => Object.hash(
-        date,
-        amount,
-        paymentMethod,
-        Object.hashAll(items),
-        isSelected,
-      );
+    date,
+    amount,
+    paymentMethod,
+    Object.hashAll(items),
+    isSelected,
+  );
 
   // Simple list equality to avoid importing collection just for this
   static bool _listEquals<T>(List<T> a, List<T> b) {
