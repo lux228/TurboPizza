@@ -100,6 +100,12 @@ class OrderService extends ChangeNotifier {
     required double amount,
     required String pickupTime,
   }) async {
+    if (items.isEmpty) {
+      throw const EmptyOrderItemsException();
+    }
+    if (amount <= 0) {
+      throw InvalidOrderAmountException(amount);
+    }
     if (!TimeValidator.isValidHHmm(pickupTime)) {
       throw InvalidPickupTimeException(pickupTime);
     }

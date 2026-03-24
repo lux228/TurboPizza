@@ -5,6 +5,10 @@ class AppStrings {
   static const String orderOnHoldMessage = "Commande mise en attente";
   static const String invalidPickupTimeMessage =
       "Horaire invalide. Merci de sélectionner un créneau valide.";
+  static const String emptyOrderItemsMessage =
+      "Commande vide. Ajoutez au moins un article.";
+  static const String invalidOrderAmountMessage =
+      "Montant invalide. Vérifiez la commande.";
   static const String orderValidatedMessage = "Commande validée et encaissée";
   static const String orderCancelledMessage = "Commande annulée";
   static const String orderBackToCompositionMessage =

@@ -125,6 +125,31 @@ void main() {
       );
     });
 
+    test('createOrder rejects empty order items', () async {
+      final service = OrderService();
+
+      expect(
+        () => service.createOrder(
+          items: const [],
+          amount: 10.0,
+          pickupTime: '18:00',
+        ),
+        throwsA(isA<EmptyOrderItemsException>()),
+      );
+    });
+
+    test('createOrder rejects non-positive amount', () async {
+      final service = OrderService();
+      final items = [
+        Pizza(name: 'Margherita', price: 10.0, quantity: 1, type: 'Tomate'),
+      ];
+
+      expect(
+        () => service.createOrder(items: items, amount: 0, pickupTime: '18:00'),
+        throwsA(isA<InvalidOrderAmountException>()),
+      );
+    });
+
     test('createOrder generates unique UUID v4 ids', () async {
       final service = OrderService();
       final items = [

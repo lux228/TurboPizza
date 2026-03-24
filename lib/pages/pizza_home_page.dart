@@ -308,6 +308,22 @@ class _PizzaHomePageState extends State<PizzaHomePage>
           type: AppSnackBarType.error,
         );
         return;
+      } on EmptyOrderItemsException {
+        if (!mounted) return;
+        showAppSnackBar(
+          context,
+          AppStrings.emptyOrderItemsMessage,
+          type: AppSnackBarType.warning,
+        );
+        return;
+      } on InvalidOrderAmountException {
+        if (!mounted) return;
+        showAppSnackBar(
+          context,
+          AppStrings.invalidOrderAmountMessage,
+          type: AppSnackBarType.warning,
+        );
+        return;
       }
 
       _resetEditingFlow(cartService);
