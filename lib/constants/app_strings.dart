@@ -90,6 +90,24 @@ class AppStrings {
       "Tous les boutons sont visibles (Pizza, Spécialités, Desserts, Boissons).";
   static const String categoryButtonsHiddenDescription =
       "Tous les boutons sont masqués.";
+  static const String orderThresholdsSettingsTitle =
+      "Seuils de statut des commandes";
+  static const String orderThresholdsSettingsDescription =
+      "Valeurs en minutes par rapport à l'heure prévue.";
+  static const String thresholdLateLabel = "Retard";
+  static const String thresholdSlightlyLateLabel = "Légèrement en retard";
+  static const String thresholdOnTimeLabel = "À l'heure";
+  static const String thresholdComingSoonLabel = "Bientôt là";
+  static const String saveThresholdsButtonLabel = "Sauvegarder les seuils";
+  static const String resetThresholdsButtonLabel =
+      "Réinitialiser par défaut";
+  static const String thresholdsSavedMessage = "Seuils sauvegardés.";
+  static const String thresholdsResetMessage =
+      "Seuils réinitialisés aux valeurs par défaut.";
+  static const String thresholdsInvalidMessage =
+      "Ordre invalide: Retard < Légèrement en retard < À l'heure <= Bientôt là.";
+  static const String thresholdsInvalidNumberMessage =
+      "Veuillez saisir des nombres entiers valides.";
   static const String dbExportSuccessPrefix = "Base exportée vers";
   static const String exportFailedPrefix = "Export échoué:";
   static const String importSuccessMessage =

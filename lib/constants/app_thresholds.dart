@@ -1,5 +1,6 @@
 class AppThresholds {
-  static const int lateMinutes = -10;
-  static const int slightlyLateMinutes = -5;
-  static const int comingSoonMinutes = 10;
+  static const int defaultLateMinutes = -10;
+  static const int defaultSlightlyLateMinutes = -5;
+  static const int defaultOnTimeMinutes = 0;
+  static const int defaultComingSoonMinutes = 10;
 }
