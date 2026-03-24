@@ -16,8 +16,6 @@ concurrency:
 # Permissions nécessaires pour GitHub Pages et Releases
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 jobs:
   test:
@@ -50,7 +48,7 @@ jobs:
   build-windows:
     needs: test
     runs-on: windows-latest
-    if: github.event_name == 'release'
+    if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.event_name == 'release'
     timeout-minutes: 40
     
     steps:
@@ -73,49 +71,21 @@ jobs:
         
       - name: Build Windows
         run: flutter build windows --release
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TurboPizza-Windows-${{ github.sha }}
+          path: build/windows/x64/runner/Release/
         
       - name: Create Windows ZIP
+        if: github.event_name == 'release'
         run: |
           cd build/windows/x64/runner/Release
           7z a -tzip ../../../../../TurboPizza-Windows-${{ github.event.release.tag_name }}.zip *
         
       - name: Upload Windows ZIP to Release
+        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
           files: TurboPizza-Windows-${{ github.event.release.tag_name }}.zip
-
-  build-web:
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    timeout-minutes: 30
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.38.7'
-          cache: true
-          
-      - name: Disable Flutter analytics
-        run: flutter config --no-analytics
-          
-      - name: Install dependencies
-        run: flutter pub get
-        
-      - name: Build Web
-        run: flutter build web --release
-        
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-        
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: './build/web'
-          
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
