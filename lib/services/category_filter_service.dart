@@ -1,16 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../constants/app_categories.dart';
 
 class CategoryFilterService extends ChangeNotifier {
   static const String _showTopCategoryButtonsKey = 'show_top_category_buttons';
 
-  final Set<String> _enabledTopCategories = AppCategories.topCategoryIds
-      .toSet();
   bool _showTopCategoryButtons = true;
   bool _loaded = false;
 
-  Set<String> get enabledTopCategories => _enabledTopCategories;
   bool get showTopCategoryButtons => _showTopCategoryButtons;
   bool get isLoaded => _loaded;
 

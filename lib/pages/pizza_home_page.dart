@@ -112,15 +112,39 @@ class _PizzaHomePageState extends State<PizzaHomePage>
     }
   }
 
-  List<Pizza> _getFilteredPizzas(
-    Set<String> enabledTopCategories,
-    bool showTopCategoryButtons,
-  ) {
+  void _resetEditingFlow(CartService cartService) {
+    _isEditingOrderFlow = false;
+    _editedOrderInitialPickupTime = null;
+    cartService.clearLastPickupTime();
+  }
+
+  void _startEditingFlow(PendingOrder order, CartService cartService) {
+    _isEditingOrderFlow = true;
+    _editedOrderInitialPickupTime = order.plannedPickupTime;
+    cartService.setLastPickupTime(order.plannedPickupTime);
+  }
+
+  Future<String?> _showPickupDialog({String? initialTime}) {
+    return showDialog<String>(
+      context: context,
+      builder: (BuildContext context) =>
+          PickupTimeDialog(initialTime: initialTime),
+    );
+  }
+
+  Future<void> _replaceOrderKeepingIdentity(
+    PendingOrder sourceOrder,
+    String pickupTime,
+  ) async {
+    final orderService = context.read<OrderService>();
+    final updatedOrder = sourceOrder.copyWith(plannedPickupTime: pickupTime);
+    await orderService.removeOrder(sourceOrder.id);
+    await orderService.addOrder(updatedOrder);
+  }
+
+  List<Pizza> _getFilteredPizzas(bool showTopCategoryButtons) {
     if (!showTopCategoryButtons) return availablePizzas;
     if (_selectedTopCategoryId == null) return availablePizzas;
-    if (!enabledTopCategories.contains(_selectedTopCategoryId)) {
-      return availablePizzas;
-    }
 
     final categoryTypes =
         AppCategories.topCategoryTypeMap[_selectedTopCategoryId] ??
@@ -231,9 +255,7 @@ class _PizzaHomePageState extends State<PizzaHomePage>
 
       // Nettoyage du panier
       cartService.clear();
-      _isEditingOrderFlow = false;
-      _editedOrderInitialPickupTime = null;
-      cartService.clearLastPickupTime();
+      _resetEditingFlow(cartService);
       if (showCurrentOrder) {
         _animationController.reverse().then((_) {
           if (mounted) {
@@ -264,10 +286,8 @@ class _PizzaHomePageState extends State<PizzaHomePage>
         ? _editedOrderInitialPickupTime
         : null;
 
-    String? selectedTime = await showDialog<String>(
-      context: context,
-      builder: (BuildContext context) =>
-          PickupTimeDialog(initialTime: initialPickupTime),
+    String? selectedTime = await _showPickupDialog(
+      initialTime: initialPickupTime,
     );
 
     if (!mounted) return;
@@ -279,9 +299,7 @@ class _PizzaHomePageState extends State<PizzaHomePage>
         pickupTime: selectedTime,
       );
 
-      _isEditingOrderFlow = false;
-      _editedOrderInitialPickupTime = null;
-      cartService.clearLastPickupTime();
+      _resetEditingFlow(cartService);
 
       cartService.clear();
       if (showCurrentOrder) {
@@ -346,7 +364,7 @@ class _PizzaHomePageState extends State<PizzaHomePage>
     if (!cartService.isEmpty && showCurrentOrder) {
       showAppSnackBar(
         context,
-        'Terminez d\'abord la modification en cours (mettre en attente ou encaisser).',
+        AppStrings.editInProgressWarningMessage,
         type: AppSnackBarType.warning,
       );
       return;
@@ -356,9 +374,7 @@ class _PizzaHomePageState extends State<PizzaHomePage>
     cartService.loadFromOrder(order.items);
 
     // Mémoriser qu'on est en mode édition pour pré-remplir au prochain "Mise en attente".
-    _isEditingOrderFlow = true;
-    _editedOrderInitialPickupTime = order.plannedPickupTime;
-    cartService.setLastPickupTime(order.plannedPickupTime);
+    _startEditingFlow(order, cartService);
 
     // Afficher la commande en cours avec animation
     if (!showCurrentOrder) {
@@ -382,30 +398,19 @@ class _PizzaHomePageState extends State<PizzaHomePage>
 
   // Nouvelle méthode pour modifier uniquement l'horaire d'une commande
   void changeOrderTime(PendingOrder order) async {
-    final selectedTime = await showDialog<String>(
-      context: context,
-      builder: (BuildContext context) =>
-          PickupTimeDialog(initialTime: order.plannedPickupTime),
+    final selectedTime = await _showPickupDialog(
+      initialTime: order.plannedPickupTime,
     );
 
     if (!mounted) return;
     if (selectedTime != null) {
-      final orderService = context.read<OrderService>();
-
-      // Créer une nouvelle commande avec le nouvel horaire
-      final updatedOrder = order.copyWith(
-        id: DateTime.now().millisecondsSinceEpoch.toString(), // Nouvel ID
-        plannedPickupTime: selectedTime,
-      );
-
-      // Supprimer l'ancienne commande et ajouter la nouvelle
-      await orderService.removeOrder(order.id);
-      await orderService.addOrder(updatedOrder);
+      if (selectedTime == order.plannedPickupTime) return;
+      await _replaceOrderKeepingIdentity(order, selectedTime);
 
       if (mounted) {
         showAppSnackBar(
           context,
-          'Horaire modifié : $selectedTime',
+          '${AppStrings.orderTimeUpdatedPrefix} $selectedTime',
           type: AppSnackBarType.info,
         );
       }
@@ -430,7 +435,7 @@ class _PizzaHomePageState extends State<PizzaHomePage>
             : size.height * 0.7;
         return AlertDialog(
           title: Text(
-            'Aperçu de la commande',
+            AppStrings.orderPreviewTitle,
             style: textStyles.title.copyWith(fontWeight: FontWeight.bold),
           ),
           content: SizedBox(
@@ -441,21 +446,21 @@ class _PizzaHomePageState extends State<PizzaHomePage>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Heure de composition : $formattedCompositionTime',
+                  '${AppStrings.compositionTimePrefix} $formattedCompositionTime',
                   style: textStyles.subtitle.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Heure de récupération prévue : ${order.plannedPickupTime}',
+                  '${AppStrings.plannedPickupTimePrefix} ${order.plannedPickupTime}',
                   style: textStyles.subtitle.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Articles commandés :',
+                  AppStrings.orderedItemsTitle,
                   style: textStyles.subtitle.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -478,7 +483,7 @@ class _PizzaHomePageState extends State<PizzaHomePage>
                         ),
                         SizedBox(width: 8),
                         Text(
-                          'Aucun article enregistré pour cette commande',
+                          AppStrings.noItemsForOrderMessage,
                           style: textStyles.caption.copyWith(
                             fontStyle: FontStyle.italic,
                             color: colorScheme.onSurface.withValues(alpha: 0.7),
@@ -589,7 +594,7 @@ class _PizzaHomePageState extends State<PizzaHomePage>
                   ),
                 SizedBox(height: 16),
                 Text(
-                  'Montant total : ${formatPrice(order.amount)}',
+                  '${AppStrings.totalAmountPrefix} ${formatPrice(order.amount)}',
                   style: textStyles.body.copyWith(fontWeight: FontWeight.w600),
                 ),
               ],
@@ -598,7 +603,7 @@ class _PizzaHomePageState extends State<PizzaHomePage>
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text('Fermer', style: textStyles.body),
+              child: Text(AppStrings.closeLabel, style: textStyles.body),
             ),
           ],
         );
@@ -614,19 +619,19 @@ class _PizzaHomePageState extends State<PizzaHomePage>
         final textStyles = context.appTextStyles;
         final colorScheme = Theme.of(context).colorScheme;
         return AlertDialog(
-          title: const Text('Confirmer l\'annulation'),
+          title: const Text(AppStrings.orderCancellationConfirmTitle),
           content: Text(
-            'Êtes-vous sûr de vouloir annuler cette commande ?\n\nHeure de récupération : ${order.plannedPickupTime}\nMontant : ${formatPrice(order.amount)}',
+            '${AppStrings.orderCancellationConfirmQuestion}\n\n${AppStrings.pickupTimePrefix} ${order.plannedPickupTime}\n${AppStrings.amountPrefix} ${formatPrice(order.amount)}',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: Text('Non', style: textStyles.body),
+              child: Text(AppStrings.noLabel, style: textStyles.body),
             ),
             TextButton(
               style: TextButton.styleFrom(foregroundColor: colorScheme.error),
               onPressed: () => Navigator.of(context).pop(true),
-              child: Text('Oui, annuler', style: textStyles.body),
+              child: Text(AppStrings.yesCancelLabel, style: textStyles.body),
             ),
           ],
         );
@@ -653,20 +658,20 @@ class _PizzaHomePageState extends State<PizzaHomePage>
     final textStyles = context.appTextStyles;
     final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('TurboPizza')),
+      appBar: AppBar(title: const Text(AppStrings.appTitle)),
       drawer: Drawer(
         child: ListView(
           children: <Widget>[
             DrawerHeader(
               decoration: BoxDecoration(color: colors.primaryBlue),
               child: Text(
-                'Menu',
+                AppStrings.appMenuTitle,
                 style: textStyles.header.copyWith(color: colorScheme.onPrimary),
               ),
             ),
             ListTile(
               leading: const Icon(Icons.manage_accounts),
-              title: const Text('Gestion des produits'),
+              title: const Text(AppStrings.productManagementTitle),
               onTap: () {
                 Navigator.pop(context);
                 openPizzaManagementPage();
@@ -674,7 +679,7 @@ class _PizzaHomePageState extends State<PizzaHomePage>
             ),
             ListTile(
               leading: const Icon(Icons.history),
-              title: const Text('Historique des encaissements'),
+              title: const Text(AppStrings.paymentHistoryTitle),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -687,7 +692,7 @@ class _PizzaHomePageState extends State<PizzaHomePage>
             ),
             ListTile(
               leading: const Icon(Icons.bar_chart),
-              title: const Text('Statistiques de vente'),
+              title: const Text(AppStrings.salesStatisticsTitle),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -700,7 +705,7 @@ class _PizzaHomePageState extends State<PizzaHomePage>
             ),
             ListTile(
               leading: const Icon(Icons.settings),
-              title: const Text('Paramètres'),
+              title: const Text(AppStrings.settingsMenuLabel),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -724,7 +729,7 @@ class _PizzaHomePageState extends State<PizzaHomePage>
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
                 child: Text(
-                  'Fenetre trop petite. Agrandissez la fenetre pour un affichage correct.',
+                  AppStrings.homeWindowTooSmallMessage,
                   textAlign: TextAlign.center,
                   style: textStyles.subtitle.copyWith(
                     color: colorScheme.onSurface.withValues(alpha: 0.7),
@@ -739,7 +744,6 @@ class _PizzaHomePageState extends State<PizzaHomePage>
             child: Consumer<CategoryFilterService>(
               builder: (context, categoryFilterService, child) {
                 final filteredPizzas = _getFilteredPizzas(
-                  categoryFilterService.enabledTopCategories,
                   categoryFilterService.showTopCategoryButtons,
                 );
                 return Column(
@@ -818,7 +822,7 @@ class _PizzaHomePageState extends State<PizzaHomePage>
                             child: Column(
                               children: [
                                 Text(
-                                  'COMMANDES EN ATTENTE',
+                                  AppStrings.pendingOrdersHeader,
                                   style: textStyles.subtitle.copyWith(
                                     fontWeight: FontWeight.bold,
                                     color: colorScheme.onSurface,
@@ -865,7 +869,7 @@ class _PizzaHomePageState extends State<PizzaHomePage>
                                         ),
                                   );
                                 },
-                                tooltip: 'Calculatrice',
+                                tooltip: AppStrings.calculatorTooltip,
                                 iconSize: 24,
                                 color: colors.primaryBlue,
                               );

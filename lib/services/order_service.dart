@@ -2,14 +2,10 @@ import 'package:flutter/material.dart';
 import '../models/pending_order.dart';
 import '../models/pizza.dart';
 import '../utils/storage_service.dart';
+import '../constants/app_strings.dart';
 import '../constants/app_thresholds.dart';
 
-enum OrderStatus {
-  onTime,
-  comingSoon,
-  slightlyLate,
-  late,
-}
+enum OrderStatus { onTime, comingSoon, slightlyLate, late }
 
 class OrderStatusInfo {
   final OrderStatus status;
@@ -25,11 +21,11 @@ class OrderStatusInfo {
 
 class OrderService extends ChangeNotifier {
   List<PendingOrder> _orders = [];
-  
+
   List<PendingOrder> get orders => List.unmodifiable(_orders);
-  
+
   bool get hasOrders => _orders.isNotEmpty;
-  
+
   int get orderCount => _orders.length;
 
   Future<void> loadOrders() async {
@@ -71,25 +67,25 @@ class OrderService extends ChangeNotifier {
     if (difference < AppThresholds.lateMinutes) {
       return OrderStatusInfo(
         status: OrderStatus.late,
-        statusText: 'En retard',
+        statusText: AppStrings.orderStatusLate,
         icon: Icons.warning,
       );
     } else if (difference < AppThresholds.slightlyLateMinutes) {
       return OrderStatusInfo(
         status: OrderStatus.slightlyLate,
-        statusText: 'Légèrement en retard',
+        statusText: AppStrings.orderStatusSlightlyLate,
         icon: Icons.access_time,
       );
     } else if (difference <= AppThresholds.comingSoonMinutes) {
       return OrderStatusInfo(
         status: OrderStatus.comingSoon,
-        statusText: 'Bientôt là',
+        statusText: AppStrings.orderStatusComingSoon,
         icon: Icons.schedule,
       );
     } else {
       return OrderStatusInfo(
         status: OrderStatus.onTime,
-        statusText: 'À l\'heure',
+        statusText: AppStrings.orderStatusOnTime,
         icon: Icons.check_circle,
       );
     }

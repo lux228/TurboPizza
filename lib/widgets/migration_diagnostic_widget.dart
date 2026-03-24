@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
+import '../constants/app_strings.dart';
 import '../utils/migration_utility.dart';
 import '../utils/snack_bar_utils.dart';
 import '../theme/app_theme.dart';
 
 /// Debug widget to display migration diagnostic information.
-/// 
+///
 /// This widget can be added to the settings page or debug menu
 /// to help users and developers understand the migration status.
 class MigrationDiagnosticWidget extends StatefulWidget {
   const MigrationDiagnosticWidget({super.key});
 
   @override
-  State<MigrationDiagnosticWidget> createState() => _MigrationDiagnosticWidgetState();
+  State<MigrationDiagnosticWidget> createState() =>
+      _MigrationDiagnosticWidgetState();
 }
 
 class _MigrationDiagnosticWidgetState extends State<MigrationDiagnosticWidget> {
@@ -51,18 +53,17 @@ class _MigrationDiagnosticWidgetState extends State<MigrationDiagnosticWidget> {
     return Card(
       child: ExpansionTile(
         leading: const Icon(Icons.info_outline),
-        title: const Text('État de la migration'),
+        title: const Text(AppStrings.migrationStatusTitle),
         subtitle: _diagnostic != null
-            ? Text(_diagnostic!.isMigrationCompleted
-                ? '✅ Migration complétée'
-                : '⚠️ Migration en attente',
-                style: textStyles.caption)
+            ? Text(
+                _diagnostic!.isMigrationCompleted
+                    ? AppStrings.migrationCompletedEmojiLabel
+                    : AppStrings.migrationPendingEmojiLabel,
+                style: textStyles.caption,
+              )
             : null,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: _buildContent(),
-          ),
+          Padding(padding: const EdgeInsets.all(16.0), child: _buildContent()),
         ],
       ),
     );
@@ -82,20 +83,20 @@ class _MigrationDiagnosticWidgetState extends State<MigrationDiagnosticWidget> {
       return Column(
         children: [
           Text(
-            'Erreur: $_error',
+            '${AppStrings.errorPrefix} $_error',
             style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
           const SizedBox(height: 8),
           ElevatedButton(
             onPressed: _loadDiagnostic,
-            child: const Text('Réessayer'),
+            child: const Text(AppStrings.retryLabel),
           ),
         ],
       );
     }
 
     if (_diagnostic == null) {
-      return const Text('Aucune information disponible');
+      return const Text(AppStrings.noInfoAvailableMessage);
     }
 
     return Column(
@@ -103,16 +104,16 @@ class _MigrationDiagnosticWidgetState extends State<MigrationDiagnosticWidget> {
       children: [
         _buildStatusSection(),
         const SizedBox(height: 16),
-        _buildDataSection('Données legacy (SharedPreferences)', [
-          'Produits: ${_diagnostic!.legacyDataCounts.products}',
-          'Paiements: ${_diagnostic!.legacyDataCounts.payments}',
-          'Commandes: ${_diagnostic!.legacyDataCounts.pendingOrders}',
+        _buildDataSection(AppStrings.legacyDataSectionTitle, [
+          '${AppStrings.productsPrefix} ${_diagnostic!.legacyDataCounts.products}',
+          '${AppStrings.paymentsPrefix} ${_diagnostic!.legacyDataCounts.payments}',
+          '${AppStrings.ordersPrefix} ${_diagnostic!.legacyDataCounts.pendingOrders}',
         ]),
         const SizedBox(height: 16),
-        _buildDataSection('Données actuelles (SQLite)', [
-          'Produits: ${_diagnostic!.currentDataCounts.products}',
-          'Paiements: ${_diagnostic!.currentDataCounts.payments}',
-          'Commandes: ${_diagnostic!.currentDataCounts.pendingOrders}',
+        _buildDataSection(AppStrings.currentDataSectionTitle, [
+          '${AppStrings.productsPrefix} ${_diagnostic!.currentDataCounts.products}',
+          '${AppStrings.paymentsPrefix} ${_diagnostic!.currentDataCounts.payments}',
+          '${AppStrings.ordersPrefix} ${_diagnostic!.currentDataCounts.pendingOrders}',
         ]),
         const SizedBox(height: 16),
         _buildActions(),
@@ -150,19 +151,26 @@ class _MigrationDiagnosticWidgetState extends State<MigrationDiagnosticWidget> {
               const SizedBox(width: 8),
               Text(
                 _diagnostic!.isMigrationCompleted
-                    ? 'Migration complétée'
-                    : 'Migration non effectuée',
-                style: textStyles.subtitle.copyWith(fontWeight: FontWeight.bold),
+                    ? AppStrings.migrationCompletedLabel
+                    : AppStrings.migrationNotCompletedLabel,
+                style: textStyles.subtitle.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
           if (stats != null) ...[
             const SizedBox(height: 8),
-            Text('Date: ${stats.migrationDate.toLocal()}',
-                style: textStyles.caption),
-            Text('${stats.productsCount} produits, ${stats.paymentsCount} paiements, '
-                '${stats.pendingOrdersCount} commandes migrées',
-                style: textStyles.caption),
+            Text(
+              '${AppStrings.datePrefix} ${stats.migrationDate.toLocal()}',
+              style: textStyles.caption,
+            ),
+            Text(
+              '${stats.productsCount} ${AppStrings.productsWord}, '
+              '${stats.paymentsCount} ${AppStrings.paymentsWord}, '
+              '${stats.pendingOrdersCount} ${AppStrings.migratedCountsSuffix}',
+              style: textStyles.caption,
+            ),
           ],
         ],
       ),
@@ -179,10 +187,12 @@ class _MigrationDiagnosticWidgetState extends State<MigrationDiagnosticWidget> {
           style: textStyles.subtitle.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 4),
-        ...items.map((item) => Padding(
-              padding: const EdgeInsets.only(left: 16, top: 2),
-              child: Text('• $item', style: textStyles.body),
-            )),
+        ...items.map(
+          (item) => Padding(
+            padding: const EdgeInsets.only(left: 16, top: 2),
+            child: Text('• $item', style: textStyles.body),
+          ),
+        ),
       ],
     );
   }
@@ -194,20 +204,20 @@ class _MigrationDiagnosticWidgetState extends State<MigrationDiagnosticWidget> {
         if (_diagnostic!.hasLegacyData && !_diagnostic!.isMigrationCompleted)
           ElevatedButton.icon(
             icon: const Icon(Icons.sync),
-            label: const Text('Forcer la migration'),
+            label: const Text(AppStrings.forceMigrationLabel),
             onPressed: _forceMigration,
           ),
         const SizedBox(height: 8),
         if (_diagnostic!.hasLegacyData && _diagnostic!.isMigrationCompleted)
           ElevatedButton.icon(
             icon: const Icon(Icons.delete_outline),
-            label: const Text('Nettoyer les données legacy'),
+            label: const Text(AppStrings.cleanLegacyDataLabel),
             onPressed: _clearLegacyData,
           ),
         const SizedBox(height: 8),
         OutlinedButton.icon(
           icon: const Icon(Icons.refresh),
-          label: const Text('Actualiser'),
+          label: const Text(AppStrings.refreshLabel),
           onPressed: _loadDiagnostic,
         ),
       ],
@@ -218,18 +228,16 @@ class _MigrationDiagnosticWidgetState extends State<MigrationDiagnosticWidget> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Forcer la migration'),
-        content: const Text(
-            'Cette action va migrer les données de SharedPreferences vers SQLite. '
-            'Continuer ?'),
+        title: const Text(AppStrings.forceMigrationLabel),
+        content: const Text(AppStrings.forceMigrationContent),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler'),
+            child: const Text(AppStrings.cancelLabel),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Migrer'),
+            child: const Text(AppStrings.migrateLabel),
           ),
         ],
       ),
@@ -243,9 +251,9 @@ class _MigrationDiagnosticWidgetState extends State<MigrationDiagnosticWidget> {
         showAppSnackBar(
           context,
           stats != null
-              ? 'Migration réussie: ${stats.productsCount} produits, '
-                  '${stats.paymentsCount} paiements'
-              : 'Migration ignorée (déjà effectuée)',
+              ? '${AppStrings.forceMigrationSuccessPrefix} ${stats.productsCount} ${AppStrings.productsWord}, '
+                    '${stats.paymentsCount} ${AppStrings.paymentsWord}'
+              : AppStrings.forceMigrationSkippedMessage,
           type: AppSnackBarType.success,
         );
         await _loadDiagnostic();
@@ -254,7 +262,7 @@ class _MigrationDiagnosticWidgetState extends State<MigrationDiagnosticWidget> {
       if (mounted) {
         showAppSnackBar(
           context,
-          'Erreur: $e',
+          '${AppStrings.errorPrefix} $e',
           type: AppSnackBarType.error,
         );
       }
@@ -265,22 +273,17 @@ class _MigrationDiagnosticWidgetState extends State<MigrationDiagnosticWidget> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Nettoyer les données legacy'),
-        content: const Text(
-            'Cette action va supprimer définitivement les données stockées dans '
-            'SharedPreferences. Assurez-vous que la migration est complète.\n\n'
-            'Cette action est irréversible !'),
+        title: const Text(AppStrings.cleanLegacyDataLabel),
+        content: const Text(AppStrings.cleanLegacyDataContent),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler'),
+            child: const Text(AppStrings.cancelLabel),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
-            child: const Text('Supprimer'),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text(AppStrings.deleteLabel),
           ),
         ],
       ),
@@ -293,7 +296,7 @@ class _MigrationDiagnosticWidgetState extends State<MigrationDiagnosticWidget> {
       if (mounted) {
         showAppSnackBar(
           context,
-          'Données legacy supprimées',
+          AppStrings.legacyDataDeletedMessage,
           type: AppSnackBarType.success,
         );
         await _loadDiagnostic();
@@ -302,7 +305,7 @@ class _MigrationDiagnosticWidgetState extends State<MigrationDiagnosticWidget> {
       if (mounted) {
         showAppSnackBar(
           context,
-          'Erreur: $e',
+          '${AppStrings.errorPrefix} $e',
           type: AppSnackBarType.error,
         );
       }
