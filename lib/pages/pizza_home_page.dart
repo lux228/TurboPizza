@@ -247,6 +247,17 @@ class _PizzaHomePageState extends State<PizzaHomePage>
   // Méthode pour modifier une commande en attente
   void editOrderOnHold(PendingOrder order) async {
     final cartService = context.read<CartService>();
+
+    // Évite d'écraser une modification déjà en cours dans le panier.
+    if (!cartService.isEmpty && showCurrentOrder) {
+      showAppSnackBar(
+        context,
+        'Terminez d\'abord la modification en cours (mettre en attente ou encaisser).',
+        type: AppSnackBarType.warning,
+      );
+      return;
+    }
+
     // Remettre la commande dans le panier
     cartService.loadFromOrder(order.items);
 
