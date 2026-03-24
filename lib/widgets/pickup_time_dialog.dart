@@ -4,7 +4,7 @@ import '../theme/app_theme.dart';
 
 class PickupTimeDialog extends StatefulWidget {
   final String? initialTime;
-  
+
   const PickupTimeDialog({super.key, this.initialTime});
 
   @override
@@ -12,94 +12,144 @@ class PickupTimeDialog extends StatefulWidget {
 }
 
 class _PickupTimeDialogState extends State<PickupTimeDialog> {
-  late FixedExtentScrollController _hourController;
-  late FixedExtentScrollController _minuteController;
   late int selectedHour;
   late int selectedMinute;
   String? selectedTime;
+  static const List<int> _minuteOptions = [0, 10, 20, 30, 40, 50];
 
   @override
   void initState() {
     super.initState();
-    
-    if (widget.initialTime != null) {
-      // Utiliser l'horaire initial fourni
-      final parts = widget.initialTime!.split(':');
-      if (parts.length == 2) {
-        selectedHour = int.tryParse(parts[0]) ?? DateTime.now().hour;
-        selectedMinute = int.tryParse(parts[1]) ?? 0;
-        // S'assurer que les minutes sont un multiple de 5
-        selectedMinute = (selectedMinute ~/ 5) * 5;
-      } else {
-        _initializeWithCurrentTime();
-      }
-    } else {
-      _initializeWithCurrentTime();
-    }
-    
-    // Initialiser les contrôleurs de défilement
-    _hourController = FixedExtentScrollController(initialItem: selectedHour);
-    _minuteController = FixedExtentScrollController(initialItem: selectedMinute ~/ 5);
-    
-    _updateSelectedTime();
-  }
-  
-  void _initializeWithCurrentTime() {
-    // Initialiser avec l'heure actuelle + 5 minutes minimum
-    DateTime now = DateTime.now();
-    DateTime futureTime = now.add(const Duration(minutes: 5));
-    selectedHour = futureTime.hour;
-    selectedMinute = futureTime.minute;
-    // Arrondir les minutes au multiple de 5 suivant
-    selectedMinute = ((selectedMinute / 5).ceil() * 5) % 60;
-    if (selectedMinute == 0) {
-      selectedMinute = 0;
-      selectedHour = (selectedHour + 1) % 24;
-    }
-    // S'assurer qu'on ne dépasse pas minuit
-    if (selectedHour >= 24) {
-      selectedHour = 23;
-      selectedMinute = 55;
-    }
+    _initializeSelection();
   }
 
-  @override
-  void dispose() {
-    _hourController.dispose();
-    _minuteController.dispose();
-    super.dispose();
+  void _initializeSelection() {
+    final slotsByHour = _buildAvailableSlotsByHour();
+    final firstSlot = _firstAvailableSlot(slotsByHour);
+
+    if (firstSlot == null) {
+      selectedHour = 0;
+      selectedMinute = 0;
+      selectedTime = null;
+      return;
+    }
+
+    final initialSlot = _parseInitialSlot();
+    if (initialSlot != null &&
+        _isSlotAvailable(initialSlot.hour, initialSlot.minute, slotsByHour)) {
+      selectedHour = initialSlot.hour;
+      selectedMinute = initialSlot.minute;
+    } else {
+      selectedHour = firstSlot.hour;
+      selectedMinute = firstSlot.minute;
+    }
+
+    _updateSelectedTime();
   }
 
   void _updateSelectedTime() {
-    selectedTime = '${selectedHour.toString().padLeft(2, '0')}:${selectedMinute.toString().padLeft(2, '0')}';
+    selectedTime =
+        '${selectedHour.toString().padLeft(2, '0')}:${selectedMinute.toString().padLeft(2, '0')}';
   }
 
-  void _validateTimeSelection() {
-    DateTime now = DateTime.now();
-    // Si on sélectionne l'heure actuelle, s'assurer que les minutes sont dans le futur
-    if (selectedHour == now.hour) {
-      int minMinute = ((now.minute + 5) / 5).ceil() * 5;
-      if (minMinute >= 60) {
-        // Si on dépasse 60 minutes, passer à l'heure suivante
-        selectedHour = (selectedHour + 1) % 24;
-        selectedMinute = 0;
-        // Mettre à jour les contrôleurs
-        _hourController.animateToItem(selectedHour, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
-        _minuteController.animateToItem(0, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
-      } else if (selectedMinute < minMinute) {
-        selectedMinute = minMinute;
-        _minuteController.animateToItem(selectedMinute ~/ 5, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+  _TimeSlot? _parseInitialSlot() {
+    final value = widget.initialTime;
+    if (value == null) return null;
+    final parts = value.split(':');
+    if (parts.length != 2) return null;
+
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) return null;
+    if (hour < 0 || hour > 23) return null;
+
+    final roundedMinute = (minute ~/ 10) * 10;
+    if (!_minuteOptions.contains(roundedMinute)) return null;
+    return _TimeSlot(hour: hour, minute: roundedMinute);
+  }
+
+  Map<int, List<int>> _buildAvailableSlotsByHour() {
+    final now = DateTime.now();
+    final minimumTime = now.add(const Duration(minutes: 5));
+    final slots = <int, List<int>>{};
+
+    // Ajouter l'initialTime à la sélection s'il est fourni (pour les modifications)
+    final initialSlot = _parseInitialSlot();
+
+    // Afficher les heures de 0 à 23 (journée complète)
+    for (int hour = 0; hour <= 23; hour++) {
+      final minutes = <int>[];
+
+      for (final minute in _minuteOptions) {
+        final slot = DateTime(now.year, now.month, now.day, hour, minute);
+        if (!slot.isBefore(minimumTime)) {
+          minutes.add(minute);
+        }
+      }
+
+      // Inclure l'initialTime même s'il est en dehors des créneaux normaux
+      if (initialSlot != null &&
+          initialSlot.hour == hour &&
+          !minutes.contains(initialSlot.minute)) {
+        minutes.add(initialSlot.minute);
+        minutes.sort();
+      }
+
+      if (minutes.isNotEmpty) {
+        slots[hour] = minutes;
       }
     }
+
+    return slots;
+  }
+
+  _TimeSlot? _firstAvailableSlot(Map<int, List<int>> slotsByHour) {
+    for (final entry in slotsByHour.entries) {
+      if (entry.value.isNotEmpty) {
+        return _TimeSlot(hour: entry.key, minute: entry.value.first);
+      }
+    }
+    return null;
+  }
+
+  bool _isSlotAvailable(int hour, int minute, Map<int, List<int>> slotsByHour) {
+    final minutes = slotsByHour[hour];
+    if (minutes == null) return false;
+    return minutes.contains(minute);
+  }
+
+  void _selectSlot(int hour, int minute) {
+    setState(() {
+      selectedHour = hour;
+      selectedMinute = minute;
+      _updateSelectedTime();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final textStyles = context.appTextStyles;
     final colorScheme = Theme.of(context).colorScheme;
+    final slotsByHour = _buildAvailableSlotsByHour();
+    final hasAvailableSlot = slotsByHour.isNotEmpty;
+
+    if (hasAvailableSlot &&
+        !_isSlotAvailable(selectedHour, selectedMinute, slotsByHour)) {
+      final firstSlot = _firstAvailableSlot(slotsByHour);
+      if (firstSlot != null) {
+        selectedHour = firstSlot.hour;
+        selectedMinute = firstSlot.minute;
+        _updateSelectedTime();
+      }
+    }
+
+    if (!hasAvailableSlot) {
+      selectedTime = null;
+    }
+
     final size = MediaQuery.of(context).size;
-    final dialogWidth = size.width < 560 ? size.width * 0.92 : 520.0;
-    final dialogHeight = size.height < 720 ? size.height * 0.85 : 600.0;
+    final dialogWidth = size.width < 720 ? size.width * 0.96 : 700.0;
+    final dialogHeight = size.height < 860 ? size.height * 0.92 : 780.0;
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
@@ -109,227 +159,39 @@ class _PickupTimeDialogState extends State<PickupTimeDialog> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // En-tête
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    Icons.schedule,
-                    color: colorScheme.onPrimaryContainer,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Heure de récupération',
-                        style: textStyles.title.copyWith(fontWeight: FontWeight.bold),
+            // Tableau horaire heure x minutes
+            Expanded(
+              child: hasAvailableSlot
+                  ? SingleChildScrollView(
+                      child: Column(
+                        children: slotsByHour.entries
+                            .map(
+                              (entry) => Padding(
+                                padding: const EdgeInsets.only(bottom: 18),
+                                child: _buildHourRow(
+                                  hour: entry.key,
+                                  availableMinutes: entry.value,
+                                  textStyles: textStyles,
+                                  colorScheme: colorScheme,
+                                ),
+                              ),
+                            )
+                            .toList(),
                       ),
-                      Text(
-                        'Heure de récupération de la commande',
-                        style: textStyles.caption.copyWith(
+                    )
+                  : Center(
+                      child: Text(
+                        'Plus de créneaux disponibles aujourd\'hui.',
+                        style: textStyles.body.copyWith(
                           color: colorScheme.onSurface.withValues(alpha: 0.7),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Cadran tactile centré
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: colorScheme.outline),
-                  borderRadius: BorderRadius.circular(16),
-                  color: colorScheme.surfaceContainerHighest,
-                ),
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    // Titre du cadran
-                    Text(
-                      'Sélectionner l\'heure',
-                      style: textStyles.title.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 20),
-                    
-                    // Cadrans tactiles côte à côte
-                    Expanded(
-                      child: Row(
-                        children: [
-                          // Cadran des heures
-                          Expanded(
-                            child: Column(
-                              children: [
-                                Text(
-                                  'Heures',
-                                  style: textStyles.subtitle.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: colorScheme.primary,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                Expanded(
-                                  child: ListWheelScrollView.useDelegate(
-                                    controller: _hourController,
-                                    itemExtent: 60,
-                                    physics: const FixedExtentScrollPhysics(),
-                                    overAndUnderCenterOpacity: 0.3,
-                                    magnification: 1.2,
-                                    useMagnifier: true,
-                                    onSelectedItemChanged: (index) {
-                                      setState(() {
-                                        selectedHour = index;
-                                        _validateTimeSelection();
-                                        _updateSelectedTime();
-                                      });
-                                    },
-                                    childDelegate: ListWheelChildBuilderDelegate(
-                                      builder: (context, index) {
-                                        if (index < 0 || index >= 24) return null;
-                                        
-                                        DateTime now = DateTime.now();
-                                        bool isDisabled = _isHourDisabled(index, now);
-                                        bool isSelected = selectedHour == index;
-                                        
-                                        return Container(
-                                          decoration: BoxDecoration(
-                                            color: isSelected 
-                                              ? colorScheme.primary.withValues(alpha: 0.12)
-                                              : Colors.transparent,
-                                            borderRadius: BorderRadius.circular(12),
-                                            border: isSelected 
-                                              ? Border.all(color: colorScheme.primary, width: 2)
-                                              : null,
-                                          ),
-                                          child: Center(
-                                            child: Text(
-                                              '${index.toString().padLeft(2, '0')}h',
-                                              style: TextStyle(
-                                                fontSize: 24,
-                                                fontWeight: isSelected 
-                                                  ? FontWeight.bold 
-                                                  : FontWeight.w500,
-                                                color: isDisabled 
-                                                  ? colorScheme.onSurface.withValues(alpha: 0.3)
-                                                  : isSelected 
-                                                    ? colorScheme.primary 
-                                                    : colorScheme.onSurface,
-                                              ),
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                      childCount: 24,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          
-                          // Séparateur
-                          Container(
-                            width: 2,
-                            height: 200,
-                            color: colorScheme.outline,
-                            margin: const EdgeInsets.symmetric(horizontal: 20),
-                          ),
-                          
-                          // Cadran des minutes
-                          Expanded(
-                            child: Column(
-                              children: [
-                                Text(
-                                  'Minutes',
-                                  style: textStyles.subtitle.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: colorScheme.primary,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                Expanded(
-                                  child: ListWheelScrollView.useDelegate(
-                                    controller: _minuteController,
-                                    itemExtent: 60,
-                                    physics: const FixedExtentScrollPhysics(),
-                                    overAndUnderCenterOpacity: 0.3,
-                                    magnification: 1.2,
-                                    useMagnifier: true,
-                                    onSelectedItemChanged: (index) {
-                                      setState(() {
-                                        selectedMinute = index * 5;
-                                        _updateSelectedTime();
-                                      });
-                                    },
-                                    childDelegate: ListWheelChildBuilderDelegate(
-                                      builder: (context, index) {
-                                        if (index < 0 || index >= 12) return null;
-                                        
-                                        int minute = index * 5;
-                                        DateTime now = DateTime.now();
-                                        bool isDisabled = _isMinuteDisabled(minute, now);
-                                        bool isSelected = selectedMinute == minute;
-                                        
-                                        return Container(
-                                          decoration: BoxDecoration(
-                                            color: isSelected 
-                                              ? colorScheme.primary.withValues(alpha: 0.12)
-                                              : Colors.transparent,
-                                            borderRadius: BorderRadius.circular(12),
-                                            border: isSelected 
-                                              ? Border.all(color: colorScheme.primary, width: 2)
-                                              : null,
-                                          ),
-                                          child: Center(
-                                            child: Text(
-                                              minute.toString().padLeft(2, '0'),
-                                              style: TextStyle(
-                                                fontSize: 24,
-                                                fontWeight: isSelected 
-                                                  ? FontWeight.bold 
-                                                  : FontWeight.w500,
-                                                color: isDisabled 
-                                                  ? colorScheme.onSurface.withValues(alpha: 0.3)
-                                                  : isSelected 
-                                                    ? colorScheme.primary 
-                                                    : colorScheme.onSurface,
-                                              ),
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                      childCount: 12,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                        textAlign: TextAlign.center,
                       ),
                     ),
-                    
-                    const SizedBox(height: 20),
-                  ],
-                ),
-              ),
             ),
-            
+
             const SizedBox(height: 20),
-            
+
             // Boutons d'action
             Row(
               children: [
@@ -337,7 +199,8 @@ class _PickupTimeDialogState extends State<PickupTimeDialog> {
                   child: TextButton(
                     onPressed: () => Navigator.of(context).pop(),
                     style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      minimumSize: const Size.fromHeight(56),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
                     child: Text('Annuler', style: textStyles.body),
                   ),
@@ -346,25 +209,32 @@ class _PickupTimeDialogState extends State<PickupTimeDialog> {
                 Expanded(
                   flex: 2,
                   child: ElevatedButton(
-                    onPressed: selectedTime != null
+                    onPressed: hasAvailableSlot && selectedTime != null
                         ? () => Navigator.of(context).pop(selectedTime)
                         : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: selectedTime != null
+                      backgroundColor: hasAvailableSlot && selectedTime != null
                           ? colorScheme.primary
                           : colorScheme.surfaceContainerHighest,
-                      foregroundColor: selectedTime != null
+                      foregroundColor: hasAvailableSlot && selectedTime != null
                           ? colorScheme.onPrimary
                           : colorScheme.onSurface.withValues(alpha: 0.4),
-                      elevation: selectedTime != null ? 2 : 0,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      elevation: hasAvailableSlot && selectedTime != null
+                          ? 2
+                          : 0,
+                      minimumSize: const Size.fromHeight(56),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                     child: Text(
-                      selectedTime != null ? 'Confirmer' : 'Choisir une heure',
-                      style: textStyles.body.copyWith(fontWeight: FontWeight.w600),
+                      hasAvailableSlot && selectedTime != null
+                          ? 'Confirmer'
+                          : 'Aucun créneau',
+                      style: textStyles.body.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
@@ -375,17 +245,81 @@ class _PickupTimeDialogState extends State<PickupTimeDialog> {
       ),
     );
   }
-  
-  bool _isHourDisabled(int hour, DateTime now) {
-    // Désactiver les heures passées 
-    if (hour < now.hour) return true;
-    // Les heures sont disponibles jusqu'à 23h (ne pas dépasser la journée)
-    return false;
+
+  Widget _buildHourRow({
+    required int hour,
+    required List<int> availableMinutes,
+    required AppTextStyles textStyles,
+    required ColorScheme colorScheme,
+  }) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 84,
+          child: Text(
+            '${hour.toString().padLeft(2, '0')}h',
+            style: textStyles.subtitle.copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize: 20,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        ..._minuteOptions.map((minute) {
+          final isVisible = availableMinutes.contains(minute);
+          final isSelected = selectedHour == hour && selectedMinute == minute;
+
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: isVisible
+                  ? SizedBox(
+                      height: 68,
+                      child: Material(
+                        color: isSelected
+                            ? colorScheme.primary.withValues(alpha: 0.16)
+                            : colorScheme.surface,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                            color: isSelected
+                                ? colorScheme.primary
+                                : colorScheme.outline,
+                            width: isSelected ? 2 : 1,
+                          ),
+                        ),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => _selectSlot(hour, minute),
+                          child: Center(
+                            child: Text(
+                              minute.toString().padLeft(2, '0'),
+                              style: textStyles.body.copyWith(
+                                fontSize: 20,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
+                                color: isSelected
+                                    ? colorScheme.primary
+                                    : colorScheme.onSurface,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          );
+        }),
+      ],
+    );
   }
-  
-  bool _isMinuteDisabled(int minute, DateTime now) {
-    // Si on est à l'heure actuelle, désactiver les minutes passées + 5 minutes de marge
-    if (selectedHour == now.hour && minute <= (now.minute + 5)) return true;
-    return false;
-  }
+}
+
+class _TimeSlot {
+  final int hour;
+  final int minute;
+
+  const _TimeSlot({required this.hour, required this.minute});
 }

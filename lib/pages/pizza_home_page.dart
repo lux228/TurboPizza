@@ -33,7 +33,8 @@ class PizzaHomePage extends StatefulWidget {
   _PizzaHomePageState createState() => _PizzaHomePageState();
 }
 
-class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateMixin {
+class _PizzaHomePageState extends State<PizzaHomePage>
+    with TickerProviderStateMixin {
   List<Pizza> availablePizzas = [];
   bool showCurrentOrder = false;
   late AnimationController _animationController;
@@ -43,6 +44,8 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
   // Délais de réduction (debounce) pour éviter des variations brusques de hauteur
   Timer? _currentOrderShrinkTimer;
   int _appliedItemCountForHeight = 0;
+  bool _isEditingOrderFlow = false;
+  String? _editedOrderInitialPickupTime;
 
   @override
   void initState() {
@@ -57,17 +60,15 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
       duration: AppDurations.animationDuration,
       vsync: this,
     );
-    _slideAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
+    _slideAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
   }
 
   void _startStatusUpdateTimer() {
-    _statusUpdateTimer = Timer.periodic(AppDurations.statusUpdateInterval, (timer) {
+    _statusUpdateTimer = Timer.periodic(AppDurations.statusUpdateInterval, (
+      timer,
+    ) {
       if (mounted && context.read<OrderService>().hasOrders) {
         setState(() {
           // Force la reconstruction pour mettre à jour les couleurs des statuts
@@ -87,10 +88,10 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
 
   void _loadData() async {
     final loadedPizzas = await StorageService.loadPizzaList();
-  if (!mounted) return;
-  await context.read<OrderService>().loadOrders();
-  if (!mounted) return;
-  setState(() {
+    if (!mounted) return;
+    await context.read<OrderService>().loadOrders();
+    if (!mounted) return;
+    setState(() {
       availablePizzas = loadedPizzas;
     });
   }
@@ -98,7 +99,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
   void addToCart(Pizza pizza) {
     final cartService = context.read<CartService>();
     cartService.addToCart(pizza);
-    
+
     // Afficher la commande en cours avec animation quand on ajoute un produit
     if (!showCurrentOrder) {
       setState(() {
@@ -115,24 +116,30 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
 
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (BuildContext context) =>
-          PaymentMethodDialog(currentSelection: AppPayments.defaultPaymentMethod),
+      builder: (BuildContext context) => PaymentMethodDialog(
+        currentSelection: AppPayments.defaultPaymentMethod,
+      ),
     );
 
-  if (!mounted) return;
-  if (result != null) {
+    if (!mounted) return;
+    if (result != null) {
       final String selectedMethod = result['method'];
 
       // Enregistrement de l'encaissement
-      await StorageService.savePayment(Payment(
-        date: DateTime.now(),
-        amount: cartService.totalPrice,
-        paymentMethod: selectedMethod,
-        items: cartService.items,
-      ));
+      await StorageService.savePayment(
+        Payment(
+          date: DateTime.now(),
+          amount: cartService.totalPrice,
+          paymentMethod: selectedMethod,
+          items: cartService.items,
+        ),
+      );
 
       // Nettoyage du panier
       cartService.clear();
+      _isEditingOrderFlow = false;
+      _editedOrderInitialPickupTime = null;
+      cartService.clearLastPickupTime();
       if (showCurrentOrder) {
         _animationController.reverse().then((_) {
           if (mounted) {
@@ -144,13 +151,12 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
       }
 
       // Affichage d'un message de confirmation
-  if (!mounted) return;
-        showAppSnackBar(
-          context,
-          AppStrings.paymentSuccessMessage,
-          type: AppSnackBarType.success,
-        );
-      
+      if (!mounted) return;
+      showAppSnackBar(
+        context,
+        AppStrings.paymentSuccessMessage,
+        type: AppSnackBarType.success,
+      );
     }
   }
 
@@ -159,12 +165,16 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
     final cartService = context.read<CartService>();
     if (cartService.isEmpty) return;
 
-    // Utiliser l'horaire mémorisé s'il existe, sinon demander un nouvel horaire
-    String? selectedTime = cartService.lastPickupTime ??
-        await showDialog<String>(
-          context: context,
-          builder: (BuildContext context) => const PickupTimeDialog(),
-        );
+    // Pré-remplir l'horaire uniquement si on vient d'une action "Modifier".
+    final initialPickupTime = _isEditingOrderFlow
+        ? _editedOrderInitialPickupTime
+        : null;
+
+    String? selectedTime = await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) =>
+          PickupTimeDialog(initialTime: initialPickupTime),
+    );
 
     if (!mounted) return;
     if (selectedTime != null) {
@@ -174,6 +184,10 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
         amount: cartService.totalPrice,
         pickupTime: selectedTime,
       );
+
+      _isEditingOrderFlow = false;
+      _editedOrderInitialPickupTime = null;
+      cartService.clearLastPickupTime();
 
       cartService.clear();
       if (showCurrentOrder) {
@@ -186,13 +200,12 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
         });
       }
 
-  if (!mounted) return;
-        showAppSnackBar(
-          context,
-          AppStrings.orderOnHoldMessage,
-          type: AppSnackBarType.info,
-        );
-      
+      if (!mounted) return;
+      showAppSnackBar(
+        context,
+        AppStrings.orderOnHoldMessage,
+        type: AppSnackBarType.info,
+      );
     }
   }
 
@@ -200,12 +213,13 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
   void validatePickup(PendingOrder order) async {
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (BuildContext context) =>
-          PaymentMethodDialog(currentSelection: AppPayments.defaultPaymentMethod),
+      builder: (BuildContext context) => PaymentMethodDialog(
+        currentSelection: AppPayments.defaultPaymentMethod,
+      ),
     );
 
-  if (!mounted) return;
-  if (result != null) {
+    if (!mounted) return;
+    if (result != null) {
       final String selectedMethod = result['method'];
 
       // Créer un encaissement à partir de la commande
@@ -216,11 +230,11 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
         items: order.items,
       );
 
-  await StorageService.savePayment(payment);
-  if (!mounted) return;
-  await context.read<OrderService>().removeOrder(order.id);
+      await StorageService.savePayment(payment);
+      if (!mounted) return;
+      await context.read<OrderService>().removeOrder(order.id);
 
-  if (mounted) {
+      if (mounted) {
         showAppSnackBar(
           context,
           AppStrings.orderValidatedMessage,
@@ -235,10 +249,12 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
     final cartService = context.read<CartService>();
     // Remettre la commande dans le panier
     cartService.loadFromOrder(order.items);
-    
-    // Mémoriser l'horaire de récupération pour pouvoir le réutiliser
+
+    // Mémoriser qu'on est en mode édition pour pré-remplir au prochain "Mise en attente".
+    _isEditingOrderFlow = true;
+    _editedOrderInitialPickupTime = order.plannedPickupTime;
     cartService.setLastPickupTime(order.plannedPickupTime);
-    
+
     // Afficher la commande en cours avec animation
     if (!showCurrentOrder) {
       setState(() {
@@ -263,19 +279,20 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
   void changeOrderTime(PendingOrder order) async {
     final selectedTime = await showDialog<String>(
       context: context,
-      builder: (BuildContext context) => const PickupTimeDialog(),
+      builder: (BuildContext context) =>
+          PickupTimeDialog(initialTime: order.plannedPickupTime),
     );
 
     if (!mounted) return;
     if (selectedTime != null) {
       final orderService = context.read<OrderService>();
-      
+
       // Créer une nouvelle commande avec le nouvel horaire
       final updatedOrder = order.copyWith(
         id: DateTime.now().millisecondsSinceEpoch.toString(), // Nouvel ID
         plannedPickupTime: selectedTime,
       );
-      
+
       // Supprimer l'ancienne commande et ajouter la nouvelle
       await orderService.removeOrder(order.id);
       await orderService.addOrder(updatedOrder);
@@ -292,8 +309,9 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
 
   // Méthode pour afficher l'aperçu d'une commande en attente
   void showOrderPreview(PendingOrder order) {
-    String formattedCompositionTime = '${order.createdAt.hour.toString().padLeft(2, '0')}:${order.createdAt.minute.toString().padLeft(2, '0')}';
-    
+    String formattedCompositionTime =
+        '${order.createdAt.hour.toString().padLeft(2, '0')}:${order.createdAt.minute.toString().padLeft(2, '0')}';
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -302,7 +320,9 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
         final colorScheme = Theme.of(context).colorScheme;
         final size = MediaQuery.of(context).size;
         final dialogWidth = size.width < 600 ? size.width * 0.9 : 520.0;
-        final dialogHeight = size.height < 700 ? size.height * 0.85 : size.height * 0.7;
+        final dialogHeight = size.height < 700
+            ? size.height * 0.85
+            : size.height * 0.7;
         return AlertDialog(
           title: Text(
             'Aperçu de la commande',
@@ -317,17 +337,23 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
               children: [
                 Text(
                   'Heure de composition : $formattedCompositionTime',
-                  style: textStyles.subtitle.copyWith(fontWeight: FontWeight.w600),
+                  style: textStyles.subtitle.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Heure de récupération prévue : ${order.plannedPickupTime}',
-                  style: textStyles.subtitle.copyWith(fontWeight: FontWeight.w600),
+                  style: textStyles.subtitle.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   'Articles commandés :',
-                  style: textStyles.subtitle.copyWith(fontWeight: FontWeight.bold),
+                  style: textStyles.subtitle.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 if (order.items.isEmpty)
@@ -346,11 +372,13 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                           size: 20,
                         ),
                         SizedBox(width: 8),
-                        Text('Aucun article enregistré pour cette commande', 
+                        Text(
+                          'Aucun article enregistré pour cette commande',
                           style: textStyles.caption.copyWith(
                             fontStyle: FontStyle.italic,
                             color: colorScheme.onSurface.withValues(alpha: 0.7),
-                          )),
+                          ),
+                        ),
                       ],
                     ),
                   )
@@ -359,17 +387,21 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                     child: Builder(
                       builder: (context) {
                         // Utiliser le cache pour le tri des articles
-                  final sortedItems = _cacheService.getSortedItems(order.items);
-                        
+                        final sortedItems = _cacheService.getSortedItems(
+                          order.items,
+                        );
+
                         return ListView.builder(
                           shrinkWrap: true,
                           itemCount: sortedItems.length,
                           itemBuilder: (context, index) {
-                    var item = sortedItems[index];
-                        
+                            var item = sortedItems[index];
+
                             // Déterminer la couleur selon le type
-                            final borderColor = colors.productTypeColor(item.type);
-                            
+                            final borderColor = colors.productTypeColor(
+                              item.type,
+                            );
+
                             return Container(
                               margin: EdgeInsets.symmetric(vertical: 2),
                               decoration: BoxDecoration(
@@ -389,32 +421,41 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                                     children: [
                                       SizedBox(
                                         width: 48,
-                                        child: Text('${item.quantity} x',
-                                          style: textStyles.body.copyWith(fontWeight: FontWeight.bold),
+                                        child: Text(
+                                          '${item.quantity} x',
+                                          style: textStyles.body.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                           textAlign: TextAlign.center,
                                         ),
                                       ),
                                       Expanded(
                                         flex: 3,
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
                                               item.name,
-                                              style: textStyles.body.copyWith(fontWeight: FontWeight.w500),
+                                              style: textStyles.body.copyWith(
+                                                fontWeight: FontWeight.w500,
+                                              ),
                                             ),
                                             Text(
                                               item.type,
-                                              style: textStyles.caption.copyWith(
-                                                color: borderColor.withValues(alpha: 0.8),
-                                              ),
+                                              style: textStyles.caption
+                                                  .copyWith(
+                                                    color: borderColor
+                                                        .withValues(alpha: 0.8),
+                                                  ),
                                             ),
                                           ],
                                         ),
                                       ),
                                       SizedBox(
                                         width: 80,
-                          child: Text(formatPrice(item.price), 
+                                        child: Text(
+                                          formatPrice(item.price),
                                           style: textStyles.body,
                                           textAlign: TextAlign.right,
                                         ),
@@ -422,7 +463,8 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                                       SizedBox(width: 12),
                                       SizedBox(
                                         width: 95,
-                          child: Text(formatPrice(item.totalPrice), 
+                                        child: Text(
+                                          formatPrice(item.totalPrice),
                                           style: textStyles.body.copyWith(
                                             fontWeight: FontWeight.bold,
                                             color: colors.successGreenDark,
@@ -488,7 +530,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
 
     if (!mounted) return;
     if (confirmed == true) {
-  await context.read<OrderService>().removeOrder(order.id);
+      await context.read<OrderService>().removeOrder(order.id);
 
       if (mounted) {
         showAppSnackBar(
@@ -506,9 +548,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
     final textStyles = context.appTextStyles;
     final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('TurboPizza'),
-      ),
+      appBar: AppBar(title: const Text('TurboPizza')),
       drawer: Drawer(
         child: ListView(
           children: <Widget>[
@@ -535,7 +575,8 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => const PaymentHistoryPage()),
+                    builder: (context) => const PaymentHistoryPage(),
+                  ),
                 );
               },
             ),
@@ -547,7 +588,8 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => const SalesStatisticsPage()),
+                    builder: (context) => const SalesStatisticsPage(),
+                  ),
                 );
               },
             ),
@@ -558,8 +600,7 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                 Navigator.pop(context);
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                      builder: (context) => const SettingsPage()),
+                  MaterialPageRoute(builder: (context) => const SettingsPage()),
                 );
               },
             ),
@@ -572,7 +613,8 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
           const minHeight = 600.0;
           final isWide = constraints.maxWidth >= 1100;
 
-          if (constraints.maxWidth < minWidth || constraints.maxHeight < minHeight) {
+          if (constraints.maxWidth < minWidth ||
+              constraints.maxHeight < minHeight) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
@@ -666,15 +708,17 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                                     Icon(
                                       Icons.touch_app,
                                       size: 14,
-                                      color: colorScheme.onSurface
-                                          .withValues(alpha: 0.6),
+                                      color: colorScheme.onSurface.withValues(
+                                        alpha: 0.6,
+                                      ),
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
                                       AppStrings.touchForDetailsMessage,
                                       style: textStyles.small.copyWith(
-                                        color: colorScheme.onSurface
-                                            .withValues(alpha: 0.6),
+                                        color: colorScheme.onSurface.withValues(
+                                          alpha: 0.6,
+                                        ),
                                         fontStyle: FontStyle.italic,
                                       ),
                                     ),
@@ -690,9 +734,11 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                                 onPressed: () {
                                   showDialog(
                                     context: context,
-                                    builder: (BuildContext context) => CalculatorDialog(
-                                      currentOrderTotal: cartService.totalPrice,
-                                    ),
+                                    builder: (BuildContext context) =>
+                                        CalculatorDialog(
+                                          currentOrderTotal:
+                                              cartService.totalPrice,
+                                        ),
                                   );
                                 },
                                 tooltip: 'Calculatrice',
@@ -714,8 +760,9 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                           child: Text(
                             AppStrings.noOrdersMessage,
                             style: textStyles.body.copyWith(
-                              color: colorScheme.onSurface
-                                  .withValues(alpha: 0.6),
+                              color: colorScheme.onSurface.withValues(
+                                alpha: 0.6,
+                              ),
                               fontStyle: FontStyle.italic,
                             ),
                           ),
@@ -746,10 +793,11 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
             final screenHeight = MediaQuery.of(context).size.height;
             const double headerHeight = 56; // bandeau "COMMANDE EN COURS"
             const double footerHeight = 140; // total + boutons
-            const double perItemHeight = 64; // hauteur approximative par ligne du panier
+            const double perItemHeight =
+                64; // hauteur approximative par ligne du panier
             final int itemCount = cartService.items.length;
 
-            // Gestion du debounce: 
+            // Gestion du debounce:
             // - si le nombre d'items augmente, on applique immédiatement la nouvelle hauteur
             // - s'il diminue, on attend un court délai avant de réduire la hauteur
             if (itemCount > _appliedItemCountForHeight) {
@@ -765,30 +813,42 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
             } else if (itemCount < _appliedItemCountForHeight) {
               // Redémarrer le timer de réduction
               _currentOrderShrinkTimer?.cancel();
-              _currentOrderShrinkTimer = Timer(AppDurations.currentOrderShrinkDelay, () {
-                if (!mounted) return;
-                final int latestCount = context.read<CartService>().items.length;
-                setState(() {
-                  _appliedItemCountForHeight = latestCount;
-                });
-                // Si après délai le panier est vide, refermer la fenêtre en douceur
-                if (latestCount == 0 && showCurrentOrder) {
-                  if (_animationController.status == AnimationStatus.dismissed) {
-                    setState(() => showCurrentOrder = false);
-                  } else if (_animationController.status != AnimationStatus.reverse) {
-                    _animationController.reverse().then((_) {
-                      if (mounted) setState(() => showCurrentOrder = false);
-                    });
+              _currentOrderShrinkTimer = Timer(
+                AppDurations.currentOrderShrinkDelay,
+                () {
+                  if (!mounted) return;
+                  final int latestCount = context
+                      .read<CartService>()
+                      .items
+                      .length;
+                  setState(() {
+                    _appliedItemCountForHeight = latestCount;
+                  });
+                  // Si après délai le panier est vide, refermer la fenêtre en douceur
+                  if (latestCount == 0 && showCurrentOrder) {
+                    if (_animationController.status ==
+                        AnimationStatus.dismissed) {
+                      setState(() => showCurrentOrder = false);
+                    } else if (_animationController.status !=
+                        AnimationStatus.reverse) {
+                      _animationController.reverse().then((_) {
+                        if (mounted) setState(() => showCurrentOrder = false);
+                      });
+                    }
                   }
-                }
-              });
+                },
+              );
             }
 
             final double desiredHeight =
-                headerHeight + footerHeight + (_appliedItemCountForHeight * perItemHeight);
+                headerHeight +
+                footerHeight +
+                (_appliedItemCountForHeight * perItemHeight);
             final double minHeight = screenHeight * 0.25; // min 25% écran
             final double maxHeight = screenHeight * 0.70; // max 70% écran
-            final double currentOrderHeight = desiredHeight.clamp(minHeight, maxHeight).toDouble();
+            final double currentOrderHeight = desiredHeight
+                .clamp(minHeight, maxHeight)
+                .toDouble();
 
             return AnimatedBuilder(
               animation: _slideAnimation,
@@ -796,7 +856,9 @@ class _PizzaHomePageState extends State<PizzaHomePage> with TickerProviderStateM
                 return ClipRect(
                   child: Align(
                     alignment: Alignment.bottomCenter,
-                    heightFactor: showCurrentOrder ? _slideAnimation.value : 0.0,
+                    heightFactor: showCurrentOrder
+                        ? _slideAnimation.value
+                        : 0.0,
                     child: AnimatedContainer(
                       duration: AppDurations.animationDuration,
                       curve: Curves.easeInOut,
